@@ -28,7 +28,7 @@
 #   bash asbl/ci/release-publish.sh stage-docker
 #       The Docker rehearsal's upload (job dp-ci-release-step2-release-docker), built once on this host: this checkout on
 #       origin/main and built (dp-ci.sh build-if-needed, which builds only when there is no build of it yet), the version
-#       gate (release-state.sh version-check docker, whose version must be the build's), step 1's Docker lanes green on this
+#       gate (release-state.sh version-check docker, whose version must be the build's), step 1's two lanes green on this
 #       commit; then the build's image <repo>:<version>-<commit> tagged and pushed as <repo>:<version> (never :latest;
 #       logged in with a throwaway DOCKER_CONFIG, so this host's own docker login is never touched) and the registry's
 #       digest read back; then asbl/dist/datapallas-server-docker.zip, the zip whose compose pins that tag, uploaded to

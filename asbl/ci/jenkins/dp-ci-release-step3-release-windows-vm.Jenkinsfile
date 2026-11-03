@@ -7,7 +7,7 @@
 // first when there is none.
 // Its full description (what, when, order, needs, time, examples, log) is in asbl/ci/jenkins/seed.groovy, which makes the job;
 // the guide is asbl/ci/jenkins/jenkins.md, section dp-ci-release-step3-release-windows-vm.
-// E2E_APPROVAL (the owner's written decision to go on without step 1's four lanes; seed.groovy's parameter text says what it
+// E2E_APPROVAL (the owner's written decision to go on without step 1's lanes; seed.groovy's parameter text says what it
 // does) and the user who started the build (E2E_APPROVAL_USER) reach asbl/ci/release-state.sh through the environment.
 // UPLOAD (default no): whether the run writes to Docker Hub and the bucket. no = all the work and every proof, then the
 // exact command and destination of each upload it skips, nothing written; yes = the uploads, at the end, after every proof;

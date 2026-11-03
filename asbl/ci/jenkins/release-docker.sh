@@ -7,7 +7,8 @@
 #
 #   MODE=rehearsal|upload|public UPLOAD=no|yes DRY_RUN=no|yes  bash asbl/ci/jenkins/release-docker.sh   (--help: this text)
 #
-# The day before a release (plan-pre-release-artifacts-ready): MODE=rehearsal UPLOAD=no, then step 3 the same way. It builds
+# The day before a release (plan-pre-release-artifacts-ready): MODE=rehearsal UPLOAD=no, and step 3 the same way (each step is
+# one channel: neither needs the other; the one-press job runs both together, one VM part at a time). It builds
 # the image and the docker zip once, proves both on Linux and on Windows, keeps them and uploads nothing: about 3-5 h (the
 # build ~40 min when there is none of the commit yet, the Linux proof ~1 h, the Windows proof 1-3 h: the image copied to the
 # VM, then the light set, whose AI Hub app builds its images there when the VM does not have them yet), seconds for the rest.

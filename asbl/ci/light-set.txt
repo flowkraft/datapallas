@@ -3,9 +3,11 @@
 # What it is: one list for the four lanes that run a light set. They are:
 #   - the Docker release's Linux proof on docker-server (asbl/ci/jenkins/release-docker.sh, DOCKER RELEASE STEP 3/6);
 #   - windows-vm-docker (its DOCKER RELEASE STEP 4/6);
-#   - windows-vm-server (step 1, lane 4);
-#   - windows-vm-electron (step 3's RELEASE STEP 2/4, recorded as step 1's lane 3).
-# The release record calls such a run "light" (asbl/ci/release-state.sh record-step1).
+#   - windows-vm-server (step 3's RELEASE STEP 2/5, on the pack's datapallas-server.zip, recorded as
+#     step3.windows-vm-server-light);
+#   - windows-vm-electron (step 3's RELEASE STEP 3/5, recorded as step3.windows-vm-electron-light).
+# None of them is a step 1 lane since 16.6.2. Run through the step 1 job, the release record calls such a run "light"
+# (asbl/ci/release-state.sh record-step1), which no release needs.
 # How it is read, step by step (asbl/ci/dp-ci.sh light_set_filters <lane>):
 #   1. Every line that is not blank or a comment is an entry: zone | lanes | spec file | test title.
 #   2. A lane keeps the entries whose lanes field is "all" or its own group: server is docker-server, web,

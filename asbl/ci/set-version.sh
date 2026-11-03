@@ -201,7 +201,7 @@ NEXT, BY HAND:
                                                   holds a test licence key that should not be echoed)
   3. commit them yourself. This script never commits, tags or pushes.
   4. then push, and prove that commit: step 1 of a release, Jenkins job dp-ci-release-step1-e2e-prerelease
-     (its four lanes; asbl/ci/jenkins/jenkins.md, "The release, in order"). The Jenkins job
+     (its two lanes; asbl/ci/jenkins/jenkins.md, "The release, in order"). The Jenkins job
      dp-ci-release-step0-set-version runs this script, checks the edits, commits and pushes them for you;
      the changelog (1) stays yours.
 EOF

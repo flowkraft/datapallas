@@ -42,7 +42,9 @@
 #                                               rehearsal/). MODE=public (UPLOAD=yes): a passed rehearsal copied to newest/ and
 #                                               :latest (owner only)
 #   3 dp-ci-release-step3-release-windows-vm    `win release`, the same two modes and UPLOAD for the Windows files: pack,
-#                                               prove (the Robot UAT), upload (2 and 3 in either order, never at once: one VM;
+#                                               prove (the server light set on the pack's datapallas-server.zip, the electron
+#                                               light set, the Robot UAT), upload (2 and 3 in either order, never at once as
+#                                               jobs: one VM; the one-press job runs them together, one VM part at a time;
 #                                               the two public runs one after the other)
 #   4 dp-ci-release-step4-demo-public           asbl/ci/jenkins/release-demos.sh: demo.datapallas.com installs the release
 # Steps 2 and 3 start with their channel's version gate (asbl/ci/release-state.sh version-check docker|windows: settings.xml

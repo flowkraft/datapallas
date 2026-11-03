@@ -13,7 +13,7 @@
 #    every one of them and git diff --name-only must list exactly them. origin/main already saying it everywhere: nothing
 #    is committed;
 # 4. one commit, "release <version>: the version in the 7 version files", pushed to main, the worktree removed; then
-#    RELEASE_COMMIT=<sha> and the next step: step 1's four lanes on that commit. main moved meanwhile: the push is
+#    RELEASE_COMMIT=<sha> and the next step: step 1's two lanes on that commit. main moved meanwhile: the push is
 #    rejected and the job fails, saying so (it never retries on a tree it did not check);
 # 5. a warning, never a failure, when asbl/src/main/external-resources/db-template/CHANGELOG.md has no heading for the
 #    version: the notes are the owner's, committed before step 1 (step 1 and the release jobs run on one commit).
@@ -108,9 +108,9 @@ main() {
   echo "RELEASE_COMMIT=$c"
   echo "NEXT: step 1, dp-ci-release-step1-e2e-prerelease, on the commit being released (this one, or a later one with the"
   echo "      changelog): this release's full lane (web or docker-server; bash asbl/ci/release-state.sh full-lane --choose says"
-  echo "      which), docker-server auth and windows-vm-server light. windows-vm-electron light is step 3's own run, its"
-  echo "      RELEASE STEP 2/4, so a release does not run it here. Step 1 runs made before this commit do not count for this"
-  echo "      release; after it, any step 1 run on the commit being released does."
+  echo "      which) and docker-server auth, both on this host. The Windows light sets are step 3's own runs (its RELEASE"
+  echo "      STEP 2/5 and 3/5), so a release does not run them here. Step 1 runs made before this commit do not count for"
+  echo "      this release; after it, any step 1 run on the commit being released does."
   result "$V set: ${c:0:8}"
 }
 

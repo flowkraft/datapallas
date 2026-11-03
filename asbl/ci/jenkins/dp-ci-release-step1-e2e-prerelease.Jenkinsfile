@@ -1,8 +1,7 @@
 // Job datapallas/dp-ci-release-step1-e2e-prerelease: the real e2e on a package built from this exact commit (dp-ci.sh e2e, or
-// dp-ci.sh win e2e|docker-e2e|server-e2e for the Windows targets): step 1 of a release (four lanes green on one commit: the full
-// set on this release's full lane, web or docker-server, alternated; E2E_SPEC=light on windows-vm-electron = its light set,
-// e.g. E2E_TARGET=windows-vm-electron E2E_SPEC=light), and the
-// everyday full e2e of the trunk. Each build records its verdict (asbl/ci/release-state.sh). The quick loop is dp-ci-dev-e2e-one-spec.
+// dp-ci.sh win e2e|docker-e2e|server-e2e for the Windows targets): step 1 of a release (two lanes green on one commit, both on
+// this host: the full set on this release's full lane, web or docker-server, alternated, and the sign-in file on
+// docker-server; the Windows light sets are step 3's since 16.6.2), and the everyday full e2e of the trunk. Each build records its verdict (asbl/ci/release-state.sh). The quick loop is dp-ci-dev-e2e-one-spec.
 // Its full description (what, when, order, needs, time, examples, log) is in asbl/ci/jenkins/seed.groovy, which makes the job;
 // the guide is asbl/ci/jenkins/jenkins.md, section dp-ci-release-step1-e2e-prerelease.
 // THIN ON PURPOSE: the lane is asbl/ci/jenkins/release-step1.sh (the target's launcher, the prerequisites, build-if-needed,
