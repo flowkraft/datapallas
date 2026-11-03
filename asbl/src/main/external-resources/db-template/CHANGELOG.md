@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.6.2 - 2026-11-05
+
+### Changed
+
+- CI/CD improvements: a release runs from one step, start to end, with any failure fixed and proven before the release goes on.
+
 ## 16.6.1 - 2026-11-02
 
 ### Changed
