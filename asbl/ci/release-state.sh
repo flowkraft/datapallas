@@ -151,7 +151,15 @@ commit_of() {  # the full hash of RELEASE_COMMIT or HEAD; the given text itself 
   full=$(git rev-parse --verify -q "$c^{commit}" 2>/dev/null) && { echo "$full"; return 0; }
   [ "$c" != HEAD ] && echo "$c"
 }
-tree_version() { grep -m1 -oP '(?<=<version>)[^<]+' "$SETTINGS_XML" 2>/dev/null; }
+# version_of_asked_commit: the version of the commit asked about: RELEASE_COMMIT's when set and known to git, else this
+# checkout's. A release's pin may not be checked out yet: the orchestrator asks for step 1's lanes before step 1's build
+# moves this checkout to the pin, so on a new version's first press the checkout still says the version before.
+version_of_asked_commit() {
+  local v=""
+  [ -z "${RELEASE_COMMIT:-}" ] || v=$(version_at "$RELEASE_COMMIT")
+  [ -n "$v" ] || v=$(grep -m1 -oP '(?<=<version>)[^<]+' "$SETTINGS_XML" 2>/dev/null)
+  printf '%s\n' "$v"
+}
 version_at() { git show "$1:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+'; }  # version_at <commit>
 valid_name() { printf '%s' "$1" | grep -qE '^(step1|step3|rehearsal|public)\.[a-z0-9-]+$'; }
 field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -1; }  # field <file> <key>
@@ -239,7 +247,7 @@ full_lane() {
 # (printing it); without it, a version with no choice yet needs both full runs (nothing is drawn by a mere look).
 required_step1() {
   local v line lane
-  v=$(tree_version)
+  v=$(version_of_asked_commit)
   if [ "${1:-}" = choose ]; then
     line=$(full_lane "$v" "$2") || { printf '%s\n' "$line"; return 2; }
     printf '%s\n' "$line"
@@ -331,7 +339,7 @@ approval_accept() {  # approval_accept <the check> <lane>...: the phrase is ther
   {
     echo "result=APPROVED"
     echo "commit=$commit"
-    echo "version=$(tree_version)"
+    echo "version=$(version_of_asked_commit)"
     echo "time=$now"
     echo "user=$user"
     echo "text=$(printf '%s' "$E2E_APPROVAL" | tr '\r\n' '  ')"
@@ -398,7 +406,7 @@ channel_source() {  # where a channel's released version is read
 VC_VERSION=""; VC_RELEASED="?"
 version_check() {  # version_check docker|windows: prints why; rc 0 GO, 3 nothing to release, 1 refused, 2 cannot check
   local ch="$1" v r bad j d pub
-  v=$(tree_version); VC_VERSION="$v"
+  v=$(version_of_asked_commit); VC_VERSION="$v"
   [ -n "$v" ] || { echo "REFUSED  cannot read <version> from $SETTINGS_XML"; return 1; }
   printf '%s' "$v" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "REFUSED  $SETTINGS_XML says '$v', not x.y.z"; return 1; }
   bad=$(bash asbl/ci/set-version.sh --versions | awk -v v="$v" '$1 != v')
@@ -465,7 +473,7 @@ case "$cmd" in
     {
       echo "result=$result"
       echo "commit=$commit"
-      printf '%s\n' "$@" | grep -q '^version=' || echo "version=$(tree_version)"
+      printf '%s\n' "$@" | grep -q '^version=' || echo "version=$(version_of_asked_commit)"
       echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       [ -n "${RELEASE_LOG:-}" ] && echo "log=$RELEASE_LOG"
       for kv in "$@"; do
@@ -542,7 +550,7 @@ case "$cmd" in
     RELEASE_COMMIT="$c" RELEASE_LOG="$log" bash "$SELF" record "step1.$target-$mode" "$res" "rc=$rc" ${report:+"report=$report"}
     # a full run on one of the two sides: this release's full-lane record says whether it is its lane
     if [ "$mode" = full ] && case " $FULL_SIDES " in *" $target "*) true ;; *) false ;; esac; then
-      v=$(tree_version)
+      v=$(version_of_asked_commit)
       if ! full_valid "$FULL_DIR/$v" "$v"; then
         echo "note: no full lane chosen for $v yet: this full run is recorded as step1.$target-full only (bash $0 full-lane --choose)"
       elif [ "$(field "$FULL_DIR/$v" lane)" = "$target" ]; then
@@ -556,7 +564,7 @@ case "$cmd" in
   full-lane)
     case "${1:-}" in
       --choose) required_step1 choose "full-lane --choose" || exit 2
-                echo "step 1 of $(tree_version) needs: ${REQUIRED_STEP1//step1./}" ;;
+                echo "step 1 of $(version_of_asked_commit) needs: ${REQUIRED_STEP1//step1./}" ;;
       --step1)  # the step-1 job, at its start: the choice made only when this version is still to be released on a channel
                 # (the job is also the everyday e2e: a released version, or one the gate refuses, draws nothing); who
                 # started it (STEP1_STARTED_BY, from asbl/ci/jenkins/release-step1.sh) is written as who chose
@@ -567,10 +575,10 @@ case "$cmd" in
                 done
                 if [ "$go" = 1 ]; then
                   required_step1 choose "step 1 job (${E2E_TARGET:-?})${STEP1_STARTED_BY:+, started by $STEP1_STARTED_BY}" || exit 2
-                  echo "step 1 of $(tree_version) needs: ${REQUIRED_STEP1//step1./}"
+                  echo "step 1 of $(version_of_asked_commit) needs: ${REQUIRED_STEP1//step1./}"
                 else
                   required_step1
-                  echo "FULL_LANE $(tree_version): no lane chosen:$why the release jobs' step 1 guard chooses it"
+                  echo "FULL_LANE $(version_of_asked_commit): no lane chosen:$why the release jobs' step 1 guard chooses it"
                 fi ;;
       "")       # the last two releases' choices
                 printf '%-10s %-14s %-11s %-21s %-7s %-9s %-21s %s\n' VERSION LANE WHY CHOSEN RESULT ON RAN MORE
@@ -622,7 +630,7 @@ case "$cmd" in
     if approval_phrase; then
       approval_accept step1-guard; rc=$?
       # the full set lifted by the owner's approval: written on this release's full-lane record too
-      case "$rc:${DRY_RUN:-no}" in 0:yes|0:1) ;; 0:*) v=$(tree_version)
+      case "$rc:${DRY_RUN:-no}" in 0:yes|0:1) ;; 0:*) v=$(version_of_asked_commit)
         full_set "$FULL_DIR/$v" "approved=$(date -u +%Y-%m-%dT%H:%M:%SZ) on ${commit:0:8} by ${E2E_APPROVAL_USER:-$(id -un)}: E2E_APPROVAL, see approval.step1 of that commit" &&
           echo "FULL_LANE approval written on the record of $v ($FULL_DIR/$v)" ;; esac
       exit "$rc"
@@ -710,7 +718,7 @@ case "$cmd" in
   show)
     [ -n "${1:-}" ] && { RELEASE_COMMIT="$1"; commit=$(commit_of); dir="$RELEASE_STATE_DIR/$commit"; }
     required_step1
-    v=$(tree_version)
+    v=$(version_of_asked_commit)
     if full_valid "$FULL_DIR/$v" "$v"; then echo "the full set of $v runs on $(full_describe "$FULL_DIR/$v")"
     else echo "the full set of $v: no lane chosen yet (bash $0 full-lane --choose)"; fi
     echo "release record of commit ${commit:0:8} ($dir)"
