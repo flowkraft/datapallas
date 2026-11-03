@@ -25,10 +25,10 @@
 #        host  step 2's linux part: the build, then the Linux proof (release-docker.sh, DOCKER_RELEASE_PART=linux);
 #              then, once both proofs ended, its keep part: keep, guard, verdict (DOCKER_RELEASE_PART=keep)
 #        VM    step 3's pack (win-e2e.sh release, WIN_RELEASE_HALF=pack); then step 2's Windows Docker proof once the
-#              build is there (DOCKER_RELEASE_PART=windows); then step 3's Electron light set, Robot and its verdict
-#              (WIN_RELEASE_HALF=after-pack)
+#              build is there (DOCKER_RELEASE_PART=windows); then step 3's server light set on the pack's own
+#              datapallas-server.zip, its Electron light set, Robot and its verdict (WIN_RELEASE_HALF=after-pack)
 #      A red part never stops one that can still run: a red build leaves the Windows Docker proof and the Docker keep NOT
-#      RUN, a red pack leaves Robot NOT RUN (step 3 says so); the rest runs;
+#      RUN, a red pack leaves the server light set and Robot NOT RUN (step 3 says so); the rest runs;
 #   5. the summary: each part PASS, FAIL or NOT RUN with its reason and its log; the flaky tests; after execution 1, the
 #      failures to fix (release-keep.sh failures); the history line (marks.sh run_record_end). Exit 0 only when every part
 #      passed.
@@ -77,7 +77,7 @@
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [300]     seconds between two samples of memory.log
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
-#   build, linux-proof, pack, windows-docker-proof, electron-light, robot, docker-verdict, windows-verdict.
+#   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict.
 #
 # USE:
 #   ORCH_STARTED_BY=<name> DRY_RUN=yes bash asbl/ci/jenkins/release-orchestrator.sh
@@ -116,6 +116,7 @@ replay() {
       linux-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
       windows-docker-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
       pack "$RR_WINDOWS_PACK" "(windows-pack)" \
+      server-light "$(either "$RR_E2E_PACKAGE" "$RR_WINDOWS_PACK")" "(e2e-package, windows-pack)" \
       electron-light "$RR_E2E_PACKAGE" "(e2e-package)" \
       robot "$RR_WINDOWS_PACK" "(windows-pack)" \
       "step 1" "$RR_STEP1" "(${RR_STEP1_WHY:-})"
@@ -305,7 +306,7 @@ not_run() {
 }
 # simulate <id>: the marks a part leaves, as its script prints them, for a dry run (the step scripts' own dry runs say more)
 simulate() {
-  local r=0 any=0 p
+  local r=0 any=0 p v
   case "$1" in
     step0)  simulated_mark "STEP 0" step0 ;;
     step1-build) simulated_mark "BUILD IF NEEDED" step1-build ;;
@@ -314,14 +315,21 @@ simulate() {
       echo "######## DOCKER RELEASE STEP 1/6 START  (dry run)"
       simulated_mark "DOCKER RELEASE STEP 2/6" build || return 1
       simulated_mark "DOCKER RELEASE STEP 3/6" linux-proof ;;
-    windows-pack) simulated_mark "RELEASE STEP 1/4" pack ;;
+    windows-pack) simulated_mark "RELEASE STEP 1/5" pack ;;
     docker-windows) simulated_mark "DOCKER RELEASE STEP 4/6" windows-docker-proof ;;
     windows-after-pack)
-      simulated_mark "RELEASE STEP 2/4" electron-light || any=1
-      echo "######## RELEASE STEP 3/4 START  (dry run)"
+      # the parts that install the pack's files need it kept: the server light set its datapallas-server.zip, Robot all three
+      echo "######## RELEASE STEP 2/5 START  (dry run)"
+      v=${VERSION:-$(git show "$PIN:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+')}
+      echo "dry run: server-light installs datapallas-server.zip of pack, kept in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${PIN:0:8}/ (RELEASE_KEPT)"
+      if red_in_dry_run pack; then echo "not run: there is no kept pack (FAIL) whose datapallas-server.zip it would install"; any=1
+      elif red_in_dry_run server-light; then echo "FAILED: server-light red (DRY_RUN_RED)"; any=1; fi
+      echo "######## RELEASE STEP 2/5 END rc=$any  (dry run)"
+      simulated_mark "RELEASE STEP 3/5" electron-light || any=1
+      echo "######## RELEASE STEP 4/5 START  (dry run)"
       if red_in_dry_run pack; then echo "not run: there is no pack (FAIL) to test"; r=1
       elif red_in_dry_run robot; then echo "FAILED: robot red (DRY_RUN_RED)"; r=1; fi
-      echo "######## RELEASE STEP 3/4 END rc=$r  (dry run)"
+      echo "######## RELEASE STEP 4/5 END rc=$r  (dry run)"
       for p in pack windows-verdict; do red_in_dry_run "$p" && any=1; done
       [ "$r" = 0 ] && [ "$any" = 0 ] && echo "RELEASE_RESULT dry run: rehearsal=PASS" && return 0
       echo "RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
@@ -376,14 +384,14 @@ kept_folder() {
 }
 # machine_of_part <summary part>: where it runs its tests
 machine_of_part() {
-  case "$1" in pack|windows-docker-proof|electron-light|robot|windows-verdict) echo windows-vm ;; *) echo host ;; esac
+  case "$1" in pack|windows-docker-proof|server-light|electron-light|robot|windows-verdict) echo windows-vm ;; *) echo host ;; esac
 }
 # mark_of_part <summary part>: its mark in a log it shares with other parts (one script run, several parts); none = the whole log
 mark_of_part() {
   case "$1" in
     build) echo "DOCKER RELEASE STEP 2/6" ;; linux-proof) echo "DOCKER RELEASE STEP 3/6" ;;
-    windows-docker-proof) echo "DOCKER RELEASE STEP 4/6" ;; pack) echo "RELEASE STEP 1/4" ;;
-    electron-light) echo "RELEASE STEP 2/4" ;; robot) echo "RELEASE STEP 3/4" ;;
+    windows-docker-proof) echo "DOCKER RELEASE STEP 4/6" ;; pack) echo "RELEASE STEP 1/5" ;;
+    server-light) echo "RELEASE STEP 2/5" ;; electron-light) echo "RELEASE STEP 3/5" ;; robot) echo "RELEASE STEP 4/5" ;;
   esac
 }
 # reports_of_part <summary part> <log>: its reports that exist, one path a line: the Playwright JSON and its HTML folder, the
@@ -573,7 +581,8 @@ echo "ORDER   step 1     host: ${needed:+step1-build (when a lane takes the buil
 echo "                   VM: nothing (step 1 runs on this host only)"
 echo "        execution  host: build + linux-proof (step 2, DOCKER_RELEASE_PART=linux), then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
 echo "                   VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
-echo "                   then electron-light + robot + windows-verdict (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
+echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
 [ -z "$needed" ] || step1_lanes
 [ -f "$PARTS/step1-build.rc" ] && summarize step1-build "$(part_verdict step1-build)" "$PARTS/step1-build.log"
 s1_red=0
@@ -598,7 +607,7 @@ if [ "$guard_ok" = 0 ]; then
 fi
 
 # ---- 4. the execution: two tracks ----
-mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, Electron light set, Robot"
+mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
 DOCKER="bash asbl/ci/jenkins/release-docker.sh"
 WINDOWS="bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh release"
 # build_verdict: the build's verdict from the linux part's log, once its mark ended or the part did
@@ -618,14 +627,14 @@ track_vm() {
     run_part docker-windows "step 2's Windows Docker proof (DOCKER_RELEASE_PART=windows)" env DOCKER_RELEASE_PART=windows $DOCKER
   else not_run docker-windows "no build of ${PIN:0:8} to prove (the build is not green)"; fi
   touch "$PARTS/.docker-windows-done"
-  run_part windows-after-pack "step 3's Electron light set, Robot and verdict (WIN_RELEASE_HALF=after-pack)" \
+  run_part windows-after-pack "step 3's server light set, Electron light set, Robot and verdict (WIN_RELEASE_HALF=after-pack)" \
     env WIN_RELEASE_HALF=after-pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
 }
 track_host & host_pid=$!
 track_vm & vm_pid=$!
 wait "$host_pid"; wait "$vm_pid"
 if [ "$DRY" = yes ]; then
-  # what the guards of steps 2 and 3 will ask before their verdicts (release-docker.sh 6/6, win_release 4/4), on the main
+  # what the guards of steps 2 and 3 will ask before their verdicts (release-docker.sh 6/6, win_release 5/5), on the main
   # this checkout knows: under the pin, whether the part tested it; for comparison, what an unpinned step would answer
   echo "the moved-main checks, as steps 2 and 3 ask them under the pin: $($STATE moved-main "$PIN" origin/main 2>&1 | tail -1)"
   echo "  the same unpinned (today's rule, for comparison): $(env -u RELEASE_PIN $STATE moved-main "$PIN" origin/main 2>&1 | tail -1)"
@@ -635,10 +644,11 @@ mark_end 0
 # ---- 5. the summary ----
 summarize build "$(build_verdict)" "$PARTS/docker-linux.log"
 summarize linux-proof "$(mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 3/6")" "$PARTS/docker-linux.log"
-summarize pack "$(mark_verdict "$PARTS/windows-pack.log" "RELEASE STEP 1/4")" "$PARTS/windows-pack.log"
-summarize windows-docker-proof "$(mark_verdict "$PARTS/docker-windows.log" "DOCKER RELEASE STEP 4/6")" "$PARTS/docker-windows.log"
-summarize electron-light "$(mark_verdict "$PARTS/windows-after-pack.log" "RELEASE STEP 2/4")" "$PARTS/windows-after-pack.log"
-summarize robot "$(mark_verdict "$PARTS/windows-after-pack.log" "RELEASE STEP 3/4")" "$PARTS/windows-after-pack.log"
+summarize pack "$(mark_verdict "$PARTS/windows-pack.log" "$(mark_of_part pack)")" "$PARTS/windows-pack.log"
+summarize windows-docker-proof "$(mark_verdict "$PARTS/docker-windows.log" "$(mark_of_part windows-docker-proof)")" "$PARTS/docker-windows.log"
+for part in server-light electron-light robot; do
+  summarize "$part" "$(mark_verdict "$PARTS/windows-after-pack.log" "$(mark_of_part "$part")")" "$PARTS/windows-after-pack.log"
+done
 summarize docker-verdict "$(part_verdict docker-keep)" "$PARTS/docker-keep.log"
 summarize windows-verdict "$(part_verdict windows-after-pack)" "$PARTS/windows-after-pack.log"
 folder=$(kept_folder)

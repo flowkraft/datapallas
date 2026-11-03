@@ -2,16 +2,22 @@
 # The release's step model: what each step runs and what each upload needs (asbl/ci/release-state.sh, release-publish.sh,
 # jenkins/release-orchestrator.sh). Step 1 is the full e2e on this host only: this release's full set (web or
 # docker-server, release-state.sh full-lane) and the sign-in file on docker-server; no light set, nothing on the VM.
+# Each later step is one channel: step 2 the Docker files (its Linux proof, its Windows Docker proof on the VM), step 3 the
+# Windows zips (the pack, the server light set on the pack's datapallas-server.zip, the Electron light set, Robot).
 # The cases:
 #   1. the step 1 check (release-state.sh step1-guard, and `require step1`, which every upload makes): green with only
 #      the full lane and the auth lane PASS; refused when either is missing or red; no Windows lane asked for;
 #   2. release-publish.sh upload-kept (DRY_RUN=yes) refuses each channel without those two lanes, and passes that check
 #      with both;
-#   3. an orchestrator dry run: step 1 is lanes 1 and 2 on this host, and no VM part in step 1.
+#   3. an orchestrator dry run: step 1 is lanes 1 and 2 on this host, and no VM part in step 1;
+#   4. each step one channel: a rehearsal is PASS only with each of its parts PASS (release-state.sh record refuses any
+#      other PASS, and require counts one recorded otherwise red); upload-kept refuses Windows without both light sets
+#      green and Docker without its Windows Docker proof; the orchestrator's VM track runs step 3's parts in their order,
+#      the server light set on the pack's kept zip; `show` lists the two light sets.
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
 # checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host;
 # docker, curl and ssh are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
-# built, uploaded, pushed or started. Takes about 40 seconds.
+# built, uploaded, pushed or started. Takes about a minute.
 # Callers: a person or an agent, from the shell, after changing the step model.
 #   bash asbl/ci/tests/test-step-model.sh
 # Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
@@ -28,6 +34,12 @@ check() {  # check <what> <command...>: PASS when the command succeeds
 has() {  # has <text> <text to search>: found, or what was searched is printed
   case "$2" in *"$1"*) return 0 ;; esac
   printf '      no "%s" in:\n%s\n' "$1" "$(printf '%s\n' "$2" | sed 's/^/        /' | tail -12)"; return 1
+}
+same_text() {  # same_text <wanted> <got>: equal, or both printed
+  [ "$1" = "$2" ] && return 0
+  printf '      wanted: %s
+      got:    %s
+' "$1" "$2"; return 1
 }
 lacks() {  # lacks <text> <text to search>: not found
   case "$2" in *"$1"*) printf '      "%s" found in:\n%s\n' "$1" "$(printf '%s\n' "$2" | grep -F -- "$1" | sed 's/^/        /' | head -5)"; return 1 ;; esac
@@ -134,8 +146,9 @@ rehearsed() {
   export RELEASE_STATE_DIR="$SCRATCH/upload-state-$1"; mkdir -p "$RELEASE_STATE_DIR"
   ( cd "$SANDBOX" &&
     RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh full-lane --choose >/dev/null 2>&1
-    RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh record rehearsal.docker PASS "version=$V" "zip_sha256=$(sha "$KEPT/datapallas-server-docker.zip")" >/dev/null
-    RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh record rehearsal.windows PASS "version=$V" \
+    RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh record rehearsal.docker PASS "version=$V" linux=PASS windows=PASS \
+      "zip_sha256=$(sha "$KEPT/datapallas-server-docker.zip")" >/dev/null
+    RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh record rehearsal.windows PASS "version=$V" pack=PASS server_light=PASS electron_light=PASS robot=PASS \
       "sha256=datapallas.zip:$(sha "$KEPT/datapallas.zip") datapallas-server.zip:$(sha "$KEPT/datapallas-server.zip") datapallas-src.zip:$(sha "$KEPT/datapallas-src.zip")" >/dev/null )
   FULL=$(sed -n 's/^lane=//p' "$RELEASE_STATE_DIR/full-e2e/$V")
 }
@@ -184,6 +197,94 @@ check "  step 1's parts in result.txt: the build and lanes 2 and 1, each on the 
 check "  no step 1 part starts anything on the VM (started.txt)" \
   bash -c '! awk -F"\t" "\$2 ~ /^(step1-build|lane)/" "$0/started.txt" | grep -qE "windows|vm"' "$RUN"
 check "  the step 1 guard green once both lanes pass (a dry run)" has "dry run: step 1 green on" "$console"
+
+echo "---- 4. each step one channel: what each rehearsal and each upload waits for ----"
+WINDOWS_PARTS="pack server_light electron_light robot"
+for red in $WINDOWS_PARTS; do
+  fresh_record "parts-$red-red"
+  args=(); for p in $WINDOWS_PARTS; do if [ "$p" = "$red" ]; then args+=("$p=FAIL"); else args+=("$p=PASS"); fi; done
+  out=$(RELEASE_COMMIT="$C" $STATE record rehearsal.windows PASS "version=$V" "${args[@]}" 2>&1); rc=$?
+  check "rehearsal.windows with $red red: a PASS is refused (exit 2) and nothing recorded" \
+    bash -c '[ "$0" = 2 ] && [[ "$1" == *"not: $2=FAIL. Nothing recorded."* ]] && [ ! -e "$3" ]' "$rc" "$out" "$red" "$RELEASE_STATE_DIR/$C/rehearsal.windows"
+  RELEASE_COMMIT="$C" $STATE record rehearsal.windows FAIL "version=$V" "${args[@]}" >/dev/null
+  check "  recorded FAIL, the record says FAIL and require counts it red" \
+    bash -c '[ "$($0 get rehearsal.windows result)" = FAIL ] && ! $0 require rehearsal.windows >/dev/null' "$STATE"
+done
+fresh_record parts
+out=$(RELEASE_COMMIT="$C" $STATE record rehearsal.windows PASS "version=$V" pack=PASS light=PASS robot=PASS 2>&1); rc=$?
+check "rehearsal.windows PASS as 16.6.1 recorded it (one light set, no server light set): refused" \
+  bash -c '[ "$0" = 2 ] && [[ "$1" == *"not: server_light=none electron_light=none."* ]]' "$rc" "$out"
+out=$(RELEASE_COMMIT="$C" $STATE record rehearsal.windows PASS "version=$V" pack=PASS server_light=PASS electron_light=PASS robot=PASS 2>&1); rc=$?
+check "rehearsal.windows with its four parts PASS: recorded PASS, and require ok" \
+  bash -c '[ "$0" = 0 ] && RELEASE_COMMIT="$2" $3 require rehearsal.windows >/dev/null' "$rc" "$out" "$C" "$STATE"
+out=$(RELEASE_COMMIT="$C" $STATE record rehearsal.docker PASS "version=$V" linux=PASS windows=FAIL 2>&1); rc=$?
+check "rehearsal.docker with its Windows Docker proof red: a PASS is refused" \
+  bash -c '[ "$0" = 2 ] && [[ "$1" == *"not: windows=FAIL."* ]]' "$rc" "$out"
+RELEASE_COMMIT="$C" $STATE record step3.windows-vm-server-light PASS "version=$V" >/dev/null
+RELEASE_COMMIT="$C" $STATE record step3.windows-vm-electron-light FAIL "version=$V" >/dev/null
+out=$(RELEASE_COMMIT="$C" $STATE show 2>&1)
+check "the two light sets keep a step 3 record each, which show lists" \
+  bash -c '[[ "$0" == *"step3.windows-vm-electron-light"*"FAIL"* ]] && [[ "$0" == *"step3.windows-vm-server-light"*"PASS"* ]]' "$out"
+
+# a rehearsal recorded PASS without each part green (a script before 16.6.2, or an edited record): upload-kept refuses
+# it before step 1 is even asked, both step 1 lanes green
+edited() {  # edited <name> <channel> <sed program on its rehearsal record>
+  rehearsed "$1"; sandbox_lane_passes "$FULL-full"; sandbox_lane_passes docker-server-auth
+  sed -i "$3" "$RELEASE_STATE_DIR/$C/rehearsal.$2"
+}
+refused_at_parts() {  # refused_at_parts <output> <channel> <text naming the part>
+  [[ "$1" == *"REFUSED  rehearsal.$2 on ${C:0:8} does not name each part its upload waits for green"*"$3"* ]] &&
+    [[ "$1" == *"UPLOAD_KEPT REFUSED: nothing pushed, uploaded or recorded"* ]] && [[ "$1" != *"RELEASE_STATE require OK"* ]]
+}
+for case in "server-red s/^server_light=PASS$/server_light=FAIL/ server_light=FAIL" \
+            "electron-red s/^electron_light=PASS$/electron_light=FAIL/ electron_light=FAIL" \
+            "as-16.6.1 /^server_light=/d;s/^electron_light=PASS$/light=PASS/ server_light=none electron_light=none"; do
+  read -r name prog want <<< "$case"
+  edited "windows-$name" windows "$prog"
+  out=$(upload_kept windows)
+  check "upload-kept windows refused: rehearsal.windows PASS with $want" \
+    bash -c "$(declare -f refused_at_parts); C=$C; refused_at_parts \"\$0\" windows \"\$1\"" "$out" "$want"
+done
+for case in "proof-red s/^windows=PASS$/windows=FAIL/ windows=FAIL" "no-proof /^windows=/d windows=none"; do
+  read -r name prog want <<< "$case"
+  edited "docker-$name" docker "$prog"
+  out=$(upload_kept docker)
+  check "upload-kept docker refused: rehearsal.docker PASS with $want (windows-vm-docker)" \
+    bash -c "$(declare -f refused_at_parts); C=$C; refused_at_parts \"\$0\" docker \"\$1\"" "$out" "$want"
+done
+edited docker-windows-red-only windows 's/^server_light=PASS$/server_light=FAIL/'
+check "  the Docker upload does not wait for step 3's parts" has "UPLOAD_KEPT CHECKED docker" "$(upload_kept docker)"
+check "upload-kept, both channels each part green and step 1 green: every check passed" has "UPLOAD_KEPT CHECKED windows" "$(
+  rehearsed all-green; sandbox_lane_passes "$FULL-full"; sandbox_lane_passes docker-server-auth; upload_kept windows)"
+
+# the orchestrator's dry run of section 3: the VM track, step 3's parts in their order
+check "the VM track's order: pack, the Windows Docker proof, then server-light on the pack's kept zip, electron-light, robot" \
+  has "then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict" "$console"
+check "  result.txt's VM parts in that order" same_text "pack windows-docker-proof server-light electron-light robot windows-verdict" \
+  "$(awk -F'\t' '$1 == "part" && $3 == "windows-vm" { printf "%s%s", s, $2; s = " " }' "$RUN/result.txt")"
+check "  step 3's marks: 2/5 the server light set, 3/5 the electron light set, 4/5 Robot" same_text \
+  "2/5 START 2/5 END 3/5 START 3/5 END 4/5 START 4/5 END" \
+  "$(grep -aoE '^######## RELEASE STEP [0-9]/5 (START|END)' "$RUN/windows-after-pack.log" | awk '{ printf "%s%s %s", s, $4, $5; s = " " }')"
+PIN=$(sed -n 's/^pin=//p' "$RUN/result.txt")   # origin/main: a dry run pins what a start would
+VERSION_AT_PIN=$(git show "$PIN:bkend/reporting/src/main/external-resources/template/config/burst/settings.xml" | grep -m1 -oP '(?<=<version>)[^<]+')
+check "  the server light set names the zip it installs: the pack's, kept for the pin" \
+  has "server-light installs datapallas-server.zip of pack, kept in $D/artifacts/$VERSION_AT_PIN-${PIN:0:8}/ (RELEASE_KEPT)" "$(cat "$RUN/windows-after-pack.log")"
+D2="$SCRATCH/orchestrator-red"; mkdir -p "$D2/logs" "$D2/state" "$D2/artifacts"
+env LOG_DIR="$D2/logs" RUN_RECORD_DIR="$D2/runs" RELEASE_STATE_DIR="$D2/state" RELEASE_ARTIFACTS_DIR="$D2/artifacts" \
+  ORCH_STARTED_BY=test-step-model DRY_RUN=yes DRY_RUN_RED=server-light bash asbl/ci/jenkins/release-orchestrator.sh > "$D2/console.log" 2>&1
+RUN2=$(ls -1d "$D2"/runs/*release-orchestrator*/ 2>/dev/null | tail -1)
+check "a dry run with the server light set red: it FAIL, the Windows verdict FAIL, the other VM parts and Docker green" same_text \
+  "pack:PASS windows-docker-proof:PASS server-light:FAIL electron-light:PASS robot:PASS docker-verdict:PASS windows-verdict:FAIL" \
+  "$(awk -F'\t' '$1 == "part" && $2 ~ /^(pack|windows-docker-proof|server-light|electron-light|robot|docker-verdict|windows-verdict)$/ { printf "%s%s:%s", s, $2, $4; s = " " }' "$RUN2/result.txt")"
+
+# a failure of step 3's server light set, as release-rerun.sh show lists it: the part that re-runs it
+SHOWN="$SCRATCH/show-artifacts"; mkdir -p "$SHOWN"
+( export RELEASE_ARTIFACTS_DIR="$SHOWN"
+  f=$(bash asbl/ci/release-keep.sh begin windows "$V" "$C") && cp "$KEPT/MANIFEST.txt" "$f/MANIFEST.txt" &&
+    bash asbl/ci/release-keep.sh step windows "$V" "$C" "RELEASE STEP 2/5" FAIL "the server light set" "$SCRATCH/no.log" >/dev/null ) >/dev/null
+out=$(RELEASE_ARTIFACTS_DIR="$SHOWN" RELEASE_RERUN_RECORD="$SCRATCH/no-reruns.tsv" bash asbl/ci/release-rerun.sh show "$SHOWN/$V-${C:0:8}" 2>&1)
+check "release-rerun.sh show: a red RELEASE STEP 2/5 is the windows-vm-server part's to re-run" \
+  has "1. windows-vm-server  RELEASE STEP 2/5" "$out"
 
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-step-model"; exit 0; fi
 echo "FAILED  $FAILED_CASES case(s)  test-step-model"; exit 1

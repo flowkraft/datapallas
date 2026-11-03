@@ -14,10 +14,10 @@
 #   windows-vm-docker    step 2's Windows Docker proof (win-e2e.sh docker-e2e)                  e2e-package (the VM's: the
 #                                                                                               clean state's config),
 #                                                                                               image-and-zips
-#   windows-vm-server    step 1's Windows server lane (win-e2e.sh server-e2e)                   e2e-package (the VM's),
+#   windows-vm-server    step 3's server light set (win-e2e.sh server-e2e)                      e2e-package (the VM's),
 #                                                                                               image-and-zips (this host's
 #                                                                                               build: no execution keeps it)
-#   windows-vm-electron  step 3's Electron light set and step 1's lane 3 (win-e2e.sh e2e)       e2e-package (the VM's)
+#   windows-vm-electron  step 3's Electron light set (win-e2e.sh e2e)                           e2e-package (the VM's)
 #   robot                step 3's Robot UAT (win-e2e.sh robot, dp-ci.sh win robot)              windows-pack (a kept one)
 #   Where a build comes from: --kept <folder> = that execution's kept image and docker zip (docker-server,
 #   windows-vm-docker) or its kept pack (robot, which needs one); otherwise the newest successful build on this host (its
@@ -111,9 +111,10 @@ step_part() {
     "DOCKER RELEASE STEP 2/6") echo "docker-server rebuilt" ;;
     "DOCKER RELEASE STEP 3/6") echo docker-server ;;
     "DOCKER RELEASE STEP 4/6") echo windows-vm-docker ;;
-    "RELEASE STEP 1/4")        echo "robot rebuilt" ;;
-    "RELEASE STEP 2/4")        echo windows-vm-electron ;;
-    "RELEASE STEP 3/4")        echo robot ;;
+    "RELEASE STEP 1/5")        echo "robot rebuilt" ;;
+    "RELEASE STEP 2/5")        echo windows-vm-server ;;
+    "RELEASE STEP 3/5")        echo windows-vm-electron ;;
+    "RELEASE STEP 4/5")        echo robot ;;
     *)                         echo - ;;
   esac
 }

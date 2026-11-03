@@ -1,6 +1,7 @@
 // Job datapallas/dp-ci-release-step3-release-windows-vm: the Windows release (dp-ci.sh win release). MODE=rehearsal (the default):
-// packed once on the VM and the three zips kept on the host (artifacts folder, manifest, failure report), the desktop app's
-// electron light set (recorded as step1.windows-vm-electron-light), the Robot UAT on the pack's zips, then staged where users do
+// packed once on the VM and the three zips kept on the host (artifacts folder, manifest, failure report), the server light set
+// on the pack's datapallas-server.zip and the desktop app's electron light set (recorded as step3.windows-vm-server-light and
+// step3.windows-vm-electron-light), the Robot UAT on the pack's zips, then staged where users do
 // not get it (UPLOAD=yes); the day before a release it runs with UPLOAD=no. MODE=upload: release day, the kept zips uploaded, no
 // new pack. MODE=public: a passed, uploaded rehearsal of this version copied to the public places in minutes, or a rehearsal
 // first when there is none.
@@ -27,7 +28,7 @@ pipeline {
     DP_HOST = 'root@172.19.0.1'
     DP_REPO = '/var/kraft-internalsystems/projects/all-repos/src/products/reportburster'
     // the release's step log names its files <log>-step-...: the Robot results, the release files
-    REPORT_PATHS = '@run/-step-robot @run/-step-release-files.txt @run/-step-electron-light-playwright.xml @run/-step-electron-light-playwright-html'
+    REPORT_PATHS = '@run/-step-robot @run/-step-release-files.txt @run/-step-server-light-playwright.xml @run/-step-server-light-playwright-html @run/-step-electron-light-playwright.xml @run/-step-electron-light-playwright-html'
   }
 
   stages {
@@ -49,7 +50,7 @@ pipeline {
 set -o pipefail
 q() { printf '%q' "$1"; }
 # the Windows lanes' launcher and its pid file: never two Windows runs at once. The job is one step; its parts are marked
-# RELEASE STEP 1/4 .. 4/4 (pack and keep, electron light set, Robot UAT, kept and upload), WINDOWS UPLOAD and WINDOWS PUBLIC inside, each START/END with the time it took (asbl/ci/marks.sh): grep '^######## '
+# RELEASE STEP 1/5 .. 5/5 (pack and keep, server light set, electron light set, Robot UAT, kept and upload), WINDOWS UPLOAD and WINDOWS PUBLIC inside, each START/END with the time it took (asbl/ci/marks.sh): grep '^######## '
 # in the console. MODE, UPLOAD, DRY_RUN, E2E_APPROVAL and E2E_APPROVAL_USER reach dp-ci.sh win release (and the release-state.sh it
 # calls) through the environment. The output is kept in release-run.out for the stage that queues the seed job and for the
 # build's label (post, below).
@@ -79,6 +80,8 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && CI_LOG_LINK=$(q
 # the run's files are named after its log: give them the fixed names the publishers need
 for d in reports/*-robot; do [ -e "$d" ] && rm -rf reports/robot && mv "$d" reports/robot; done
 for f in reports/*-release-files.txt; do [ -e "$f" ] && mv "$f" reports/release-files.txt; done
+for f in reports/*-server-light-playwright.xml; do [ -e "$f" ] && mv "$f" reports/server-light-playwright.xml; done
+for d in reports/*-server-light-playwright-html; do [ -e "$d" ] && rm -rf reports/server-light-playwright-html && mv "$d" reports/server-light-playwright-html; done
 for f in reports/*-electron-light-playwright.xml; do [ -e "$f" ] && mv "$f" reports/electron-light-playwright.xml; done
 for d in reports/*-electron-light-playwright-html; do [ -e "$d" ] && rm -rf reports/electron-light-playwright-html && mv "$d" reports/electron-light-playwright-html; done
 exit 0
@@ -89,7 +92,10 @@ exit 0
             robot outputPath: 'reports/robot', outputFileName: 'output.xml', logFileName: 'log.html', reportFileName: 'report.html', passThreshold: 0.0, unstableThreshold: 0.0, otherFiles: '**/*.png'
           }
         }
-        // the electron light set (RELEASE STEP 2/4): its tests and its HTML report; never marks the build unstable (the run's own verdict decides)
+        // the two light sets (RELEASE STEP 2/5 the server's, 3/5 the electron's): their tests and HTML reports; never mark the
+        // build unstable (the run's own verdict decides)
+        junit testResults: 'reports/server-light-playwright.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+        publishHTML(target: [reportName: 'Server light set (Playwright)', reportDir: 'reports/server-light-playwright-html', reportFiles: 'index.html', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
         junit testResults: 'reports/electron-light-playwright.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
         publishHTML(target: [reportName: 'Electron light set (Playwright)', reportDir: 'reports/electron-light-playwright-html', reportFiles: 'index.html', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
         // the sha256 of the files this run accepted and staged: the ones MODE=public copies

@@ -76,6 +76,6 @@ case "$line" in
   *' refused: MODE=public needs UPLOAD=yes'*) echo "REFUSED: MODE=public needs UPLOAD=yes" ;;
   *' rehearsal=PASS '*' upload=no'*|*' stage=SKIPPED '*) echo "$v proven and kept, nothing uploaded (UPLOAD=no)" ;;
   *' dry run:'*) dry ;;
-  *' rehearsal=PASS '*|*' pack=PASS keep=PASS light=PASS robot=PASS stage=PASS'*) echo "$v rehearsal passed" ;;
+  *' rehearsal=PASS '*|*' pack=PASS keep=PASS server_light=PASS electron_light=PASS robot=PASS stage=PASS'*) echo "$v rehearsal passed" ;;
   *) echo "${vp}FAILED: see the log" ;;
 esac

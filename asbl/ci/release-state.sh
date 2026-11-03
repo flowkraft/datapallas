@@ -8,7 +8,11 @@
 #   bash asbl/ci/release-state.sh record <name> PASS|FAIL [key=value ...]       write one verdict
 #   bash asbl/ci/release-state.sh record-step1 <e2e target> <rc>                 the verdict of one step-1 lane (its job calls it;
 #                                                                                RELEASE_STEP_START = when the lane started, epoch s)
-#   bash asbl/ci/release-state.sh require <name|step1>...                        exit 1 unless every one is PASS
+#   bash asbl/ci/release-state.sh require <name|step1>...                        exit 1 unless every one is PASS (a rehearsal:
+#                                                                                with each of its parts PASS, below)
+#   bash asbl/ci/release-state.sh parts rehearsal.docker|rehearsal.windows       that rehearsal's parts as recorded on the
+#                                                                                commit, "<part>=<result>" words (what the
+#                                                                                record of its upload names again)
 #   bash asbl/ci/release-state.sh step1-guard                                    the release jobs' guard: exit 1 with one line, "REFUSED:
 #                                                                                step 1 is not green on <commit>: <lanes>. Run ...", unless
 #                                                                                the two lanes a release needs (its full set, the sign-in
@@ -67,11 +71,20 @@
 #   rehearsal.docker-stage   dp-ci-release-step2-release-docker: the image pushed as :<version> (digest=), the zip staged in rehearsal/
 #   rehearsal.docker         dp-ci-release-step2-release-docker: the whole rehearsal (MODE=rehearsal, or the one MODE=public runs first):
 #                            the two proofs and the upload; upload=no = proven with UPLOAD=no, nothing staged
-#   rehearsal.windows        dp-ci-release-step3-release-windows-vm: the pack, the Robot UAT, the three zips staged in rehearsal/;
-#                            upload=no = proven with UPLOAD=no, nothing staged
+#   step3.windows-vm-server-light, step3.windows-vm-electron-light
+#                            dp-ci-release-step3-release-windows-vm: its two light sets on the commit it packed, the server's on
+#                            the pack's own datapallas-server.zip (zip=), for `show` and the failures' re-runs; the upload reads
+#                            them in rehearsal.windows
+#   rehearsal.windows        dp-ci-release-step3-release-windows-vm: the pack, both light sets, the Robot UAT, the three zips
+#                            staged in rehearsal/; upload=no = proven with UPLOAD=no, nothing staged
 #   public.docker            dp-ci-release-step2-release-docker, MODE=public: the rehearsed zip in newest/ and <version>/, :latest
 #   public.windows           dp-ci-release-step3-release-windows-vm, MODE=public: the rehearsed zips in newest/ and <version>/
 # Until 2026-10-22 they were step2.docker-stage, step2.docker, step3.windows and step4.publish (none was ever recorded for real).
+# WHAT EACH UPLOAD WAITS FOR (owner, 2026-11-02 and 2026-11-03: each step one channel): step 1 (`require step1`), and its
+# channel's rehearsal with each of its parts PASS, named in the verdict as <part>=PASS (REHEARSAL_PARTS_*, below). `record`
+# refuses a rehearsal PASS that does not name each part PASS, and `require rehearsal.<channel>`, which every upload asks
+# (release-publish.sh upload-kept), counts a PASS without them as red: a rehearsal recorded before 16.6.2, whose step 3 had
+# no server light set, never uploads.
 # `require step1` = the step-1 lanes a release needs: step1.<this release's full lane>-full (web or docker-server, the
 # full-lane record below; the full set alternates since 2026-10-24, plan-release-build-prove-upload) and
 # step1.docker-server-auth. Step 1 is the full e2e on this host only (owner, 2026-11-02 and 2026-11-03): no light set and
@@ -140,8 +153,20 @@ commit_of() {  # the full hash of RELEASE_COMMIT or HEAD; the given text itself 
 }
 tree_version() { grep -m1 -oP '(?<=<version>)[^<]+' "$SETTINGS_XML" 2>/dev/null; }
 version_at() { git show "$1:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+'; }  # version_at <commit>
-valid_name() { printf '%s' "$1" | grep -qE '^(step1|rehearsal|public)\.[a-z0-9-]+$'; }
+valid_name() { printf '%s' "$1" | grep -qE '^(step1|step3|rehearsal|public)\.[a-z0-9-]+$'; }
 field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -1; }  # field <file> <key>
+# the parts each channel's rehearsal needs PASS (WHAT EACH UPLOAD WAITS FOR, above)
+REHEARSAL_PARTS_DOCKER="linux windows"                             # step 2: its Linux proof, its Windows Docker proof (windows-vm-docker)
+REHEARSAL_PARTS_WINDOWS="pack server_light electron_light robot"   # step 3: the pack, windows-vm-server-light, windows-vm-electron-light, Robot
+rehearsal_parts() {  # rehearsal_parts <name>: its parts; nothing for a verdict that is no channel's rehearsal
+  case "$1" in rehearsal.docker) echo "$REHEARSAL_PARTS_DOCKER" ;; rehearsal.windows) echo "$REHEARSAL_PARTS_WINDOWS" ;; esac
+}
+parts_not_green() {  # parts_not_green <name> <verdict file>: each part of that rehearsal not PASS there, as <part>=<value|none>
+  local p v
+  for p in $(rehearsal_parts "$1"); do
+    v=$(field "$2" "$p"); [ "$v" = PASS ] || printf '%s=%s ' "$p" "${v:-none}"
+  done
+}
 
 # The full e2e set alternates (owner, plan-release-build-prove-upload): each release runs the whole suite on one side only,
 # FULL_SIDES, web one release and docker-server the next, and step 1's other lane is the sign-in file.
@@ -432,7 +457,7 @@ esac
 case "$cmd" in
   record)
     name="${1:-}"; result="${2:-}"
-    valid_name "$name" || { echo "FAIL  record: '$name' is not a verdict name (step1.<lane>, rehearsal.<channel>, public.<channel>)"; exit 2; }
+    valid_name "$name" || { echo "FAIL  record: '$name' is not a verdict name (step1.<lane>, step3.<lane>, rehearsal.<channel>, public.<channel>)"; exit 2; }
     case "$result" in PASS|FAIL) ;; *) echo "FAIL  record: the result must be PASS or FAIL (got '$result')"; exit 2 ;; esac
     shift 2
     mkdir -p "$dir" || exit 2
@@ -448,6 +473,11 @@ case "$cmd" in
         printf '%s\n' "$kv"
       done
     } > "$tmp" || { rm -f "$tmp"; exit 2; }
+    not_green=$(parts_not_green "$name" "$tmp")
+    if [ "$result" = PASS ] && [ -n "$not_green" ]; then
+      echo "FAIL  record: $name PASS needs each of its parts PASS ($(rehearsal_parts "$name")); not: ${not_green% }. Nothing recorded."
+      rm -f "$tmp"; exit 2
+    fi
     mv -f "$tmp" "$dir/$name" || exit 2
     echo "RELEASE_STATE recorded $name=$result commit=${commit:0:8}"
     ;;
@@ -571,7 +601,10 @@ case "$cmd" in
       # a step-1 lane: this commit's verdict, or an earlier commit's that still counts (step1_answer); the rest: this commit's
       case "$n" in
         step1.*) step1_answer "$n"; f="$RELEASE_STATE_DIR/$S1_FROM/$n"; r="$S1_RESULT" ;;
-        *)       f="$dir/$n"; r=$(field "$f" result); S1_HOW="" ;;
+        *)       f="$dir/$n"; r=$(field "$f" result); S1_HOW=""
+                 # a rehearsal counts only with each of its parts PASS (WHAT EACH UPLOAD WAITS FOR)
+                 not_green=$(parts_not_green "$n" "$f")
+                 if [ "$r" = PASS ] && [ -n "$not_green" ]; then r=FAIL; S1_HOW="recorded PASS without each of its parts PASS: ${not_green% }"; fi ;;
       esac
       case "$r" in
         PASS) echo "  ok       $n  (version $(field "$f" version), $(field "$f" time))${S1_HOW:+: $S1_HOW}" ;;
@@ -664,6 +697,10 @@ case "$cmd" in
     done
     echo "RELEASE_STATE removed: $folder ($ch), $n verdict(s) marked"
     ;;
+  parts)
+    [ -n "$(rehearsal_parts "${1:-}")" ] || { echo "usage: $0 parts rehearsal.docker|rehearsal.windows"; exit 2; }
+    for p in $(rehearsal_parts "$1"); do printf '%s=%s ' "$p" "$(field "$dir/$1" "$p")"; done | sed 's/ $//'; echo
+    ;;
   get)
     f="$dir/${1:-}"; [ -n "${2:-}" ] || { echo "usage: $0 get <name> <key>"; exit 2; }
     [ -f "$f" ] || exit 1
@@ -679,7 +716,7 @@ case "$cmd" in
     echo "release record of commit ${commit:0:8} ($dir)"
     printf '%-34s %-6s %-10s %-21s %s\n' VERDICT RESULT VERSION TIME MORE
     found=0
-    for f in "$dir"/step1.* "$dir"/approval.* "$dir"/rehearsal.* "$dir"/public.*; do
+    for f in "$dir"/step1.* "$dir"/approval.* "$dir"/step3.* "$dir"/rehearsal.* "$dir"/public.*; do
       [ -f "$f" ] || continue; found=1
       printf '%-34s %-6s %-10s %-21s %s\n' "$(basename "$f")" "$(field "$f" result)" "$(field "$f" version)" "$(field "$f" time)" \
         "$(grep -vE '^(result|commit|version|time)=' "$f" | tr '\n' ' ' | cut -c1-120)"
@@ -726,5 +763,5 @@ case "$cmd" in
     version_check "$ch"
     ;;
   *)
-    sed -n '2,115p' "$0"; exit 2 ;;
+    sed -n '2,130p' "$0"; exit 2 ;;
 esac

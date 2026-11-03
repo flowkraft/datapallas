@@ -20,7 +20,8 @@
 #       against its sha256, then its own rclone; the Backblaze key goes from this host's rclone config through the SSH
 #       session's stdin into that rclone process's environment only, never onto the VM's disk or into a log) to
 #       backblaze:datapallas/rehearsal/<version>-<commit>/, then downloaded here from downloads.datapallas.com and checked
-#       against the list. Records rehearsal.windows (PASS with rehearsal= and sha256=, or FAIL with reason=). Nothing outside
+#       against the list. Records rehearsal.windows (PASS with rehearsal=, sha256= and the parts that proved the files,
+#       RELEASE_PROVEN_PARTS from its caller: dp-ci.sh win release, upload-kept; or FAIL with reason=). Nothing outside
 #       rehearsal/ is written. Before the upload, this host deletes the Windows files an earlier rehearsal left anywhere
 #       under rehearsal/ (the cleanup, below), with its own credentials.
 #
@@ -38,7 +39,7 @@
 #       the build must be of that commit, the image that id and the zip that sha256, else nothing is pushed: what goes out
 #       is what was proven. RELEASE_KEPT_DIR (set by upload-kept): no build; the image's build tag and the zip are the ones
 #       that folder's manifest keeps. With UPLOAD=no, step 1 not complete is said (the upload would be refused), not a failure:
-#       nothing is uploaded, and every upload checks it (step 3 records windows-vm-electron-light itself, after step 2).
+#       nothing is uploaded, and every upload checks it.
 #
 #   UPLOAD=no|yes DRY_RUN=no|yes  bash asbl/ci/release-publish.sh upload-kept [docker|windows]
 #       Release day (plan-pre-release-artifacts-ready): the files the day-before run kept, uploaded as they are, no rebuild:
@@ -49,8 +50,10 @@
 #       files named) or no longer containing it (a move by never-shipped files only, a test or CI fix, is accepted, as the
 #       end guards of steps 2 and 3 accept it: release-state.sh moved-main); a channel's kept run not green; a file whose
 #       sha256 or the image whose id differs from the manifest (release-keep.sh check); files that are not the ones the
-#       passed rehearsal.<channel> of that commit proved; the version gate; step 1 not green (both lanes, or
-#       E2E_APPROVAL). Then
+#       passed rehearsal.<channel> of that commit proved; that rehearsal without each of its parts green (release-state.sh
+#       require rehearsal.<channel>: docker = step 2's Linux proof and Windows Docker proof, windows-vm-docker; windows =
+#       step 3's pack, windows-vm-server-light, windows-vm-electron-light and Robot); the version gate; step 1 not green
+#       (both lanes, or E2E_APPROVAL). Then
 #       docker: stage-docker from the folder (:<version> pushed from the kept image, the kept zip staged), rehearsal.docker
 #       PASS upload=yes recorded; windows: the kept zips put back in the VM's asbl\dist when a later run replaced them
 #       (dp-ci.sh win put-dist), then stage-files (the VM uploads them). MODE=public then copies them as always. UPLOAD=no or
@@ -407,6 +410,10 @@ upload_kept() {
     rec() { RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" get "$@" 2>/dev/null; }
     [ "$(rec "rehearsal.$ch" result)" = PASS ] && [ "$(rec "rehearsal.$ch" version)" = "$v" ] ||
       { refuse "the release record has no passed rehearsal.$ch of $v on ${c:0:8}: bash asbl/ci/release-state.sh show ${c:0:8}"; return 1; }
+    # what the channel's upload waits for (owner, 2026-11-03): each part of its step green, as that rehearsal recorded them
+    out=$(RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" require "rehearsal.$ch"); rc=$?
+    printf '%s\n' "$out"
+    [ "$rc" = 0 ] || { refuse "rehearsal.$ch on ${c:0:8} does not name each part its upload waits for green: $(printf '%s\n' "$out" | grep -m1 '^  RED' | sed 's/^  RED *//')"; return 1; }
     want=$(sed -n "s/^$ch\.file=\([^ ]*\) size=[0-9]* sha256=\([0-9a-f]*\)$/\1:\2/p" "$f/MANIFEST.txt" | sort | tr '\n' ' ')
     if [ "$ch" = docker ]; then
       got="datapallas-server-docker.zip:$(rec rehearsal.docker zip_sha256) "
@@ -449,7 +456,8 @@ upload_kept() {
       else bash "$HERE/dp-ci.sh" win rclone-ensure "$([ "$dry" = 1 ] && echo check || echo print)"; fi
       bash "$HERE/dp-ci.sh" win put-dist $([ "$UPLOAD" = yes ] || echo --check) "$f" $(sed -n 's/^windows\.file=\([^ ]*\) size=[0-9]* sha256=\([0-9a-f]*\)$/\1:\2/p' "$f/MANIFEST.txt") ||
         { rm -f "$list"; echo "UPLOAD_KEPT FAIL windows: the VM's asbl\\dist does not hold the kept files (above)"; return 1; }
-      RELEASE_COMMIT="$c" UPLOAD=$UPLOAD bash "$0" stage-files "$v" "$list" || { rm -f "$list"; echo "UPLOAD_KEPT FAIL windows (above)"; return 1; }
+      RELEASE_COMMIT="$c" UPLOAD=$UPLOAD RELEASE_PROVEN_PARTS="$(RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" parts rehearsal.windows)" \
+        bash "$0" stage-files "$v" "$list" || { rm -f "$list"; echo "UPLOAD_KEPT FAIL windows (above)"; return 1; }
       rm -f "$list"
     fi
   done
@@ -680,7 +688,9 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
       echo "STAGE  $n  uploaded to $folder/ by the VM, downloaded back here: the pack's sha256"
       sums="$sums $n:$want"
     done
-    RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" record rehearsal.windows PASS "version=$v" "rehearsal=$folder/" "sha256=${sums# }" ||
+    # RELEASE_PROVEN_PARTS unquoted: one <part>=<result> word each
+    RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" record rehearsal.windows PASS "version=$v" "rehearsal=$folder/" "sha256=${sums# }" \
+      ${RELEASE_PROVEN_PARTS:-} ||
       fail "could not record rehearsal.windows"
     echo "RELEASE_STAGE PASS $folder/"
     ;;
@@ -719,7 +729,7 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
     if [ "$UPLOAD" = yes ]; then
       RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" require step1 || fail "step 1 is not green on ${c:0:8}"
     elif ! RELEASE_COMMIT="$c" DRY_RUN=yes bash "$HERE/release-state.sh" require step1; then
-      # nothing is uploaded: the day-before run goes on, and says so (step 3 records windows-vm-electron-light itself)
+      # nothing is uploaded: the day-before run goes on, and says so
       echo "UPLOAD=no  the upload would be refused now: step 1 is not complete on ${c:0:8} (above); release day's upload checks it again"
     fi
     zip="${RELEASE_KEPT_DIR:+$RELEASE_KEPT_DIR/datapallas-server-docker.zip}"; zip="${zip:-asbl/dist/datapallas-server-docker.zip}"
