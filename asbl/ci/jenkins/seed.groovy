@@ -22,6 +22,7 @@ folder('datapallas') {
     '\n  dp-ci-dev-e2e-one-spec: after a fix: one spec file, or some of its tests, on web or electron-linux' +
     '\n  dp-ci-dev-junit: after a Java change: one test class or method, or all' +
     '\n  dp-ci-dev-quality-report: any time: lint, bug finder, format, complexity; never blocks anything' +
+    '\n  dp-ci-dev-scheduled-e2e: by itself every night: main tested with the release\'s lanes, building only what changed; never counts for a release' +
     '\n  dp-ci-dev-server: to look at a change in a browser: start, restart or stop a dev server: dp-dev (live or pinned) or dp-kate' +
     '\n  dp-ci-release-step0-set-version: a release starts here: the new version committed (left as it is: nothing done)' +
     '\n  dp-ci-release-step1-e2e-prerelease: the e2e: the trunk\'s check, and a release\'s lanes (the full set on one side, web or docker-server, alternating per release; the sign-in file; windows-vm-server\'s light set)' +
@@ -238,6 +239,35 @@ def jobs = [
       MORE: guide('dp-ci-dev-quality-report', 'asbl/ci/dp-ci.sh quality')
     ),
     params: [:],
+  ],
+  'dp-ci-dev-scheduled-e2e': [
+    about: 'It runs by itself every night (22:00 UTC): nothing to press. Pressed by hand, it runs tonight\'s sets now.\n\n' + describe(
+      WHAT: [
+        'The nightly e2e of main (asbl/ci/jenkins/scheduled-e2e.sh), with the release\'s own lanes, by the UTC day the night starts on: every night the Linux light set (docker-server, then the one-command run, as step 2\'s Linux proof runs them); Saturday then the full set, as step 1\'s full lane runs it (web in an even ISO week, docker-server in an odd one); Sunday then the Windows server light set, as step 3 runs it, on the newest kept Windows pack\'s server zip (packed again first when the pack\'s inputs changed since). Retries 1, as the release.',
+        'It builds only what changed (asbl/ci/reuse-or-rebuild.sh, as release-rerun.sh): each build already here (the image, the e2e packages, the kept pack) is reused when nothing it ships changed since its commit. A night after a CI- or test-only commit builds nothing.',
+        'It never counts for a release: nothing in the release record. A red night: ON_FAILURES. Each night, run or skipped, the Playwright HTML reports older than 14 days go (the top of the log folder only).',
+      ],
+      WHEN: 'by itself, every night. By hand: to run tonight\'s sets now; DRY_RUN=yes after a change to the scheduled job.',
+      ORDER: 'any time. It skips, green ("SKIPPED: <why>"), while the CI is busy: a dp-ci run, a Windows run, a release run, a release round open until its version is public, or the night before still going (its fix round included). A release press stops a night going: a release goes before it.',
+      NEEDS: [
+        'nothing to provide; the lanes check their own needs (this host\'s Docker engine, the Windows VM on Sunday) and a set that cannot run ends red;',
+        'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER), as for the release round; without it, fix acts as report-only and says so.',
+      ],
+      TIME: 'from the 16.6.1 release run: the Linux light set about 1 h 5 min; the full set on docker-server about 10 h 20 min (web about 10.5 to 15 h); the Windows server light set about 3 h. A build when needed: about 40 min; a pack: about 1 h 30. A fix round: hours, at most 48 h (its own cap).',
+      EXAMPLES: [
+        'tonight\'s sets, now: nothing to set',
+        'the failures only, no agent: ON_FAILURES=report-only',
+        'check the job after a change, nothing run: DRY_RUN=yes',
+      ],
+      LOG: '^NIGHT (the night\'s own lines: the sets, SET n/N START and END, NIGHT END with the verdict, FIX ROUND 1 END), ^BUILD (each build\'s answer: reuse or rebuild, and why), then each lane\'s console. The build list labels each build (2026-11-07 Saturday: linux-light PASS, full-web going; SKIPPED: <why>). The reports on the build page: the artifacts reports/ (the night\'s result.txt, run.log, flaky tests, the Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: bash asbl/ci/jenkins/scheduled-e2e.sh status (or plan, follow, stop).',
+      MORE: guide('dp-ci-dev-scheduled-e2e', 'asbl/ci/jenkins/scheduled-e2e.sh')
+    ),
+    // the night starts at 22:00 UTC: Saturday's full set ends on Sunday morning, before Sunday's night
+    cron: 'TZ=UTC\nH 22 * * *',
+    params: [
+      ON_FAILURES: [choices: ['fix', 'report-only'], text: 'Sometimes. If the night is red:\nfix (default) = a fix round: every failure\'s root cause found in the code and the git history, fixed, and each fix proven by re-running only what failed. Nothing runs again by itself: the next night checks main again. The night waits for the fix round, and the next night skips while it goes.\nreport-only = it ends red with the failures in its result. No agent.'],
+      DRY_RUN: [choices: ['no', 'yes'], text: 'Rarely: leave no. yes = shows each set\'s builds (reuse or rebuild) and the command it would run, and runs, builds and starts nothing; the clean-up only lists.\nUse it to check the job after a change.'],
+    ],
   ],
   'dp-ci-dev-server': [
     about: describe(
@@ -474,6 +504,16 @@ jobs.each { name, job ->
         }
         scriptPath("asbl/ci/jenkins/${name}.Jenkinsfile")
         lightweight(true)
+      }
+    }
+    // a job with a timer (cron) starts by itself: Jenkins's own cron syntax, a TZ= line first
+    if (job.cron) {
+      properties {
+        pipelineTriggers {
+          triggers {
+            cron { spec(job.cron) }
+          }
+        }
       }
     }
     logRotator { numToKeep(200) }

@@ -347,7 +347,7 @@ start_round() {
   pid=$(cat "$SCHEDULED_E2E_PID" 2>/dev/null)
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
     echo "a scheduled run is going (pid $pid): stopping it first, a release goes before it"
-    $ROUND_SCHEDULED_E2E stop
+    STOP_BY="a release press (release-rehearsal.sh start, by $who)" $ROUND_SCHEDULED_E2E stop
     for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 2; done
   fi
   out=$(busy_reason); [ -z "$out" ] || refuse "the CI is busy: $out"

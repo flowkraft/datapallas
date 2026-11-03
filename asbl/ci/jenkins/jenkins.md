@@ -19,6 +19,7 @@ The jobs are in the Jenkins folder `datapallas` (https://jenkins.bkstg.flowkraft
 | See Kate's clone in a browser | `dp-ci-dev-server` | `TARGET=dp-kate.bkstg.flowkraft.com`, `ACTION=start`: https://dp-kate.bkstg.flowkraft.com |
 | Start a running dev server again | `dp-ci-dev-server` | `ACTION=restart` (with its `TARGET` and `DEV_MODE`) |
 | Stop a dev server | `dp-ci-dev-server` | `ACTION=stop` (with `DEV_MODE=pinned`, or `TARGET=dp-kate.bkstg.flowkraft.com`, for those) |
+| The trunk, every night, with the release's lanes | `dp-ci-dev-scheduled-e2e` | nothing to press: it starts by itself at 22:00 UTC. By hand: tonight's sets now; `DRY_RUN=yes` after a change to the job |
 | The whole trunk on Linux | `dp-ci-release-step1-e2e-prerelease` | `E2E_TARGET=web`, `E2E_SPEC` and `E2E_GREP` empty (about 10.5 to 15 h) |
 | The whole trunk on Windows | `dp-ci-release-step1-e2e-prerelease` | `E2E_TARGET=windows-vm-electron`, `E2E_SPEC` and `E2E_GREP` empty (about 25 h) |
 | One Windows test by its title | `dp-ci-release-step1-e2e-prerelease` | `E2E_TARGET=windows-vm-electron`, `E2E_SPEC=[\\/]samples\.spec\.ts$` (Windows paths have backslashes), `E2E_GREP=<a piece of its title>` |
@@ -72,6 +73,7 @@ session or of any chat.
 | Someone presses Abort on the build | **keeps running** (only the following stops); stop it with `docker stop dp-ci` | aborted |
 | The host reboots | lost: rerun it | aborted |
 | The release round (`dp-ci-release-steps-0-3-rehearsal`): Jenkins restarts, or a person presses Abort | a restart: **keeps running** (a detached process on the host, not a container); an Abort, the build's or the review pause's: **stopped** (`release-rehearsal.sh stop`: the round, then what its runs started) | a restart: resumes following from where it was, and a review pause waits on; an Abort: aborted |
+| The nightly job (`dp-ci-dev-scheduled-e2e`): Jenkins restarts, or a person presses Abort | a restart: **keeps running** (a detached process on the host); an Abort: **stopped** (`scheduled-e2e.sh stop`: the night, what its set going started, its fix round) | a restart: resumes following from where it was; an Abort: aborted. Stopped on the host (a release press): aborted, its `STOPPED by` line says by whom |
 
 So the work cannot be lost by closing or restarting anything except the host. What a Jenkins restart takes
 away is the live view of that build, and `follow-ci.sh attach` (on the host) brings it back.
@@ -113,6 +115,28 @@ The times below are measured from the CI logs and Jenkins' build durations, unle
 - **When:** any time. **Parameters:** none. **Needs:** this host's Docker engine; no other `dp-ci` run.
 - **Time:** not measured yet (it has not run yet).
 - **Log:** `QUALITY_RESULT tools=N ok=N failed=N ...`.
+
+### dp-ci-dev-scheduled-e2e
+
+- **What:** the nightly e2e of main, `asbl/ci/jenkins/scheduled-e2e.sh`, with the release's own lanes, by the UTC day the night starts on:
+
+  | Night | Sets, one after the other | As the release runs it |
+  |---|---|---|
+  | every night | `linux-light`: docker-server, the light set, the one-command run | step 2's Linux proof |
+  | Saturday | then `full-web` (an even ISO week) or `full-docker-server` (an odd one) | step 1's full lane, alternating |
+  | Sunday | then `windows-server-light`, on the newest kept Windows pack's server zip | step 3 |
+
+  Retries 1, as the release. Each set runs whatever the one before it gave, and the night's verdict is all of them. Its result is a `result.txt` in the release orchestrator's format (`run_kind=scheduled`) in `$RUN_RECORD_DIR/<UTC>-scheduled-e2e/`, with its `run.log`; nothing is written in the release record: a night never counts for a release.
+- **The builds: only what changed.** Each build already on this host (the newest successful image, this host's e2e package, the VM's package, the newest kept Windows pack) is reused when nothing it ships changed since its commit, by the one rule `asbl/ci/reuse-or-rebuild.sh` (the same as `release-rerun.sh`); the lane re-checks it (`E2E_REUSE_BUILD`). Else the image is built first (`dp-ci.sh build-if-needed`), the e2e package by the lane's own prepare, and on Sunday the pack again (`REBUILD_PACK=yes`). A night after a CI- or test-only commit builds nothing. `plan [<date>]` prints, building and running nothing, the sets of a night and each build's answer, with why.
+- **When it skips:** green, its label `SKIPPED: <why>`, while the CI is busy (`release-rehearsal.sh busy`: a dp-ci run, a Windows run, a release run, a release round open until its version is public, a fix run going), or while the night before still goes, its fix round included. A release press stops a night that goes (`release-rehearsal.sh start`): a release goes before it.
+- **A red night (`ON_FAILURES`):** `fix` (default) = a fix round, the fixer of the release round (`RELEASE_FIXER` in `/root/release-rehearsal.conf`) on the night's folder, its plan `scheduled-e2e-<date>-fix-round-1.md`: every failure's root cause found, fixed and proven by re-running only what failed. Nothing runs again by itself: the next night checks main again. The night's process waits for the fix round (so the next night skips meanwhile); the build ends red at once. `report-only` = red, no agent. With no fixer set, `fix` acts as `report-only` and says so.
+- **The clean-up:** each night, run or skipped, the Playwright HTML folders older than 14 days at the top of the log folder go (`<UTC>-e2e-<sha>-playwright-html`, the Windows `*-step-playwright-html`): never anything in `evidence/`, `runs/` or `release-artifacts/`, never a file. `DRY_RUN=yes` (or `DRY_RUN=yes bash asbl/ci/jenkins/scheduled-e2e.sh clean`) lists them.
+- **Parameters:** `ON_FAILURES` (`fix`, `report-only`), `DRY_RUN` (`no`; `yes` = each set's builds and the command it would run, nothing run, built or started). A timer's build takes the defaults.
+- **Needs:** nothing to provide: the lanes check their own needs (this host's Docker engine; the Windows VM on Sunday), and a set that cannot run ends red. A fix round needs the fixer set.
+- **Time:** from the 16.6.1 release run: `linux-light` about 1 h 5 min; `full-docker-server` about 10 h 20 min (`full-web` about 10.5 to 15 h); `windows-server-light` about 3 h. A build when one is needed about 40 min, a pack about 1 h 30. The night starts at 22:00 UTC, so Saturday's ends on Sunday, before Sunday's night.
+- **Log:** `^NIGHT ` (the sets, `NIGHT SET n/N START` and `END`, `NIGHT END result=...`, `FIX ROUND 1 END`), `^BUILD ` (each build's answer and why), then each lane's console. The build list labels each build: `2026-11-07 Saturday: linux-light PASS, full-web going`, `SKIPPED: <why>`. The build page: the artifacts `reports/` (`result.txt`, `run.log`, the flaky tests, each set's Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: `bash asbl/ci/jenkins/scheduled-e2e.sh status` (or `plan`, `follow`, `label`, `stop`).
+- **Persistence:** the night is a detached process on the host. A Jenkins restart (the nightly stack recreate, about 03:15 UTC, falls inside Saturday's full set) only resumes the build's polling; a person's Abort stops the night (`scheduled-e2e.sh stop`: its process, then what its set going started, then its fix round).
+- **Tests:** `bash asbl/ci/tests/test-scheduled-e2e.sh` (about 35 s, every command it could start a stub).
 
 ### dp-ci-dev-server
 
@@ -454,6 +478,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `job-step.sh` | on the host: runs one part of a job between a `######## JOB STEP n/N START` and an `END ... took=` line (format: `asbl/ci/marks.sh`) |
 | `release-step1.sh` | on the host: job `dp-ci-release-step1-e2e-prerelease` (the job passes its parameters): one step 1 lane, its record and its history line; the same from the shell |
 | `release-orchestrator.sh` | on the host, no job: one execution from step 0 to the verdicts, on two tracks ("Running the release from the scripts") |
+| `scheduled-e2e.sh` | on the host: job `dp-ci-dev-scheduled-e2e`: the nightly e2e of main, its sets by the UTC day, building only what changed; `start`, `follow`, `status`, `label`, `reports`, `stop`, `plan`, `clean` |
 | `release-docker.sh` | on the host: job `dp-ci-release-step2-release-docker`. `MODE=rehearsal`: the build, the proofs on Linux and on the VM (the build's zip and image, no registry), then the upload (`asbl/ci/release-publish.sh stage-docker`, `UPLOAD=yes`). `MODE=public`: the copy of a passed rehearsal (`asbl/ci/release-publish.sh publish docker`) |
 | `release-set-version.sh` | on the host: job `dp-ci-release-step0-set-version`: a bigger version written into the version files of `origin/main` (`asbl/ci/set-version.sh`, in a throwaway worktree), checked, committed and pushed to `main` |
 | `release-label.sh` | on the host: the label of a step 0, 2 or 3 build in the build list, read from the run's output (`release-run.out` in the job's workspace), set by the Jenkinsfile's `post { always }` |
