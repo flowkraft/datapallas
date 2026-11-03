@@ -11,13 +11,9 @@
 #   bash asbl/ci/release-state.sh require <name|step1>...                        exit 1 unless every one is PASS
 #   bash asbl/ci/release-state.sh step1-guard                                    the release jobs' guard: exit 1 with one line, "REFUSED:
 #                                                                                step 1 is not green on <commit>: <lanes>. Run ...", unless
-#                                                                                the four lanes a release needs are PASS (or E2E_APPROVAL,
-#                                                                                below). STEP1_PROVEN_LATER=windows-vm-electron-light
-#                                                                                (the release jobs' start, plan-pre-release-artifacts-
-#                                                                                ready): that lane is the one step 3 runs itself, after
-#                                                                                its pack; it is shown as "proven later", not checked.
-#                                                                                Only that lane, only here: `require step1`, which
-#                                                                                every upload makes, always reads all four
+#                                                                                the two lanes a release needs (its full set, the sign-in
+#                                                                                file) are PASS (or E2E_APPROVAL, below). `require step1`,
+#                                                                                which every upload makes, reads the same two
 #   bash asbl/ci/release-state.sh record-step1 <e2e target> reruns full|auth|light   a lane red on a few tests made green by
 #                                                                                their re-runs alone: the lane's newest red run
 #                                                                                (this commit or an earlier one of its history)
@@ -76,9 +72,11 @@
 #   public.docker            dp-ci-release-step2-release-docker, MODE=public: the rehearsed zip in newest/ and <version>/, :latest
 #   public.windows           dp-ci-release-step3-release-windows-vm, MODE=public: the rehearsed zips in newest/ and <version>/
 # Until 2026-10-22 they were step2.docker-stage, step2.docker, step3.windows and step4.publish (none was ever recorded for real).
-# `require step1` = the step-1 lanes a release needs (owner decision OD5, 2026-10-22; since 2026-10-24 the full set
-# alternates, plan-release-build-prove-upload): step1.<this release's full lane>-full (web or docker-server, the full-lane
-# record below), step1.docker-server-auth, step1.windows-vm-electron-light (E2E_SPEC=light) and step1.windows-vm-server-light.
+# `require step1` = the step-1 lanes a release needs: step1.<this release's full lane>-full (web or docker-server, the
+# full-lane record below; the full set alternates since 2026-10-24, plan-release-build-prove-upload) and
+# step1.docker-server-auth. Step 1 is the full e2e on this host only (owner, 2026-11-02 and 2026-11-03): no light set and
+# nothing on the VM, so each step is one channel and the Windows light sets are step 3's. Until 16.6.2 step 1 also needed
+# step1.windows-vm-electron-light and step1.windows-vm-server-light (owner decision OD5, 2026-10-22).
 # A `targeted` run (own E2E_SPEC/E2E_GREP) is recorded for the table but never counts for a release.
 # STEP 1 ON AN EARLIER COMMIT (step1_answer, since plan-2026-10-28-faster-releases): a lane with no verdict on the commit
 # counts with its newest verdict on an earlier commit of that commit's history when asbl/ci/reuse-or-rebuild.sh says
@@ -146,7 +144,7 @@ valid_name() { printf '%s' "$1" | grep -qE '^(step1|rehearsal|public)\.[a-z0-9-]
 field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -1; }  # field <file> <key>
 
 # The full e2e set alternates (owner, plan-release-build-prove-upload): each release runs the whole suite on one side only,
-# FULL_SIDES, web one release and docker-server the next, and step 1's other lanes are the light ones and the sign-in file.
+# FULL_SIDES, web one release and docker-server the next, and step 1's other lane is the sign-in file.
 # One record per release (per version: a release may span several commits), $FULL_DIR/<version>, key=value lines as the
 # verdicts: lane, why (alternated: the other side of the newest earlier release's record; random: drawn 50/50 because no
 # earlier record could be read), previous, chosen, chosen_commit, chosen_by; then the full run of that lane on that
@@ -211,8 +209,8 @@ full_lane() {
     echo "FULL_LANE=$(field "$f" lane) version=$v: the full set of this release runs on $(full_describe "$f"); recorded in $f"
   fi
 }
-# required_step1 [choose <by>]: REQUIRED_STEP1 for this checkout's version: the full set on its lane, the sign-in file on
-# docker-server, the light sets of windows-vm-electron and windows-vm-server. choose = make the choice when there is none
+# required_step1 [choose <by>]: REQUIRED_STEP1 for this checkout's version: the full set on its lane and the sign-in file on
+# docker-server. choose = make the choice when there is none
 # (printing it); without it, a version with no choice yet needs both full runs (nothing is drawn by a mere look).
 required_step1() {
   local v line lane
@@ -224,7 +222,7 @@ required_step1() {
   elif full_valid "$FULL_DIR/$v" "$v"; then
     lane=$(field "$FULL_DIR/$v" lane)
   fi
-  REQUIRED_STEP1="$(for s in ${lane:-$FULL_SIDES}; do printf 'step1.%s-full ' "$s"; done)step1.docker-server-auth step1.windows-vm-electron-light step1.windows-vm-server-light"
+  REQUIRED_STEP1="$(for s in ${lane:-$FULL_SIDES}; do printf 'step1.%s-full ' "$s"; done)step1.docker-server-auth"
 }
 
 approval_phrase() { printf '%s' "${E2E_APPROVAL:-}" | grep -qiE 'owner[[:space:]]+approved'; }
@@ -596,17 +594,9 @@ case "$cmd" in
           echo "FULL_LANE approval written on the record of $v ($FULL_DIR/$v)" ;; esac
       exit "$rc"
     fi
-    case "${STEP1_PROVEN_LATER:-}" in
-      ""|windows-vm-electron-light) ;;
-      *) echo "FAIL  step1-guard: STEP1_PROVEN_LATER may only name windows-vm-electron-light, the lane step 3 runs itself (got '$STEP1_PROVEN_LATER')"; exit 2 ;;
-    esac
     bad="" red=0
     for n in $REQUIRED_STEP1; do
       step1_answer "$n"
-      if [ -n "${STEP1_PROVEN_LATER:-}" ] && [ "$n" = "step1.$STEP1_PROVEN_LATER" ] && [ "$S1_RESULT" != PASS ]; then
-        echo "note: ${n#step1.} is proven later, by step 3 itself (its RELEASE STEP 2/4, recorded as $n): not checked now; every upload requires it"
-        continue
-      fi
       # how a lane counts when it is not a plain run of this commit: carried from an earlier one, or green by re-runs
       [ -z "$S1_HOW" ] || echo "note: ${n#step1.} ${S1_RESULT:-missing} on ${commit:0:8}${S1_FROM:+$([ "$S1_FROM" = "$commit" ] || echo " (the verdict of ${S1_FROM:0:8})")}: $S1_HOW"
       case "$S1_RESULT" in PASS) ;; FAIL) bad="$bad, ${n#step1.} red"; red=1 ;; *) bad="$bad, ${n#step1.} missing" ;; esac

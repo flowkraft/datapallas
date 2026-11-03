@@ -33,7 +33,7 @@
 # THE RELEASE, in order (asbl/ci/jenkins/jenkins.md, "The release, in order"): Jenkins jobs, on origin/main.
 #   0 dp-ci-release-step0-set-version           asbl/ci/jenkins/release-set-version.sh: a bigger version written into the version
 #                                               files (asbl/ci/set-version.sh), one commit pushed to main; left as it is, nothing
-#   1 dp-ci-release-step1-e2e-prerelease        `e2e` / `win ...` per target; four lanes green on one commit, recorded (the
+#   1 dp-ci-release-step1-e2e-prerelease        `e2e` / `win ...` per target; two lanes green on one commit, recorded (the
 #                                               full set on the release's full lane, web or docker-server, alternated:
 #                                               asbl/ci/release-state.sh full-lane)
 #   2 dp-ci-release-step2-release-docker        asbl/ci/jenkins/release-docker.sh. MODE=rehearsal: build once here, prove (the
@@ -2240,8 +2240,7 @@ win_robot_rerun() {
 #                      they work; the VM, its Docker Desktop, Java and Maven, which the light set needs; any missing =
 #                      FAILED, each named with what to provide, the VM untouched), this host's checkout and the VM's both
 #                      on origin/main, and the step 1 guard (release-state.sh step1-guard: step 1 not green on this commit =
-#                      REFUSED within seconds, naming step 1; windows-vm-electron-light is this job's own part 2, shown as
-#                      proven later; it never runs a step 1 lane)
+#                      REFUSED within seconds, naming step 1; it never runs a step 1 lane)
 #   1/4 pack           asbl\pack-datapallas.bat on the VM: empties dist, target and the project's Maven cache, builds
 #                      everything again (DataPallas.exe included), and leaves datapallas.zip, datapallas-server.zip and
 #                      datapallas-src.zip in asbl\dist. It builds no Docker image and needs no Docker Desktop: the Docker
@@ -2354,8 +2353,7 @@ win_release() {
   # the VM, its Docker Desktop, Java and Maven (part 2, the electron light set, needs them), in seconds, before the step 1 guard
   # and the pack (a copy above needs none); it only reads, so a dry run checks it too
   prereq vm vm-docker vm-java vm-mvn || { echo "FAILED: prerequisites missing (above): nothing packed, staged or copied"; return 1; }
-  # windows-vm-electron-light is this job's own part 2: proven later, not required now; the upload requires it
-  RELEASE_COMMIT="$hostc" STEP1_PROVEN_LATER=windows-vm-electron-light bash "$REPO/asbl/ci/release-state.sh" step1-guard || return 1
+  RELEASE_COMMIT="$hostc" bash "$REPO/asbl/ci/release-state.sh" step1-guard || return 1
   # the VM's rclone for the upload at the end: in place before the pack, so a failed install shows in a minute, not hours
   # later (a dry run only says whether it is there; UPLOAD=no only what it would do)
   if [ "$UPLOAD" != yes ]; then win_rclone_ensure print
@@ -3970,7 +3968,7 @@ fi
 
 # One exception, an execution pinned by the orchestrator (RELEASE_PIN): build-if-needed on a checkout already on the pin
 # moves nothing and only reads which build there is, so the host's run (the Linux proof, a step 1 lane) is no reason to
-# refuse it; the VM's parts and lane 4 start that way beside it. A build it must start is `dp-ci.sh build`, refused here.
+# refuse it; the VM's parts start that way beside it. A build it must start is `dp-ci.sh build`, refused here.
 checkout_already_on_pin() {
   [ -n "${RELEASE_PIN:-}" ] && [ "$(git -C "$REPO" rev-parse HEAD 2>/dev/null)" = "$(git -C "$REPO" rev-parse --verify -q "$RELEASE_PIN^{commit}" 2>/dev/null)" ]
 }

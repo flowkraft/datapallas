@@ -49,7 +49,7 @@
 #       files named) or no longer containing it (a move by never-shipped files only, a test or CI fix, is accepted, as the
 #       end guards of steps 2 and 3 accept it: release-state.sh moved-main); a channel's kept run not green; a file whose
 #       sha256 or the image whose id differs from the manifest (release-keep.sh check); files that are not the ones the
-#       passed rehearsal.<channel> of that commit proved; the version gate; step 1 not green (all four lanes, or
+#       passed rehearsal.<channel> of that commit proved; the version gate; step 1 not green (both lanes, or
 #       E2E_APPROVAL). Then
 #       docker: stage-docker from the folder (:<version> pushed from the kept image, the kept zip staged), rehearsal.docker
 #       PASS upload=yes recorded; windows: the kept zips put back in the VM's asbl\dist when a later run replaced them

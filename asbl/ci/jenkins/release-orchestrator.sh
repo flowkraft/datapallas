@@ -14,10 +14,10 @@
 #      checks of steps 2 and 3 ask only whether the part tested it (release-state.sh moved-main), so main may move, even by
 #      a product change; execution 2: refused unless release-rerun.sh show says "ready for execution 2" (TODO 2's list);
 #   3. step 1, the lanes a release needs (release-state.sh full-lane --choose) that are not green on the pin (release-state.sh
-#      require: on the pin, or on an earlier commit when only tests or CI changed since), each through release-step1.sh:
-#        host  the build of the pin first when a lane takes it (dp-ci.sh build-if-needed), then lane 2 (docker-server-auth),
-#              then lane 1 (this release's full set, web or docker-server)
-#        VM    lane 4 (windows-vm-server, its light set) meanwhile, once the build is there; lane 3 is step 3's own
+#      require: on the pin, or on an earlier commit when only tests or CI changed since), each through release-step1.sh, on
+#      this host only: the build of the pin first when a lane takes it (dp-ci.sh build-if-needed), then lane 2
+#      (docker-server-auth), then lane 1 (this release's full set, web or docker-server). Nothing on the VM: the Windows
+#      light sets are step 3's (owner, 2026-11-02 and 2026-11-03: each step one channel);
 #      every lane with retries 1, the owner's rule for a release (2026-10-30), as in the light sets of steps 2 and 3;
 #      then the guard steps 2 and 3 make (release-state.sh step1-guard): not green and no approval = no execution, the
 #      re-run commands printed (a lane red on a few tests is completed by re-running them, release-rerun.sh);
@@ -76,7 +76,7 @@
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs], RELEASE_STATE_DIR,
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [300]     seconds between two samples of memory.log
-#   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth, lane4-windows-vm-server-light,
+#   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
 #   build, linux-proof, pack, windows-docker-proof, electron-light, robot, docker-verdict, windows-verdict.
 #
 # USE:
@@ -143,7 +143,6 @@ what_part_starts() {
     lane1-docker-server-full|lane2-docker-server-auth) printf '%s\n' "$run_container" "$bundle" ;;
     docker-linux) printf '%s\n' "$run_container" "$bundle" \
       "$(printf 'container\tdp-ci-one-command\tthe image alone, run as the self-host page says (dp-ci.sh docker_one_command)')" ;;
-    lane4-windows-vm-server-light) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win server-e2e')" ;;
     docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win docker-e2e')" ;;
     windows-pack|windows-after-pack) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win release')" ;;
   esac
@@ -377,7 +376,7 @@ kept_folder() {
 }
 # machine_of_part <summary part>: where it runs its tests
 machine_of_part() {
-  case "$1" in lane4-*|pack|windows-docker-proof|electron-light|robot|windows-verdict) echo windows-vm ;; *) echo host ;; esac
+  case "$1" in pack|windows-docker-proof|electron-light|robot|windows-verdict) echo windows-vm ;; *) echo host ;; esac
 }
 # mark_of_part <summary part>: its mark in a log it shares with other parts (one script run, several parts); none = the whole log
 mark_of_part() {
@@ -532,22 +531,21 @@ if [ "$EXECUTION" = 2 ]; then
 fi
 
 # ---- 3. step 1 ----
-mark_start "STEP 1" "the lanes a release needs, not green on ${PIN:0:8} yet: host lanes 2 and 1, the VM's lane 4 meanwhile"
+mark_start "STEP 1" "the lanes a release needs, not green on ${PIN:0:8} yet: lanes 2 and 1, on this host"
 full=$(RELEASE_COMMIT="$PIN" DRY_RUN=yes $STATE full-lane --choose 2>&1 | sed -n 's/^FULL_LANE=\([a-z-]*\) .*/\1/p' | head -1)
 [ -n "$full" ] || { echo "FAILED: this release's full lane cannot be read (release-state.sh full-lane --choose)"; full=unknown; }
 needed=""
-for lane in "step1.docker-server-auth" "step1.$full-full" "step1.windows-vm-server-light"; do
+for lane in "step1.docker-server-auth" "step1.$full-full"; do
   # (E2E_APPROVAL left out: with it, `require` would record an approval; the steps' guards take it, not this question)
   if out=$(E2E_APPROVAL="" RELEASE_COMMIT="$PIN" $STATE require "$lane" 2>&1); then
     echo "step 1  ${lane#step1.} is green for ${PIN:0:8} already: $(printf '%s\n' "$out" | tail -1)"
   else needed="$needed $lane"; fi
 done
-echo "step 1  to run:${needed:- nothing}; lane 3 (windows-vm-electron-light) is step 3's own"
+echo "step 1  to run:${needed:- nothing}; the Windows light sets are step 3's"
 # lane_part <lane>: its part id and the release-step1.sh environment that runs it
 lane_part() {
   case "$1" in
     step1.docker-server-auth)      echo "lane2-docker-server-auth E2E_TARGET=docker-server E2E_SPEC=$AUTH_SPEC" ;;
-    step1.windows-vm-server-light) echo "lane4-windows-vm-server-light E2E_TARGET=windows-vm-server E2E_SPEC=" ;;
     step1.*-full)                  t="${1#step1.}"; echo "lane1-$t E2E_TARGET=${t%-full} E2E_SPEC=" ;;
   esac
 }
@@ -560,34 +558,23 @@ run_lane() {  # run_lane <lane>
     STEP1_STARTED_BY="release orchestrator, started by $WHO" \
     bash asbl/ci/jenkins/release-step1.sh
 }
-step1_host() {
+# step1_lanes: the build first when a lane takes it (docker-server: the image), then the lanes still needed, in order
+step1_lanes() {
   local lane
   case "$needed" in
-    *docker-server*|*windows-vm-server*)
+    *docker-server*)
       run_part step1-build "the build of ${PIN:0:8}, when there is none yet (dp-ci.sh build-if-needed)" bash asbl/ci/dp-ci.sh build-if-needed ;;
   esac
-  touch "$PARTS/.step1-build-done"
   for lane in step1.docker-server-auth "step1.$full-full"; do
     case " $needed " in *" $lane "*) run_lane "$lane" ;; esac
   done
 }
-step1_vm() {
-  case " $needed " in *" step1.windows-vm-server-light "*) ;; *) return 0 ;; esac
-  until [ -e "$PARTS/.step1-build-done" ]; do sleep "$POLL"; done
-  if [ -f "$PARTS/step1-build.rc" ] && [ "$(cat "$PARTS/step1-build.rc")" != 0 ]; then
-    not_run lane4-windows-vm-server-light "no build of ${PIN:0:8} (step1-build is red)"
-  else run_lane step1.windows-vm-server-light; fi
-}
 echo "ORDER   step 1     host: ${needed:+step1-build (when a lane takes the build), }$(for l in step1.docker-server-auth "step1.$full-full"; do case " $needed " in *" $l "*) printf '%s, ' "$(lane_part "$l" | cut -d' ' -f1)" ;; esac; done)done"
-echo "                   VM, meanwhile: $(case " $needed " in *" step1.windows-vm-server-light "*) echo "lane4-windows-vm-server-light, once step1-build ended" ;; *) echo nothing ;; esac)"
+echo "                   VM: nothing (step 1 runs on this host only)"
 echo "        execution  host: build + linux-proof (step 2, DOCKER_RELEASE_PART=linux), then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
 echo "                   VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
 echo "                   then electron-light + robot + windows-verdict (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
-if [ -n "$needed" ]; then
-  step1_host & host_pid=$!
-  step1_vm & vm_pid=$!
-  wait "$host_pid"; wait "$vm_pid"
-fi
+[ -z "$needed" ] || step1_lanes
 [ -f "$PARTS/step1-build.rc" ] && summarize step1-build "$(part_verdict step1-build)" "$PARTS/step1-build.log"
 s1_red=0
 for lane in $needed; do
@@ -599,7 +586,7 @@ done
 if [ "$DRY" = yes ]; then
   [ "$s1_red" = 0 ] && guard_ok=1 || guard_ok=0
   echo "dry run: step 1 $([ "$guard_ok" = 1 ] && echo "green on ${PIN:0:8} once the lanes above pass" || echo "red (DRY_RUN_RED): a real start runs no execution")"
-elif RELEASE_COMMIT="$PIN" STEP1_PROVEN_LATER=windows-vm-electron-light DRY_RUN=yes $STATE step1-guard; then guard_ok=1
+elif RELEASE_COMMIT="$PIN" DRY_RUN=yes $STATE step1-guard; then guard_ok=1
 else guard_ok=0; fi
 STEP1_RESULT=$([ "$guard_ok" = 1 ] && echo green || echo red)
 mark_end "$([ "$guard_ok" = 1 ] && echo 0 || echo 1)"

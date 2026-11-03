@@ -24,7 +24,7 @@
 #                            part 4, and with UPLOAD=yes the tools, the publish credentials and that they work): any
 #                            missing = FAILED, each named with what to provide, nothing built. Then the step 1 guard: step
 #                            1 not green on this commit = REFUSED, within seconds, naming step 1 (it never runs a step 1 lane;
-#                            windows-vm-electron-light is shown as proven later: step 3 runs it itself; E2E_APPROVAL as always)
+#                            E2E_APPROVAL as always)
 #   DOCKER RELEASE STEP 2/6  the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed): the image
 #                            <repo>:<version>-<commit> and asbl/dist/datapallas-server-docker.zip, the artifact proven below
 #   DOCKER RELEASE STEP 3/6  Linux proof, no registry: the docker-server lane installs that zip as the self-host page says,
@@ -51,7 +51,7 @@
 # MODE=upload: release day's upload of what a rehearsal kept, no rebuild (release-publish.sh upload-kept docker): this
 #   checkout on origin/main, the folder of its version's kept run (on its commit, or one main moved past by never-shipped
 #   files only), each file and the image checked against the manifest and
-#   the passed rehearsal's record (any other = refused, naming it), the version gate, step 1 (all four lanes, or E2E_APPROVAL),
+#   the passed rehearsal's record (any other = refused, naming it), the version gate, step 1 (both lanes, or E2E_APPROVAL),
 #   then :<version> pushed and the docker zip staged, recorded as rehearsal.docker PASS upload=yes. Needs UPLOAD=yes to upload;
 #   UPLOAD=no or DRY_RUN=yes: every check, then the commands it would run, nothing written. Minutes.
 # MODE=public: the public release, the deliberate act: it refuses at once unless UPLOAD=yes. It never replaces public files
@@ -139,8 +139,7 @@ main() {
     echo "no passed rehearsal of $v on the docker channel: rehearsing first (on ${c:0:8}, origin/main), then the copy"
   fi
   prerequisites $([ "$MODE" = public ] && echo public) || return 1
-  # windows-vm-electron-light is step 3's own (its RELEASE STEP 2/4): proven later, not required here; the upload requires it
-  RELEASE_COMMIT="$c" STEP1_PROVEN_LATER=windows-vm-electron-light $STATE step1-guard || return 1
+  RELEASE_COMMIT="$c" $STATE step1-guard || return 1
   rehearse "$v" "$c" || return 1
   [ "$MODE" = public ] || return 0
   if [ "$DRY" = yes ]; then
@@ -325,7 +324,7 @@ rehearse() {
   if ! { git fetch -q origin && $STATE moved-main "$c" "$(git rev-parse origin/main)"; }; then
     echo "FAILED: origin/main moved since the start by what ships (or could not be read): nothing pushed or staged; run it again"; finish_red "$v" "$c" "origin/main moved"; return 1
   fi
-  RELEASE_COMMIT="$c" STEP1_PROVEN_LATER=windows-vm-electron-light $STATE step1-guard || { finish_red "$v" "$c" "the step 1 guard refused"; return 1; }
+  RELEASE_COMMIT="$c" $STATE step1-guard || { finish_red "$v" "$c" "the step 1 guard refused"; return 1; }
   [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" = "$image_id" ] && [ "$(sha256sum "$zip" | cut -d' ' -f1)" = "$zip_sha" ] ||
     { echo "FAILED: the image or the zip changed since the proofs (a build ran meanwhile?): nothing pushed or staged; run it again"; finish_red "$v" "$c" "the image or the zip changed"; return 1; }
   echo "ok: the image and the zip are the ones proven"
