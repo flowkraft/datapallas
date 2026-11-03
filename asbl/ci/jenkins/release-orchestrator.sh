@@ -29,8 +29,36 @@
 #              (WIN_RELEASE_HALF=after-pack)
 #      A red part never stops one that can still run: a red build leaves the Windows Docker proof and the Docker keep NOT
 #      RUN, a red pack leaves Robot NOT RUN (step 3 says so); the rest runs;
-#   5. the summary: each part PASS, FAIL or NOT RUN with its reason and its log; after execution 1, the failures to fix
-#      (release-keep.sh failures); the history line (marks.sh run_record_end). Exit 0 only when every part passed.
+#   5. the summary: each part PASS, FAIL or NOT RUN with its reason and its log; the flaky tests; after execution 1, the
+#      failures to fix (release-keep.sh failures); the history line (marks.sh run_record_end). Exit 0 only when every part
+#      passed.
+#
+# THE RUN FOLDER (<RUN_RECORD_DIR>/<UTC>-release-orchestrator-.../), what a person, release-rehearsal.sh and the Jenkins job
+# read there:
+#   run.log            this console
+#   <id>.log, <id>.rc  one per part started (step0, step1-build, lane*, docker-linux, docker-windows, docker-keep,
+#                      windows-pack, windows-after-pack): its output and its exit code ("-" = not run)
+#   result.txt         written at every end: key=value lines, then one tab-separated line per part of the summary
+#                        result=green|red  dry_run=yes|no  execution=1|2  version=<x.y.z>  pin=<commit>
+#                        kept=<the kept folder of the pin, or empty>  step1=green|red|not-run  summary=<run.log>
+#                        flaky=<flaky.txt>  failure_report=<path> (one line per channel report in the kept folder)
+#                        part <TAB> <name> <TAB> <machine: host|windows-vm> <TAB> PASS|FAIL|NOT_RUN <TAB> <log>
+#                             <TAB> <reports: the Playwright JSONs and HTML folders, the Robot report, space-separated>
+#                             <TAB> <why, for a part that did not pass>
+#   flaky.txt          written at every end: the tests that passed only on a retry, from each part's Playwright JSON, one
+#                      tab-separated line each: <part> <TAB> <test> <TAB> <file:line> <TAB> <report>. A test Playwright
+#                      counts as flaky but that never passed (its retry skipped or cut off) is a failure, not listed here
+#   started.txt        what each part starts, one tab-separated line each, added BEFORE the part starts (so a stop in
+#                      between finds it): <UTC> <TAB> <part> <TAB> <kind> <TAB> <name> <TAB> real|dry-run <TAB> <what>
+#                        container <name>     a container of this host's Docker (dp-ci: dp-ci.sh's run container)
+#                        compose <folder>     the docker-server bundle a Linux e2e brings up there (docker compose)
+#                        pidfile <path>       a process that outlives this one (win-e2e.sh's Windows driver)
+#                        vm <name>            the Windows VM's scheduled tasks of that lane (dp-ci.sh win stop <step>)
+#                      A dry run writes the lines it would write, marked dry-run: it started none of them
+#   memory.log         a real run only, every MEMORY_EVERY seconds while it runs: this host's free -m, docker stats of
+#                      the run's containers (started.txt's, and those of its compose folders), and the Windows VM's own
+#                      memory (committed, its peak since boot, the commit limit, physical total and available, in bytes,
+#                      over dp-ci.sh win ps); one tab-separated line each: <UTC> <TAB> <machine> <TAB> <what> <TAB> <values>
 #
 # INPUTS (environment):
 #   ORCH_STARTED_BY        REQUIRED, who started it: the first line of the log and the history line (none: MISSING, exit 2)
@@ -47,6 +75,7 @@
 #   DRY_RUN_RED="<part>..." [empty]   a dry run only: the parts that come out red, to see what still runs after them
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs], RELEASE_STATE_DIR,
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
+#   MEMORY_EVERY [300]     seconds between two samples of memory.log
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth, lane4-windows-vm-server-light,
 #   build, linux-proof, pack, windows-docker-proof, electron-light, robot, docker-verdict, windows-verdict.
 #
@@ -56,6 +85,9 @@
 #   ORCH_STARTED_BY=<name> RELEASE_VERSION=<x.y.z> setsid nohup bash asbl/ci/jenkins/release-orchestrator.sh >/dev/null 2>&1 &
 #   bash asbl/ci/jenkins/release-orchestrator.sh replay <execution 1 commit> <later commit>...   per part, reuse or rebuild
 #        from each commit to the next (asbl/ci/reuse-or-rebuild.sh): what a re-run between the executions takes
+#   bash asbl/ci/jenkins/release-orchestrator.sh flaky <part> <report.json> [<part> <report.json>]...   the lines flaky.txt
+#        gets from those Playwright reports
+#   bash asbl/ci/jenkins/release-orchestrator.sh memory-sample <run folder>   one sample appended to <run folder>/memory.log
 #
 # It never uploads, never runs MODE=public or step 4, never starts a second execution, never runs a part again, and holds
 # no version or approval. One start at a time (<LOG_DIR>/release-orchestrator.lock).
@@ -91,8 +123,124 @@ replay() {
   done
 }
 either() { case " $* " in *" rebuild "*) echo rebuild ;; *) echo reuse ;; esac; }
+
+# ---- the run folder's files that say what happened and what was started (see THE RUN FOLDER, above) ----
+WIN_PID="$LOG_DIR/win-e2e.pid"   # win-e2e.sh's one pid file for every Windows lane
+# the docker-server bundle a Linux e2e on E2E_TARGET=docker-server brings up in this checkout (dp-ci.sh docker_server_up)
+DOCKER_SERVER_BUNDLE="$PWD/frend/reporting/testground/docker-server/DataPallas"
+SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
+MEMORY_EVERY="${MEMORY_EVERY:-300}"
+
+# what_part_starts <part>: the things that part starts and that outlive a stop of this script, one "<kind> TAB <name> TAB
+# <what>" line each (the kinds of started.txt); a part that starts nothing outside this script's processes prints nothing
+what_part_starts() {
+  local run_container bundle windows_driver
+  run_container=$(printf 'container\tdp-ci\tthe run container of dp-ci.sh')
+  bundle=$(printf 'compose\t%s\tthe docker-server bundle under test' "$DOCKER_SERVER_BUNDLE")
+  windows_driver=$(printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh' "$WIN_PID")
+  case "$1" in
+    step1-build|lane1-web-full) echo "$run_container" ;;
+    lane1-docker-server-full|lane2-docker-server-auth) printf '%s\n' "$run_container" "$bundle" ;;
+    docker-linux) printf '%s\n' "$run_container" "$bundle" \
+      "$(printf 'container\tdp-ci-one-command\tthe image alone, run as the self-host page says (dp-ci.sh docker_one_command)')" ;;
+    lane4-windows-vm-server-light) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win server-e2e')" ;;
+    docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win docker-e2e')" ;;
+    windows-pack|windows-after-pack) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win release')" ;;
+  esac
+}
+# record_started <part>: its started.txt lines, before it starts
+record_started() {
+  local kind name what
+  while IFS=$'\t' read -r kind name what; do
+    [ -n "$kind" ] || continue
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$kind" "$name" \
+      "$([ "$DRY" = yes ] && echo dry-run || echo real)" "$what" >> "$PARTS/started.txt"
+  done <<< "$(what_part_starts "$1")"
+}
+
+# flaky_tests <part> <report.json> [<part> <report.json>]...: flaky.txt's lines. Flaky = failed, then passed on a retry; a
+# test Playwright calls flaky with no passing try (its retry skipped, or cut off by the end of the run) failed: not listed.
+flaky_tests() {
+  python3 -I - "$@" <<'PY'
+import json, sys
+args = sys.argv[1:]
+for part, report in zip(args[0::2], args[1::2]):
+    try:
+        data = json.load(open(report, encoding='utf-8'))
+    except Exception as e:
+        sys.stderr.write('WARN  flaky: the Playwright report %s could not be read (%s)\n' % (report, e))
+        continue
+    def walk(suite, titles):
+        for spec in suite.get('specs', []):
+            for test in spec.get('tests', []):
+                tries = [r.get('status') for r in test.get('results') or []]
+                if test.get('status') == 'flaky' and 'passed' in tries:
+                    name = ' > '.join(t for t in titles + [spec.get('title', '')] if t)
+                    print('%s\t%s\t%s:%s\t%s' % (part, name, spec.get('file', '?'), spec.get('line', '?'), report))
+        for sub in suite.get('suites', []):
+            walk(sub, titles + [sub.get('title', '')])
+    for top in data.get('suites', []):
+        walk(top, [])
+PY
+}
+
+# containers_of_the_run <run folder>: the running containers started.txt names (real lines), and those of its compose folders
+containers_of_the_run() {
+  local running
+  running=$(docker ps --format '{{.Names}}|{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null) || return 0
+  awk -F'\t' '$5 == "real" && ($3 == "container" || $3 == "compose") { print $3 "\t" $4 }' "$1/started.txt" 2>/dev/null | sort -u |
+    while IFS=$'\t' read -r kind name; do
+      printf '%s\n' "$running" | awk -F'|' -v kind="$kind" -v name="$name" \
+        '(kind == "container" && $1 == name) || (kind == "compose" && $2 == name) { print $1 }'
+    done | sort -u
+}
+# The VM's own memory, from Windows itself (GetPerformanceInfo): what it committed, the peak of that since boot, the
+# commit limit, its physical memory and what is available of it; what 16.6.3 sizes its VMs by.
+VM_MEMORY_PS=$(cat <<'PS'
+Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class DpCiMemory {
+  [StructLayout(LayoutKind.Sequential)] public struct Info {
+    public uint Size; public UIntPtr CommitTotal, CommitLimit, CommitPeak, PhysicalTotal, PhysicalAvailable, SystemCache,
+    KernelTotal, KernelPaged, KernelNonpaged, PageSize; public uint HandleCount, ProcessCount, ThreadCount; }
+  [DllImport("psapi.dll")] public static extern bool GetPerformanceInfo(out Info info, uint size);
+}
+'@
+$i = New-Object DpCiMemory+Info
+if (-not [DpCiMemory]::GetPerformanceInfo([ref]$i, [uint32][Runtime.InteropServices.Marshal]::SizeOf($i))) { "FAIL  GetPerformanceInfo"; exit 1 }
+$p = $i.PageSize.ToUInt64()
+"committed={0} commit_peak={1} commit_limit={2} physical_total={3} physical_available={4}" -f ($i.CommitTotal.ToUInt64() * $p), ($i.CommitPeak.ToUInt64() * $p), ($i.CommitLimit.ToUInt64() * $p), ($i.PhysicalTotal.ToUInt64() * $p), ($i.PhysicalAvailable.ToUInt64() * $p)
+PS
+)
+# sample_memory_once <run folder>: one sample appended to its memory.log
+sample_memory_once() {
+  local dir="$1" now names vm
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  {
+    free -m | awk -v t="$now" '/^Mem:/ { m = sprintf("total=%s used=%s free=%s shared=%s buff_cache=%s available=%s", $2, $3, $4, $5, $6, $7) }
+      /^Swap:/ { s = sprintf(" swap_total=%s swap_used=%s", $2, $3) } END { printf "%s\thost\tfree -m\t%s%s\n", t, m, s }'
+    names=$(containers_of_the_run "$dir")
+    # (one call for all of them: each docker stats --no-stream takes about two seconds)
+    [ -z "$names" ] || docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' $names 2>/dev/null |
+      awk -F'|' -v t="$now" '{ printf "%s\thost\tcontainer %s\tcpu=%s mem=%s mem_percent=%s\n", t, $1, $2, $3, $4 }'
+    vm=$(printf '%s\n' "$VM_MEMORY_PS" | timeout 180 bash asbl/ci/dp-ci.sh win ps 2>&1 | tr -d '\r' | grep -a -m1 -E '^(committed=|FAIL)')
+    case "$vm" in
+      committed=*) printf '%s\twindows-vm\tmemory\t%s\n' "$now" "$vm" ;;
+      *) printf '%s\twindows-vm\tmemory\tnot answering%s\n' "$now" "${vm:+: $vm}" ;;
+    esac
+  } >> "$dir/memory.log"
+}
+
 if [ "${1:-}" = replay ]; then shift; replay "$@"; exit $?; fi
-[ "$#" = 0 ] || { echo "usage: $0 (the run: inputs in the environment, see the top of this file) | replay <commit> <commit>..."; exit 2; }
+if [ "${1:-}" = flaky ]; then
+  shift; { [ "$#" -ge 2 ] && [ $(($# % 2)) = 0 ]; } || { echo "usage: $0 flaky <part> <report.json> [<part> <report.json>]..."; exit 2; }
+  flaky_tests "$@"; exit $?
+fi
+if [ "${1:-}" = memory-sample ]; then
+  [ -d "${2:-}" ] || { echo "usage: $0 memory-sample <run folder>"; exit 2; }
+  sample_memory_once "$2"; exit $?
+fi
+[ "$#" = 0 ] || { echo "usage: $0 (the run: inputs in the environment, see the top of this file) | replay <commit> <commit>... | flaky <part> <report.json>... | memory-sample <run folder>"; exit 2; }
 
 WHO="${ORCH_STARTED_BY:-}"
 [ -n "$WHO" ] || { echo "MISSING ORCH_STARTED_BY: who starts this run (your name, the agent's). Nothing done"; exit 2; }
@@ -114,10 +262,12 @@ run_record_begin "$WHO" "release orchestrator, execution $EXECUTION${VERSION:+, 
   { echo "FAIL  cannot make the folder of this run under $RUN_RECORD_DIR. Nothing done"; exit 2; }
 PARTS="${RUN_DIR:-$RUN_RECORD_DIR/$(date -u +%Y%m%dT%H%M%SZ)-release-orchestrator-parts-$$}"
 mkdir -p "$PARTS" || exit 2
+: >> "$PARTS/started.txt"   # there from the start: an empty one = nothing started yet
 POLL=$([ "$DRY" = yes ] && echo 1 || echo 30)
 export MODE=rehearsal UPLOAD=no DRY_RUN=no
 echo "INPUTS  execution=$EXECUTION version=${VERSION:-none (no step 0)} mode=rehearsal upload=no dry_run=$DRY${RED:+ dry_run_red=$RED} approval=$([ -n "${E2E_APPROVAL:-}" ] && echo "given in the environment, passed on to the guards" || echo none)"
 echo "PARTS   one log per part in $PARTS"
+start_memory_sampler
 
 # ---- the parts: run one, or in a dry run say what it would run and write the marks it would leave ----
 
@@ -136,6 +286,7 @@ simulated_mark() {
 # the pin and this run's approval in its environment; a dry run prints the command and writes the marks it would leave
 run_part() {
   local id="$1" what="$2" rc; shift 2
+  record_started "$id"
   echo "PART    $id START $(date -u +%Y-%m-%dT%H:%M:%SZ) on ${PIN:0:8}: $what"
   if [ "$DRY" = yes ]; then
     echo "WOULD   RELEASE_PIN=${PIN:0:8} MODE=rehearsal UPLOAD=no$([ -n "${E2E_APPROVAL:-}" ] && echo ' E2E_APPROVAL=(given)') $*"
@@ -209,18 +360,121 @@ part_verdict() {
   esac
 }
 SUMMARY=()
+RESULT_PARTS=()   # one "<part> TAB <PASS|FAIL|NOT_RUN> TAB <log> TAB <why>" per summary line, for result.txt
 # summarize <part> <verdict|why> <log>: one line of the summary, kept for the end
 summarize() {
   local v="${2%%|*}" why="${2#*|}"
   SUMMARY+=("$(printf '  %-32s %-8s %s' "$1" "$v" "${why:+$why  }(log $3)")")
+  RESULT_PARTS+=("$(printf '%s\t%s\t%s\t%s' "$1" "${v// /_}" "$3" "${why//$'\t'/ }")")
   [ "$v" = PASS ] || ALL_GREEN=0
 }
 ALL_GREEN=1
-finish() {  # finish <rc>: the summary, the history line, the exit
-  local s
+STEP1_RESULT=not-run   # green or red once the step 1 guard was asked
+# kept_folder: the newest kept folder of the pin (release-keep.sh's <RELEASE_ARTIFACTS_DIR>/<version>-<commit, 8>/), or nothing
+kept_folder() {
+  [ -n "${PIN:-}" ] || return 0
+  ls -1dt "${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}"/*-"${PIN:0:8}"/ 2>/dev/null | head -1
+}
+# machine_of_part <summary part>: where it runs its tests
+machine_of_part() {
+  case "$1" in lane4-*|pack|windows-docker-proof|electron-light|robot|windows-verdict) echo windows-vm ;; *) echo host ;; esac
+}
+# mark_of_part <summary part>: its mark in a log it shares with other parts (one script run, several parts); none = the whole log
+mark_of_part() {
+  case "$1" in
+    build) echo "DOCKER RELEASE STEP 2/6" ;; linux-proof) echo "DOCKER RELEASE STEP 3/6" ;;
+    windows-docker-proof) echo "DOCKER RELEASE STEP 4/6" ;; pack) echo "RELEASE STEP 1/4" ;;
+    electron-light) echo "RELEASE STEP 2/4" ;; robot) echo "RELEASE STEP 3/4" ;;
+  esac
+}
+# reports_of_part <summary part> <log>: its reports that exist, one path a line: the Playwright JSON and its HTML folder, the
+# Robot report.html (as the step scripts print them in its part of the log); a channel's verdict: that channel's failure report
+reports_of_part() {
+  local part="$1" log="$2" mark kept path
+  case "$part" in
+    docker-verdict|windows-verdict)
+      kept=$(kept_folder); path="${kept%/}/failure-report-${part%-verdict}.md"
+      [ -z "$kept" ] || [ ! -f "$path" ] || echo "$path"
+      return 0 ;;
+  esac
+  [ -s "$log" ] || return 0
+  mark=$(mark_of_part "$part")
+  if [ -n "$mark" ]; then
+    LC_ALL=C awk -v s="######## $mark START" -v e="######## $mark END rc=" 'index($0, s) == 1 { on = 1 } on { print } on && index($0, e) == 1 { exit }' "$log"
+  else cat "$log"; fi | tr -d '\r' | grep -aoE '(E2E_JSON_REPORT|WIN_E2E_REPORT)=[^ ]+|^ROBOT_RESULT .* report=[^ ]+' |
+    sed -E 's/^.*(REPORT|report)=//' | awk '!seen[$0]++' |
+    while IFS= read -r path; do
+      [ ! -e "$path" ] || echo "$path"
+      case "$path" in *.json) [ ! -d "${path%.json}-html" ] || echo "${path%.json}-html" ;; esac
+    done
+}
+# result_part_lines: result.txt's part lines, from the summary's parts
+result_part_lines() {
+  local line part verdict log why
+  for line in "${RESULT_PARTS[@]}"; do
+    IFS=$'\t' read -r part verdict log why <<< "$line"
+    printf 'part\t%s\t%s\t%s\t%s\t%s\t%s\n' "$part" "$(machine_of_part "$part")" "$verdict" "$log" \
+      "$(reports_of_part "$part" "$log" | paste -sd' ')" "$why"
+  done
+}
+# write_run_files <rc> <part lines>: result.txt and flaky.txt in the run folder
+write_run_files() {
+  local rc="$1" parts="$2" kept version channel flaky_args=() part report
+  kept=$(kept_folder)
+  version="$VERSION"
+  [ -n "$version" ] || [ -z "${PIN:-}" ] || version=$(git show "$PIN:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+')
+  while IFS=$'\t' read -r part report; do flaky_args+=("$part" "$report"); done < <(
+    printf '%s\n' "$parts" | awk -F'\t' '$1 == "part" { n = split($6, r, " "); for (i = 1; i <= n; i++) if (r[i] ~ /\.json$/) print $2 "\t" r[i] }')
+  if [ "${#flaky_args[@]}" = 0 ]; then : > "$PARTS/flaky.txt"; else flaky_tests "${flaky_args[@]}" > "$PARTS/flaky.txt"; fi
+  {
+    echo "# the result of a release orchestrator run (asbl/ci/jenkins/release-orchestrator.sh, its header says each line)"
+    echo "result=$([ "$rc" = 0 ] && echo green || echo red)"
+    echo "dry_run=$DRY"
+    echo "execution=$EXECUTION"
+    echo "version=$version"
+    echo "pin=${PIN:-}"
+    echo "kept=${kept%/}"
+    echo "step1=$STEP1_RESULT"
+    echo "summary=${RUN_DIR:+$RUN_DIR/run.log}"
+    echo "flaky=$PARTS/flaky.txt"
+    for channel in docker windows; do
+      [ -z "$kept" ] || [ ! -f "${kept%/}/failure-report-$channel.md" ] || echo "failure_report=${kept%/}/failure-report-$channel.md"
+    done
+    printf '%s\n' "$parts"
+  } > "$PARTS/result.txt"
+}
+# the memory sampler: memory.log every MEMORY_EVERY seconds while this run lasts (a real run only)
+MEMORY_SAMPLER_PID=""
+start_memory_sampler() {
+  [ "$DRY" = no ] || return 0
+  (
+    exec 9>&-   # the run's lock stays with the run, not with its sampler
+    pause=""
+    trap '[ -z "$pause" ] || kill "$pause" 2>/dev/null; exit 0' TERM
+    while kill -0 "$$" 2>/dev/null; do
+      sample_memory_once "$PARTS"
+      sleep "$MEMORY_EVERY" & pause=$!
+      wait "$pause"
+    done
+  ) > /dev/null 2>&1 &
+  MEMORY_SAMPLER_PID=$!
+}
+stop_memory_sampler() { [ -z "$MEMORY_SAMPLER_PID" ] || kill "$MEMORY_SAMPLER_PID" 2>/dev/null; MEMORY_SAMPLER_PID=""; }
+finish() {  # finish <rc>: the summary with the flaky tests, result.txt and flaky.txt, the history line, the exit
+  local s parts flaky_count
+  stop_memory_sampler
   echo
   echo "SUMMARY execution $EXECUTION on ${PIN:+${PIN:0:8}}$([ "$DRY" = yes ] && echo ' (dry run)'):"
   for s in "${SUMMARY[@]}"; do echo "$s"; done
+  parts=$(result_part_lines)
+  write_run_files "$1" "$parts"
+  flaky_count=$(grep -c . "$PARTS/flaky.txt")
+  if [ "$flaky_count" = 0 ]; then echo "FLAKY   none: no test passed only on a retry"
+  else
+    echo "FLAKY   $flaky_count test(s) passed only on a retry: not failures of this run, to look at after the upload"
+    awk -F'\t' '{ printf "  %-22s %s  (%s)\n", $1, $2, $3 }' "$PARTS/flaky.txt"
+  fi
+  echo "RESULT  $PARTS/result.txt (result=$([ "$1" = 0 ] && echo green || echo red)); flaky.txt and started.txt beside it"
   run_record_end "$([ "$DRY" = yes ] && echo DRY-RUN || { [ "$1" = 0 ] && echo PASS || echo "FAIL rc=$1"; })" "${PIN:-$(git rev-parse HEAD)}"
   exit "$1"
 }
@@ -347,6 +601,7 @@ if [ "$DRY" = yes ]; then
   echo "dry run: step 1 $([ "$guard_ok" = 1 ] && echo "green on ${PIN:0:8} once the lanes above pass" || echo "red (DRY_RUN_RED): a real start runs no execution")"
 elif RELEASE_COMMIT="$PIN" STEP1_PROVEN_LATER=windows-vm-electron-light DRY_RUN=yes $STATE step1-guard; then guard_ok=1
 else guard_ok=0; fi
+STEP1_RESULT=$([ "$guard_ok" = 1 ] && echo green || echo red)
 mark_end "$([ "$guard_ok" = 1 ] && echo 0 || echo 1)"
 if [ "$guard_ok" = 0 ]; then
   echo "execution $EXECUTION not started: step 1 is not green on ${PIN:0:8} (above). A lane red on a few tests: re-run them alone,"
@@ -359,7 +614,6 @@ fi
 mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, Electron light set, Robot"
 DOCKER="bash asbl/ci/jenkins/release-docker.sh"
 WINDOWS="bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh release"
-WIN_PID="$LOG_DIR/win-e2e.pid"
 # build_verdict: the build's verdict from the linux part's log, once its mark ended or the part did
 build_verdict() { mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 2/6"; }
 track_host() {
@@ -400,7 +654,7 @@ summarize electron-light "$(mark_verdict "$PARTS/windows-after-pack.log" "RELEAS
 summarize robot "$(mark_verdict "$PARTS/windows-after-pack.log" "RELEASE STEP 3/4")" "$PARTS/windows-after-pack.log"
 summarize docker-verdict "$(part_verdict docker-keep)" "$PARTS/docker-keep.log"
 summarize windows-verdict "$(part_verdict windows-after-pack)" "$PARTS/windows-after-pack.log"
-folder=$(ls -1dt "${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}"/*-"${PIN:0:8}"/ 2>/dev/null | head -1)
+folder=$(kept_folder)
 if [ "$ALL_GREEN" = 0 ] && [ "$DRY" = no ] && [ -n "$folder" ]; then
   echo "THE FAILURES TO FIX (execution $EXECUTION, ${folder%/}):"
   for ch in docker windows; do bash asbl/ci/release-keep.sh failures "${folder%/}" "$ch"; done

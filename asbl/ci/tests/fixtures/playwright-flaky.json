@@ -1,0 +1,1042 @@
+{
+ "suites": [
+  {
+   "title": "specs\\areas\\configuration-templates.spec.ts",
+   "file": "specs/areas/configuration-templates.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/areas/configuration-templates.spec.ts",
+     "line": 10,
+     "specs": [
+      {
+       "title": "should correctly create a new configuration, allow to alter few configuration values, rollback the changes and also change the displayable name of the configuration and finally remove it (test.xml)",
+       "file": "specs/areas/configuration-templates.spec.ts",
+       "line": 28,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\areas\\configuration.spec.ts",
+   "file": "specs/areas/configuration.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/areas/configuration.spec.ts",
+     "line": 12,
+     "specs": [
+      {
+       "title": "(WITH Report Generation) - should work changing/saving configuration values and should work rolling back to default configuration values",
+       "file": "specs/areas/configuration.spec.ts",
+       "line": 157,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\areas\\connections.spec.ts",
+   "file": "specs/areas/connections.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/areas/connections.spec.ts",
+     "line": 169,
+     "specs": [
+      {
+       "title": "(email-connection) should exercise Send Test Email: unsaved modal, list, config reuse, inline valid and inline invalid (bundled SMTP)",
+       "file": "specs/areas/connections.spec.ts",
+       "line": 504,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\areas\\cube-modes-parity.spec.ts",
+   "file": "specs/areas/cube-modes-parity.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Cube widgets — the two publishing modes",
+     "file": "specs/areas/cube-modes-parity.spec.ts",
+     "line": 113,
+     "specs": [
+      {
+       "title": "The same selection, published both ways, answers the same rows",
+       "file": "specs/areas/cube-modes-parity.spec.ts",
+       "line": 167,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "flaky",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\areas\\cubes-definitions.spec.ts",
+   "file": "specs/areas/cubes-definitions.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/areas/cubes-definitions.spec.ts",
+     "line": 9,
+     "specs": [
+      {
+       "title": "(cube-definitions) should filter from the field tree and show it in View SQL",
+       "file": "specs/areas/cubes-definitions.spec.ts",
+       "line": 192,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\areas\\processing-qa.spec.ts",
+   "file": "specs/areas/processing-qa.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/areas/processing-qa.spec.ts",
+     "line": 13,
+     "specs": [
+      {
+       "title": "should correctly generate-email-test-tokenlist samples/reports/payslips/Payslips.csv (Payslips)",
+       "file": "specs/areas/processing-qa.spec.ts",
+       "line": 224,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\components\\log-files-viewer-all-together.spec.ts",
+   "file": "specs/components/log-files-viewer-all-together.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/components/log-files-viewer-all-together.spec.ts",
+     "line": 13,
+     "specs": [
+      {
+       "title": "should handle correctly pressing the Clear All Quarantined and Log Files button",
+       "file": "specs/components/log-files-viewer-all-together.spec.ts",
+       "line": 711,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\apps-ai-hub.spec.ts",
+   "file": "specs/features/apps-ai-hub.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "AI Hub Tests",
+     "file": "specs/features/apps-ai-hub.spec.ts",
+     "line": 28,
+     "specs": [
+      {
+       "title": "AI Hub: Full test suite (home, provisioning, Matrix, Chat2DB)",
+       "file": "specs/features/apps-ai-hub.spec.ts",
+       "line": 30,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\apps-cms-wordpress.spec.ts",
+   "file": "specs/features/apps-cms-wordpress.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "WordPress CMS WebPortal Tests",
+     "file": "specs/features/apps-cms-wordpress.spec.ts",
+     "line": 19,
+     "specs": [
+      {
+       "title": "WordPress Portal: should start, navigate admin & frontend pages, and stop cleanly",
+       "file": "specs/features/apps-cms-wordpress.spec.ts",
+       "line": 21,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\apps-grails-nextjs.spec.ts",
+   "file": "specs/features/apps-grails-nextjs.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Dual Playground Tests",
+     "file": "specs/features/apps-grails-nextjs.spec.ts",
+     "line": 42,
+     "specs": [
+      {
+       "title": "Grails Playground: Full test suite (front-facing + admin)",
+       "file": "specs/features/apps-grails-nextjs.spec.ts",
+       "line": 45,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\auth-authorization-server.spec.ts",
+   "file": "specs/features/auth-authorization-server.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Auth — Server: run-sql and author limits",
+     "file": "specs/features/auth-authorization-server.spec.ts",
+     "line": 2388,
+     "specs": [
+      {
+       "title": "(journey) the same chain on a connection the author's group does not allow is refused at every step, and the refusal names the connection",
+       "file": "specs/features/auth-authorization-server.spec.ts",
+       "line": 2796,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\auth-embed-share.spec.ts",
+   "file": "specs/features/auth-embed-share.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Embedding and sharing: tokens and share links",
+     "file": "specs/features/auth-embed-share.spec.ts",
+     "line": 115,
+     "specs": [
+      {
+       "title": "(embed) the installation key is refused nothing a limited session would be refused",
+       "file": "specs/features/auth-embed-share.spec.ts",
+       "line": 832,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\canvas-dashboard-demos.spec.ts",
+   "file": "specs/features/canvas-dashboard-demos.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Dashboard Demos rebuilt in the Canvas",
+     "file": "specs/features/canvas-dashboard-demos.spec.ts",
+     "line": 76,
+     "specs": [
+      {
+       "title": "(dashboard demos) DD13 Invoices & Billing — rebuilt in the Canvas like a user, published, same as shipped",
+       "file": "specs/features/canvas-dashboard-demos.spec.ts",
+       "line": 114,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\explore-data-use-cases.spec.ts",
+   "file": "specs/features/explore-data-use-cases.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "Data Canvas Use Cases",
+     "file": "specs/features/explore-data-use-cases.spec.ts",
+     "line": 296,
+     "specs": [
+      {
+       "title": "D21 — Reconstruct g-dashboard sample",
+       "file": "specs/features/explore-data-use-cases.spec.ts",
+       "line": 2472,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\interface-client-cli.spec.ts",
+   "file": "specs/features/interface-client-cli.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "CLI — Merge (samples.spec.ignore)",
+     "file": "specs/features/interface-client-cli.spec.ts",
+     "line": 206,
+     "specs": [
+      {
+       "title": "05_merge_then_burst_invoices (pdf2pdf)",
+       "file": "specs/features/interface-client-cli.spec.ts",
+       "line": 208,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\interface-client-rest.spec.ts",
+   "file": "specs/features/interface-client-rest.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "REST — Merge (samples.spec.ignore)",
+     "file": "specs/features/interface-client-rest.spec.ts",
+     "line": 191,
+     "specs": [
+      {
+       "title": "05_merge_then_burst_invoices (pdf2pdf)",
+       "file": "specs/features/interface-client-rest.spec.ts",
+       "line": 193,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\reporting-jasper-legacy.spec.ts",
+   "file": "specs/features/reporting-jasper-legacy.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "DataPallas - JasperReports Legacy Integration",
+     "file": "specs/features/reporting-jasper-legacy.spec.ts",
+     "line": 451,
+     "specs": [
+      {
+       "title": "should migrate a JasperReports Server export with jr analyze --fix and then generate it",
+       "file": "specs/features/reporting-jasper-legacy.spec.ts",
+       "line": 477,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\reporting-jasper.spec.ts",
+   "file": "specs/features/reporting-jasper.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "DataPallas - JasperReports Integration",
+     "file": "specs/features/reporting-jasper.spec.ts",
+     "line": 34,
+     "specs": [
+      {
+       "title": "(sqlite) should generate a personalized order history report for each sales rep",
+       "file": "specs/features/reporting-jasper.spec.ts",
+       "line": 502,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\samples.spec.ts",
+   "file": "specs/features/samples.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/features/samples.spec.ts",
+     "line": 42,
+     "specs": [
+      {
+       "title": "should work correctly (01_cube_country_sales_dashboard)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 44,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (02_dashboard_demos)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 581,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (03_cube_stories)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 692,
+       "ok": false,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "unexpected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "failed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (04_monthly_payslips_split_only)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 812,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (05_excel_distinct_sheets_split_only)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 859,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (06_split_excel_file_by_distinct_column_values_split_only)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 910,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (07_invoices_split_once_more_split_only)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 980,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (08_invoices_merge_then_split_only)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1043,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (09_generate_payslips_docx)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1096,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (10_generate_payslips_html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1148,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (11_generate_payslips_pdf)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1201,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (12_generate_payslips_excel)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1252,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (13_generate_xlsx_from_xlsx_ds)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1305,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (14_generate_student_profiles_sql2foppdf)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1358,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (15_generate_customer_statements_sql2html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1402,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (16_generate_customer_sales_summary_sql2xlsx)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1476,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (17_generate_customer_invoices_master_detail_sql2html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1521,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (18_generate_category_region_crosstab_script2html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1578,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (19_generate_monthly_sales_trend_script2html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1622,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (20_generate_supplier_scorecards_script2html)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1666,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "expected",
+         "results": [
+          {
+           "retry": 0,
+           "status": "passed"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (21_northwind_sales_dashboard)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1717,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "flaky",
+         "results": [
+          {
+           "retry": 0,
+           "status": "failed"
+          },
+          {
+           "retry": 1,
+           "status": "skipped"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (22_northwind_sales_pivottable)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1793,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      },
+      {
+       "title": "should work correctly (23_generate_adhoc_employee_profile_script2pdf)",
+       "file": "specs/features/samples.spec.ts",
+       "line": 1866,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "specs\\features\\split-send-emails-upload.spec.ts",
+   "file": "specs/features/split-send-emails-upload.spec.ts",
+   "line": 0,
+   "suites": [
+    {
+     "title": "",
+     "file": "specs/features/split-send-emails-upload.spec.ts",
+     "line": 11,
+     "specs": [
+      {
+       "title": "should upload Payslips.pdf to ftp, sftp, fileshare, ftps and http and should also send emails (My Report)",
+       "file": "specs/features/split-send-emails-upload.spec.ts",
+       "line": 42,
+       "ok": true,
+       "tests": [
+        {
+         "projectName": "",
+         "status": "skipped",
+         "results": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "stats": {
+  "expected": 25,
+  "skipped": 8,
+  "unexpected": 7,
+  "flaky": 2
+ }
+}
