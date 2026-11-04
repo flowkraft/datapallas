@@ -456,7 +456,7 @@ version_check() {  # version_check docker|windows: prints why; rc 0 GO, 3 nothin
 
 cmd="${1:-}"; [ "$#" -gt 0 ] && shift
 case "$cmd" in
-  record|require|get|show|step1-guard)
+  record|require|get|show|step1-guard|parts)
     commit=$(commit_of) || true
     [ -n "$commit" ] || { echo "FAIL  cannot tell which commit (RELEASE_COMMIT='${RELEASE_COMMIT:-}', HEAD)"; exit 2; }
     dir="$RELEASE_STATE_DIR/$commit" ;;

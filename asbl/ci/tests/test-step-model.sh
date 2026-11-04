@@ -159,6 +159,13 @@ upload_kept() { ( cd "$SANDBOX" && DRY_RUN=yes UPLOAD=no bash asbl/ci/release-pu
 refused_at_step1() { [[ "$1" == *"REFUSED  step 1 is not green on ${C:0:8}"* ]] && [[ "$1" == *"UPLOAD_KEPT REFUSED: nothing pushed, uploaded or recorded"* ]]; }
 
 rehearsed none
+# release-state.sh parts: what upload-kept windows hands stage-files as RELEASE_PROVEN_PARTS. In the 16.6.2 upload it read
+# $dir before setting it, so the parts came out empty, the upload's record was refused and rehearsal.windows became FAIL.
+for ch in docker windows; do
+  [ "$ch" = docker ] && want="linux=PASS windows=PASS" || want="pack=PASS server_light=PASS electron_light=PASS robot=PASS"
+  got=$( cd "$SANDBOX" && RELEASE_COMMIT="$C" bash asbl/ci/release-state.sh parts "rehearsal.$ch" 2>&1 )
+  check "parts rehearsal.$ch: its parts as recorded, nothing on stderr" test "$got" = "$want"
+done
 for ch in docker windows; do
   out=$(upload_kept "$ch")
   check "no step 1 lane: upload-kept $ch refused at the step 1 check (every check before it passed)" \
