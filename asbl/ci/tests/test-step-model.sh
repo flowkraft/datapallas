@@ -16,6 +16,8 @@
 #      the server light set on the pack's kept zip; `show` lists the two light sets;
 #   5. the server zip is the pack's only (the Linux build makes none): release-rerun.sh run windows-vm-server (a dry run)
 #      takes a kept pack's zip and no build of this host, stops without one, and packs first with REBUILD=yes.
+# The commit is this checkout's as a release packs it (its CHANGELOG headed by its version: a scratch commit on it when
+# the CHANGELOG is ahead, between a CHANGELOG commit and step 0).
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
 # checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host; its
 # kept files are small ones made from this commit (fixtures/make-kept-files.py), which the stages check from inside;
@@ -90,7 +92,13 @@ export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_
 export RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env" RELEASE_REHEARSAL_CONF="$SCRATCH/no-release-rehearsal.conf"
 unset E2E_APPROVAL E2E_APPROVAL_USER RELEASE_PIN
 
-C=$(git rev-parse HEAD)
+# this commit as a release packs it: its CHANGELOG headed by its version, as the commit of step 0 has it; between a
+# CHANGELOG commit and step 0 the checkout's is not, so then a scratch commit on it (fixtures/make-kept-files.py), in a
+# scratch object folder that every git command below reads
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$SCRATCH/objects"; mkdir -p "$GIT_ALTERNATE_OBJECT_DIRECTORIES"
+C=$(python3 -I "$REPO_ROOT/asbl/ci/tests/fixtures/make-kept-files.py" --release-commit "$REPO_ROOT" HEAD \
+    "$(git show HEAD:bkend/reporting/src/main/external-resources/template/config/burst/settings.xml | grep -m1 -oP '(?<=<version>)[^<]+')" \
+    "$GIT_ALTERNATE_OBJECT_DIRECTORIES") || { echo "FAIL  fixtures/make-kept-files.py --release-commit"; exit 1; }
 STATE="bash $REPO_ROOT/asbl/ci/release-state.sh"
 # fresh_record <name>: an empty scratch release record, this release's full lane chosen in it (FULL is that lane)
 fresh_record() {
@@ -228,7 +236,7 @@ for red in $WINDOWS_PARTS; do
     bash -c '[ "$0" = 2 ] && [[ "$1" == *"not: $2=FAIL. Nothing recorded."* ]] && [ ! -e "$3" ]' "$rc" "$out" "$red" "$RELEASE_STATE_DIR/$C/rehearsal.windows"
   RELEASE_COMMIT="$C" $STATE record rehearsal.windows FAIL "version=$V" "${args[@]}" >/dev/null
   check "  recorded FAIL, the record says FAIL and require counts it red" \
-    bash -c '[ "$($0 get rehearsal.windows result)" = FAIL ] && ! $0 require rehearsal.windows >/dev/null' "$STATE"
+    bash -c 'export RELEASE_COMMIT="$1"; [ "$($0 get rehearsal.windows result)" = FAIL ] && ! $0 require rehearsal.windows >/dev/null' "$STATE" "$C"
 done
 fresh_record parts
 out=$(RELEASE_COMMIT="$C" $STATE record rehearsal.windows PASS "version=$V" pack=PASS light=PASS robot=PASS 2>&1); rc=$?

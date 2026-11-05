@@ -6,7 +6,9 @@
 #   2. a scratch folder linking the kept 16.6.1 files (16.6.1-d3ffd94b), its manifest saying 16.6.2 on 39198f4d: refused,
 #      naming the CHANGELOG heading, the jar, the source zip and the files list (windows), the compose pin and the image
 #      label (docker);
-#   3. small kept files made from this checkout's commit (fixtures/make-kept-files.py) pass; one with an extra
+#   3. small kept files made from this checkout's commit as a release packs it (its CHANGELOG headed by its version: a
+#      scratch commit on it when the CHANGELOG is ahead, between a CHANGELOG commit and step 0), by
+#      fixtures/make-kept-files.py, pass; one with an extra
 #      rb-common-16.6.1.jar, one with a source file changed, one with a db-template copy changed and one whose compose pins
 #      another version are each refused, naming the file;
 #   4. the stages with UPLOAD=no, in sandboxes (sparse clones of this commit, asbl/ci as it is in this checkout, uncommitted
@@ -117,9 +119,14 @@ check "  naming the compose pin" has "its compose pins flowkraft/datapallas-serv
 check "  naming the image label" has "its label version is 16.6.1 (from datapallas-server-image.tar), not 16.6.2" "$out"
 
 echo "---- 3. small kept files made from this commit ----"
-C=$(git rev-parse HEAD)
-V=$(git show "$C:bkend/reporting/src/main/external-resources/template/config/burst/settings.xml" | grep -m1 -oP '(?<=<version>)[^<]+')
+V=$(git show HEAD:bkend/reporting/src/main/external-resources/template/config/burst/settings.xml | grep -m1 -oP '(?<=<version>)[^<]+')
 FIXTURE="python3 -I $REPO_ROOT/asbl/ci/tests/fixtures/make-kept-files.py"
+# this commit as a release packs it: its CHANGELOG headed by its version, as the commit of step 0 has it; between a
+# CHANGELOG commit and step 0 the checkout's is not, so then a scratch commit on it (fixtures/make-kept-files.py), in a
+# scratch object folder that every git command below reads
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$SCRATCH/objects"; mkdir -p "$GIT_ALTERNATE_OBJECT_DIRECTORIES"
+C=$($FIXTURE --release-commit "$REPO_ROOT" HEAD "$V" "$GIT_ALTERNATE_OBJECT_DIRECTORIES") ||
+  { echo "FAIL  fixtures/make-kept-files.py --release-commit"; exit 1; }
 KEPT="$RELEASE_ARTIFACTS_DIR/$V-${C:0:8}"   # where release-keep.sh keeps this version and commit
 IMAGE_ID=$($FIXTURE "$KEPT" "$REPO_ROOT" "$C" "$V") || { echo "FAIL  the fixture could not make the kept files"; exit 1; }
 for ch in windows docker; do

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.6.3 - 2026-11-10
+
+### Changed
+
+- CI/CD improvements: the release tests run in parallel on more machines, so a release takes hours instead of a day.
+
 ## 16.6.2 - 2026-11-05
 
 ### Changed

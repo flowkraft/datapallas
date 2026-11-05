@@ -2,10 +2,17 @@
 files checked from inside) for a commit and a version, made small from that commit. The tests that need such a folder call
 it: test-inside-check.sh (and, with --break, each refusal), test-step-model.sh (upload-kept's dry runs).
 
+  python3 -I asbl/ci/tests/fixtures/make-kept-files.py --release-commit <repository> <commit> <version> <objects folder>
   python3 -I asbl/ci/tests/fixtures/make-kept-files.py <folder> <repository> <commit> <version> [--break <what>=<name>]...
 
-Writes into <folder> (created):
-  datapallas.zip, datapallas-server.zip  DataPallas/CHANGELOG.md ("## <version> - 2026-11-05"), DataPallas/lib/burst/
+--release-commit prints a commit whose CHANGELOG's first heading is "## <version> - ", as the commit of step 0 has it
+(a release packs only such a commit; between a CHANGELOG commit and step 0 the checkout's is not one): <commit> itself
+when it is one, else a scratch commit on it whose only change is that heading put first in db-template/CHANGELOG.md,
+written into <objects folder> (created), never into the repository. The caller exports
+GIT_ALTERNATE_OBJECT_DIRECTORIES=<objects folder>, so that every git command of the test can read it.
+
+Writes into <folder> (created), for a commit whose CHANGELOG's first heading is this version's (else exit 1):
+  datapallas.zip, datapallas-server.zip  DataPallas/CHANGELOG.md (the commit's), DataPallas/lib/burst/
                                          rb-common-<version>.jar and rb-reporting.jar (a few bytes each), and copies of a
                                          few of the commit's db-template files: one with its line endings flipped, and the
                                          plugin's single-paystub.php as NoExeAssembler writes it (the webportal sample)
@@ -22,9 +29,51 @@ Writes into <folder> (created):
   source=<path>       that file of the commit changed in datapallas-src.zip
   template=<path>     that db-template copy (its path below db-template/) changed in datapallas.zip
   compose=<tag>       the docker zip's compose pins <RELEASE_IMAGE_REPO>:<tag> instead
-Prints the image id (sha256:...). Exit 0, or 2 when the commit or a file it needs cannot be read.
+Prints the image id (sha256:...). Exit 0, or 1 with the reason when the commit or a file it needs cannot be read.
 """
 import hashlib, io, json, os, re, subprocess, sys, tarfile, zipfile
+
+TEMPLATE = 'asbl/src/main/external-resources/db-template/'
+CHANGELOG = TEMPLATE + 'CHANGELOG.md'
+FIRST_HEADING = re.compile(rb'^## (\S+) - ', re.M)
+
+def release_commit(repo, commit, version, objects):
+    def git(*args, data=None, env=None):
+        r = subprocess.run(['git', '-C', repo] + list(args), input=data, capture_output=True, env=env)
+        if r.returncode != 0:
+            sys.exit('make-kept-files: git %s failed: %s' % (args[0], r.stderr.decode(errors='replace').strip()))
+        return r.stdout
+    full = git('rev-parse', '--verify', commit + '^{commit}').decode().strip()
+    text = git('show', '%s:%s' % (full, CHANGELOG))
+    first = FIRST_HEADING.search(text)
+    if first and first.group(1).decode() == version:
+        print(full)
+        return
+    eol = b'\r\n' if b'\r\n' in text else b'\n'
+    heading = (b'## ' + version.encode() + b' - 2026-11-05' + eol + eol +
+               b'- a scratch commit of make-kept-files.py: this version first, as the commit of step 0 has it' + eol + eol)
+    at = first.start() if first else len(text)
+    common = git('rev-parse', '--git-common-dir').decode().strip()
+    objects = os.path.abspath(objects)
+    os.makedirs(objects, exist_ok=True)
+    env = dict(os.environ, GIT_OBJECT_DIRECTORY=objects, GIT_INDEX_FILE=os.path.join(objects, 'scratch-index'),
+               GIT_ALTERNATE_OBJECT_DIRECTORIES=os.path.join(os.path.abspath(os.path.join(repo, common)), 'objects'),
+               GIT_AUTHOR_NAME='make-kept-files', GIT_AUTHOR_EMAIL='tests@example.com',
+               GIT_COMMITTER_NAME='make-kept-files', GIT_COMMITTER_EMAIL='tests@example.com')
+    mode = git('ls-tree', full, CHANGELOG).split()[0].decode()
+    blob = git('hash-object', '-w', '--stdin', data=text[:at] + heading + text[at:], env=env).decode().strip()
+    git('read-tree', full, env=env)
+    git('update-index', '--cacheinfo', '%s,%s,%s' % (mode, blob, CHANGELOG), env=env)
+    tree = git('write-tree', env=env).decode().strip()
+    os.remove(os.path.join(objects, 'scratch-index'))
+    print(git('commit-tree', tree, '-p', full, env=env,
+              data=b'scratch: CHANGELOG headed by ' + version.encode() + b' (make-kept-files.py)').decode().strip())
+
+if sys.argv[1:2] == ['--release-commit']:
+    if len(sys.argv) != 6:
+        sys.exit('make-kept-files: --release-commit <repository> <commit> <version> <objects folder>')
+    release_commit(*sys.argv[2:6])
+    sys.exit(0)
 
 folder, repo, commit, version = sys.argv[1:5]
 breaks, rest = {}, sys.argv[5:]
@@ -33,7 +82,6 @@ while rest:
         sys.exit('make-kept-files: unknown argument %s (only --break <what>=<name>)' % rest[0])
     what, name = rest[1].split('=', 1); breaks[what] = name; rest = rest[2:]
 REPO_NAME = os.environ.get('RELEASE_IMAGE_REPO', 'flowkraft/datapallas-server')
-TEMPLATE = 'asbl/src/main/external-resources/db-template/'
 SAMPLE = 'bkend/reporting/src/main/external-resources/template/samples/webportal/single-paystub.php'
 PAYSTUB = '_apps/cms-webportal-playground/wp-plugins/datapallas-portal/resources/views/single-paystub.php'
 SETTINGS = 'config/_internal/settings.xml'
@@ -48,16 +96,22 @@ def git_show(path):
 def changed(data):
     return data + b'\nchanged by make-kept-files.py --break\n'
 
-# the db-template copies: settings.xml, the plugin's single-paystub.php (the sample, as NoExeAssembler writes it over),
-# and the first two other text files of the commit's db-template, the first of them with its line endings flipped (CRLF to
-# LF, LF to CRLF: a copy that differs by line endings only)
+# the db-template copies: CHANGELOG.md, settings.xml, the plugin's single-paystub.php (the sample, as NoExeAssembler
+# writes it over), and the first two other text files of the commit's db-template, the first of them with its line
+# endings flipped (CRLF to LF, LF to CRLF: a copy that differs by line endings only)
+changelog = git_show(CHANGELOG)
+first = FIRST_HEADING.search(changelog)
+if not first or first.group(1).decode() != version:
+    sys.exit('make-kept-files: the CHANGELOG of %s is headed by %s, not %s: no release packs it as %s '
+             '(--release-commit gives one that is)' % (commit[:8], first.group(1).decode() if first else 'nothing',
+                                                       version, version))
 tracked = subprocess.run(['git', '-C', repo, 'ls-tree', '-r', '--name-only', commit, TEMPLATE],
                          capture_output=True, text=True).stdout.splitlines()
 texts = [p for p in tracked if p.endswith(('.txt', '.md', '.yml', '.properties'))
-         and not p.endswith((SETTINGS, PAYSTUB))][:2]
+         and p != CHANGELOG and not p.endswith((SETTINGS, PAYSTUB))][:2]
 if len(texts) < 2:
     sys.exit('make-kept-files: fewer than two db-template text files at %s' % commit[:8])
-copies = {SETTINGS: git_show(TEMPLATE + SETTINGS), PAYSTUB: git_show(SAMPLE)}
+copies = {'CHANGELOG.md': changelog, SETTINGS: git_show(TEMPLATE + SETTINGS), PAYSTUB: git_show(SAMPLE)}
 for i, p in enumerate(texts):
     data = git_show(p)
     if i == 0:
@@ -70,8 +124,7 @@ def write_zip(name, entries):
             z.writestr(TOP + path, data)
 
 for name in ('datapallas.zip', 'datapallas-server.zip'):
-    entries = {'CHANGELOG.md': ('# Changelog\n\n## %s - 2026-11-05\n\n- made by make-kept-files.py\n' % version).encode(),
-               'lib/burst/rb-common-%s.jar' % version: b'not a jar', 'lib/burst/rb-reporting.jar': b'not a jar'}
+    entries = {'lib/burst/rb-common-%s.jar' % version: b'not a jar', 'lib/burst/rb-reporting.jar': b'not a jar'}
     entries.update(copies)
     if name == 'datapallas.zip':   # the breaks of the Windows zips: datapallas.zip's only
         if 'template' in breaks:
