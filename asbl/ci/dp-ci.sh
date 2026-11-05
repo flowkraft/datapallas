@@ -122,6 +122,14 @@
 #       Host firewall: an e2e run opens two ufw rules tagged dp-ci-e2e (host -> Docker networks, containers -> DataPallas
 #       on 9090), because ufw denies both by default; a detached watcher removes them when dp-ci is gone, however the run
 #       ended. Check: ufw status | grep -c dp-ci-e2e
+#       IN A RUNNER (a Docker engine of its own, asbl/ci/e2e-runners.sh run <n>, which sets these; never by hand):
+#       E2E_RUNNER=<1-4>, DOCKER_HOST=unix://<socket folder>/<n>/docker.sock (that runner's engine; anything else is
+#       refused), E2E_RUNNER_LOG_DIR (its own log folder: its logs, its build log copy, its app image records) and
+#       E2E_RUNNER_FILES (a regex: its share of the full set; the full set's two exclusions still apply, the mode stays
+#       full). This script then runs from the runner's own copy of the checkout, and only differs where an engine of its
+#       own must: no ufw rule (the runner's networks are not under this host's ufw), no dp-dev stop or start (dp-dev is
+#       on this host's engine), the CI image copied in, never built, and an app image kept when its key record in that
+#       log folder is the sources' key (a loaded image has no build cache). Only `e2e` runs in a runner.
 #
 #   E2E_SPEC=<regex> E2E_GREP=<regex> [E2E_PACKAGE=<mode>] bash asbl/ci/dp-ci.sh e2e-loop
 #       The fix-and-retry LOOP: the same run as `e2e`, targeted (E2E_SPEC or E2E_GREP is required), on E2E_TARGET [web] or
@@ -269,6 +277,21 @@ set -uo pipefail
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 LOG_DIR=/var/kraft-internalsystems/logs/datapallas-ci
+# A runner's lane (asbl/ci/e2e-runners.sh run <n>): its own log folder. On the host (not --inside) its engine is checked
+# first: a runner's lane on this host's engine would meet the host's own e2e set (the same names and ports)
+E2E_RUNNER="${E2E_RUNNER:-}"
+if [ -n "$E2E_RUNNER" ]; then
+  [[ "$E2E_RUNNER" =~ ^[1-4]$ ]] || { echo "FAIL  E2E_RUNNER=$E2E_RUNNER: a runner is 1, 2, 3 or 4 (asbl/ci/e2e-runners.sh)"; exit 2; }
+  [ -n "${E2E_RUNNER_LOG_DIR:-}" ] || { echo "FAIL  E2E_RUNNER=$E2E_RUNNER without E2E_RUNNER_LOG_DIR: run it through asbl/ci/e2e-runners.sh run $E2E_RUNNER"; exit 2; }
+  if [ "${1:-}" != --inside ]; then
+    case "${DOCKER_HOST:-}" in
+      unix://*/"$E2E_RUNNER"/docker.sock) ;;
+      *) echo "FAIL  E2E_RUNNER=$E2E_RUNNER, but DOCKER_HOST='${DOCKER_HOST:-}' is not that runner's socket: run it through asbl/ci/e2e-runners.sh run $E2E_RUNNER"; exit 2 ;;
+    esac
+    case "${1:-}" in e2e|prereq) ;; *) echo "FAIL  only e2e runs in a runner (E2E_RUNNER=$E2E_RUNNER): '${1:-}' runs on this host's engine"; exit 2 ;; esac
+  fi
+  LOG_DIR="$E2E_RUNNER_LOG_DIR"
+fi
 CI_IMAGE=datapallas-ci
 CONTAINER=dp-ci
 DEV_CONTAINER=${DP_DEV_CONTAINER:-datapallas-dev}      # dp-dev; the bkstg reverse proxy reaches it by this name
@@ -3271,6 +3294,22 @@ AIHUBPY
     echo "AI_HUB_FROM_SOURCES=$u (image ai-hub-ai-hub-frend:dev, stage devserver)"
   }
 
+  # app_image_current_in_runner <compose folder> <folder under _apps>: in a runner (E2E_RUNNER), the app's images are
+  # there and its key record (LOG_DIR/app-images, as app_images_refresh keeps them) is the key of its sources now.
+  # Why: asbl/ci/e2e-runners.sh copies this host's images in with docker save | docker load, which keeps the ids but no
+  # build cache, so a `docker compose build` there would build every app again (the AI Hub: about 30 min)
+  app_image_current_in_runner() {
+    local dir=$1 folder=$2 record key built image
+    [ -n "${E2E_RUNNER:-}" ] || return 1
+    record="$LOG_DIR/app-images/$(echo "$folder" | tr / +).key"
+    key=$(app_sources_key HEAD "$folder")
+    [ "$key" != - ] && [ -f "$record" ] && [ "$(head -1 "$record")" = "$key" ] || return 1
+    built=$(cd "$dir" && docker compose config --format json 2>/dev/null | python3 -c 'import json, sys
+c = json.load(sys.stdin)
+print(*(c["name"] + "-" + s for s, v in c["services"].items() if "build" in v and "image" not in v))') || return 1
+    for image in $built; do docker image inspect "$image" >/dev/null 2>&1 || return 1; done
+  }
+
   # The owner's e2e chain, unchanged: clean testground -> gulp starts the Spring Boot server from
   # testground/e2e + `ng serve` on 4201 -> Playwright (TEST_ENV=web, or Electron) -> server killed. gulp itself
   # does not return Playwright's exit code, so the verdict is read from the line gulp prints.
@@ -3280,13 +3319,19 @@ AIHUBPY
   # seconds when nothing changed and rebuilds only the changed layers when something did. A failed build
   # stops the run rather than testing an old image.
   app_images_build() {
-    local t="$REPO/frend/reporting/testground/e2e/_apps" c
+    local t="$REPO/frend/reporting/testground/e2e/_apps" c folder
     [ -d "$t" ] || (cd "$REPO/frend/reporting" && npx gulp e2e-package-javastuff-if-needed) ||
       { echo "!!! apps: could not fill the testground from the package"; return 1; }
     for c in $(find "$t" -name docker-compose.yml -not -path '*/xx-custom/*' | sort); do
+      folder=${c#"$t"/}; folder=${folder%/docker-compose.yml}
+      if app_image_current_in_runner "$(dirname "$c")" "$folder"; then
+        echo "apps: $folder current in runner $E2E_RUNNER (its key record is its sources' key): not built"; continue
+      fi
       echo "apps: building $(basename "$(dirname "$c")") (cached unless its sources changed)"
       (cd "$(dirname "$c")" && timeout 3600 docker compose build -q) ||
         { echo "!!! apps: docker compose build failed for $c"; return 1; }
+      # in a runner, the record of what it just built, so its next lane keeps it
+      [ -z "${E2E_RUNNER:-}" ] || { mkdir -p "$LOG_DIR/app-images" && app_sources_key HEAD "$folder" > "$LOG_DIR/app-images/$(echo "$folder" | tr / +).key"; }
     done
   }
 
@@ -3307,6 +3352,11 @@ AIHUBPY
       # playwright.config.ts uses E2E_SPEC as testMatch, so no shared file changes.
       export E2E_SPEC='^(?!.*(auth-authorization-server|let-me-update-migrate-configuration)).*\.spec\.ts$'
       mode=full
+      # a runner's share of the full set (asbl/ci/e2e-runners.sh): its files, inside the same two exclusions; still full
+      if [ -n "${E2E_RUNNER_FILES:-}" ]; then
+        export E2E_SPEC="^(?!.*(auth-authorization-server|let-me-update-migrate-configuration))(?=.*(?:$E2E_RUNNER_FILES)).*\.spec\.ts\$"
+        echo "E2E_RUNNER=${E2E_RUNNER:-} E2E_RUNNER_FILES='$E2E_RUNNER_FILES'"
+      fi
     fi
     # Nothing declares a deployment shape any more: there is one, and every target runs the same secured
     # backend. The web and electron targets start it through the npm scripts, the docker-server target is the
@@ -4276,18 +4326,26 @@ mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$TASK-$SHA.log"
 ln -sfn "$LOG" "$LOG_DIR/latest.log"
 
-echo "building the $CI_IMAGE tools image (cached after the first time)..."
-docker build -q -t "$CI_IMAGE" "$REPO/asbl/ci" >>"$LOG" 2>&1 || { echo "FAIL  docker build $CI_IMAGE — see $LOG"; exit 1; }
+if [ -n "$E2E_RUNNER" ]; then
+  # a runner never builds the CI image: asbl/ci/e2e-runners.sh start copied this host's in (one image for every engine)
+  docker image inspect "$CI_IMAGE" >/dev/null 2>&1 ||
+    { echo "FAIL  runner $E2E_RUNNER has no $CI_IMAGE image: asbl/ci/e2e-runners.sh start $E2E_RUNNER copies it in"; exit 1; }
+else
+  echo "building the $CI_IMAGE tools image (cached after the first time)..."
+  docker build -q -t "$CI_IMAGE" "$REPO/asbl/ci" >>"$LOG" 2>&1 || { echo "FAIL  docker build $CI_IMAGE — see $LOG"; exit 1; }
+fi
 
 RESTART_DEV=0
-# build, e2e and junit rebuild the backend / reset testground/e2e under dp-dev; publishing does not touch it
-if [ "${TASK#publish-}" = "$TASK" ] && docker ps -q --filter "name=^${DEV_CONTAINER}\$" | grep -q .; then
+# build, e2e and junit rebuild the backend / reset testground/e2e under dp-dev; publishing does not touch it. A runner's
+# lane has its own checkout and engine: dp-dev, on this host's, is not in its way
+if [ -z "$E2E_RUNNER" ] && [ "${TASK#publish-}" = "$TASK" ] && docker ps -q --filter "name=^${DEV_CONTAINER}\$" | grep -q .; then
   echo "stopping dp-dev ($DEV_CONTAINER) while this run works; it starts again when the run ends"
   docker stop "$DEV_CONTAINER" >/dev/null
   RESTART_DEV=1
 fi
 
-if [ "$TASK" = "e2e" ]; then
+# the ufw rules are for this host's engine (a runner's networks are inside the runner, not under this host's ufw)
+if [ "$TASK" = "e2e" ] && [ -z "$E2E_RUNNER" ]; then
   firewall_open "$LOG" || { [ "$RESTART_DEV" = 1 ] && start_dev_container; exit 1; }
 fi
 
@@ -4315,19 +4373,20 @@ docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --u
   -e E2E_SLOW_MO="${E2E_SLOW_MO:-}" -e E2E_DD_SCREENSHOTS="${E2E_DD_SCREENSHOTS:-}" \
   -e E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" -e E2E_PACKAGE="${E2E_PACKAGE:-}" -e E2E_DOCKER_FROM_URL="${E2E_DOCKER_FROM_URL:-}" -e E2E_DOCKER_ONE_COMMAND="${E2E_DOCKER_ONE_COMMAND:-}" \
   -e E2E_REUSE_BUILD="${E2E_REUSE_BUILD:-}" -e E2E_KEPT_BUILD="${E2E_KEPT_BUILD:-}" -e E2E_BUILD_IMAGE_FILE="${E2E_BUILD_IMAGE_FILE:-}" \
+  -e E2E_RUNNER="$E2E_RUNNER" -e E2E_RUNNER_LOG_DIR="${E2E_RUNNER_LOG_DIR:-}" -e E2E_RUNNER_FILES="${E2E_RUNNER_FILES:-}" \
   -e PUBLISH_TAG="$PUBLISH_TAG" -e PUBLISH_RESET="$PUBLISH_RESET" -e PUBLISH_SETTINGS_FILE="$PUBLISH_SETTINGS_FILE" -e DRY_RUN="${DRY_RUN:-0}" -e FORCE="${FORCE:-0}" -e SMOKE_TIMEOUT_SECS="${SMOKE_TIMEOUT_SECS:-300}" \
   -e TARGET_HOST="${TARGET_HOST:-}" -e TARGET_COMPOSE_DIR="${TARGET_COMPOSE_DIR:-}" -e TARGET_DATA_DIR="${TARGET_DATA_DIR:-}" \
   -e TARGET_APP="${TARGET_APP:-}" -e TARGET_URL="${TARGET_URL:-}" \
   "$CI_IMAGE" bash "$REPO/asbl/ci/dp-ci.sh" --inside >/dev/null ||
-  { echo "FAIL  docker run $CONTAINER"; [ "$TASK" = "e2e" ] && firewall_close "$LOG"
+  { echo "FAIL  docker run $CONTAINER"; [ "$TASK" = "e2e" ] && [ -z "$E2E_RUNNER" ] && firewall_close "$LOG"
     [ "$RESTART_DEV" = 1 ] && start_dev_container; exit 1; }
-if [ "$TASK" = "e2e" ]; then firewall_close_when_run_ends "$LOG"; fi
+if [ "$TASK" = "e2e" ] && [ -z "$E2E_RUNNER" ]; then firewall_close_when_run_ends "$LOG"; fi
 if [ "$RESTART_DEV" = 1 ]; then demo_links_when_run_ends; fi
 
-echo "STARTED  $CONTAINER  task=$TASK  commit=$SHA"
+echo "STARTED  $CONTAINER  task=$TASK  commit=$SHA${E2E_RUNNER:+  in runner $E2E_RUNNER ($DOCKER_HOST)}"
 echo "log:     $LOG   (also $LOG_DIR/latest.log)"
 echo "watch:   grep -aE '^(PIPELINE_START|PIPELINE_RESULT|>>> STEP|<<< STEP|!!! ABORT)' $LOG_DIR/latest.log"
-echo "stop:    docker stop $CONTAINER"
-if [ "$TASK" = "e2e" ]; then
+echo "stop:    ${E2E_RUNNER:+DOCKER_HOST=$DOCKER_HOST }docker stop $CONTAINER"
+if [ "$TASK" = "e2e" ] && [ -z "$E2E_RUNNER" ]; then
   echo "firewall: $(ufw status | grep -c "# $FIREWALL_TAG") rules tagged $FIREWALL_TAG open until $CONTAINER is gone (plan §3 O14)"
 fi

@@ -78,10 +78,12 @@
 #                                             windows-vm is VM a, windows-vm-<name> another
 #                        domain <libvirt name>  a Windows VM this run started (part vm-<name>): shut down by a stop
 #                      A dry run writes the lines it would write, marked dry-run: it started none of them
-#   memory.log         a real run only, every MEMORY_EVERY seconds while it runs: this host's free -m, docker stats of
-#                      the run's containers (started.txt's, and those of its compose folders), and the Windows VM's own
-#                      memory (committed, its peak since boot, the commit limit, physical total and available, in bytes,
-#                      over dp-ci.sh win ps); one tab-separated line each: <UTC> <TAB> <machine> <TAB> <what> <TAB> <values>
+#   memory.log         a real run only, every MEMORY_EVERY seconds while it runs: this host's free -m and CPU load
+#                      (/proc/loadavg and the CPU count), docker stats of the run's containers (started.txt's, a runner
+#                      whole, and those of its compose folders), and each of the round's VMs' own memory (committed, its
+#                      peak since boot, the commit limit, physical total and available, in bytes, over dp-ci.sh win ps
+#                      with WIN_VM=<name>; machine windows-vm for VM a, windows-vm-<name> for another; a VM virsh says is
+#                      off is not asked); one tab-separated line each: <UTC> <TAB> <machine> <TAB> <what> <TAB> <values>
 #
 # INPUTS (environment):
 #   ORCH_STARTED_BY        REQUIRED, who started it: the first line of the log and the history line (none: MISSING, exit 2)
@@ -125,7 +127,8 @@
 #        from each commit to the next (asbl/ci/reuse-or-rebuild.sh): what a re-run between the executions takes
 #   bash asbl/ci/jenkins/release-orchestrator.sh flaky <part> <report.json> [<part> <report.json>]...   the lines flaky.txt
 #        gets from those Playwright reports
-#   bash asbl/ci/jenkins/release-orchestrator.sh memory-sample <run folder>   one sample appended to <run folder>/memory.log
+#   bash asbl/ci/jenkins/release-orchestrator.sh memory-sample <run folder> [<VM name>...]   one sample appended to <run
+#        folder>/memory.log, of those VMs [VM a]
 #
 # It never uploads, never runs MODE=public or step 4, never starts a second execution, never runs a part again, and holds
 # no version or approval. One start at a time (<LOG_DIR>/release-orchestrator.lock).
@@ -260,22 +263,35 @@ $p = $i.PageSize.ToUInt64()
 "committed={0} commit_peak={1} commit_limit={2} physical_total={3} physical_available={4}" -f ($i.CommitTotal.ToUInt64() * $p), ($i.CommitPeak.ToUInt64() * $p), ($i.CommitLimit.ToUInt64() * $p), ($i.PhysicalTotal.ToUInt64() * $p), ($i.PhysicalAvailable.ToUInt64() * $p)
 PS
 )
-# sample_memory_once <run folder>: one sample appended to its memory.log
+# vm_memory_line <VM name> <UTC>: the VM's memory.log line (machine windows-vm for VM a, windows-vm-<name> for another):
+# its own memory over SSH (dp-ci.sh win ps with WIN_VM=<name>); a VM virsh says is off is not asked
+vm_memory_line() {
+  local vm_name="$1" now="$2" machine answer
+  machine="windows-vm$(win_vm_suffix "$vm_name")"
+  if [ "$(machines_vm_state "$vm_name")" = off ]; then printf '%s\t%s\tmemory\toff (virsh): not asked\n' "$now" "$machine"; return; fi
+  answer=$(printf '%s\n' "$VM_MEMORY_PS" | WIN_VM="$vm_name" timeout 180 bash asbl/ci/dp-ci.sh win ps 2>&1 | tr -d '\r' | grep -a -m1 -E '^(committed=|FAIL)')
+  case "$answer" in
+    committed=*) printf '%s\t%s\tmemory\t%s\n' "$now" "$machine" "$answer" ;;
+    *) printf '%s\t%s\tmemory\tnot answering%s\n' "$now" "$machine" "${answer:+: $answer}" ;;
+  esac
+}
+# sample_memory_once <run folder>: one sample appended to its memory.log: this host's memory and CPU load (the runners and
+# the VMs share its CPUs, which the memory rule does not count), the run's containers (a runner whole: its engine and all
+# it runs), and the memory of each VM of the round (SAMPLE_VMS, else the run's RUN_VMS, else VM a), asked at once
 sample_memory_once() {
-  local dir="$1" now names vm
+  local dir="$1" now names vm_name vm_pids=() sample_vms="${SAMPLE_VMS:-${RUN_VMS:-a}}"
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  for vm_name in $sample_vms; do vm_memory_line "$vm_name" "$now" > "$dir/.memory-$vm_name.line" & vm_pids+=("$!"); done
   {
     free -m | awk -v t="$now" '/^Mem:/ { m = sprintf("total=%s used=%s free=%s shared=%s buff_cache=%s available=%s", $2, $3, $4, $5, $6, $7) }
       /^Swap:/ { s = sprintf(" swap_total=%s swap_used=%s", $2, $3) } END { printf "%s\thost\tfree -m\t%s%s\n", t, m, s }'
+    awk -v t="$now" -v cpus="$(nproc 2>/dev/null)" '{ printf "%s\thost\tcpu load\tload1=%s load5=%s load15=%s cpus=%s\n", t, $1, $2, $3, cpus }' /proc/loadavg
     names=$(containers_of_the_run "$dir")
     # (one call for all of them: each docker stats --no-stream takes about two seconds)
     [ -z "$names" ] || docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' $names 2>/dev/null |
       awk -F'|' -v t="$now" '{ printf "%s\thost\tcontainer %s\tcpu=%s mem=%s mem_percent=%s\n", t, $1, $2, $3, $4 }'
-    vm=$(printf '%s\n' "$VM_MEMORY_PS" | timeout 180 bash asbl/ci/dp-ci.sh win ps 2>&1 | tr -d '\r' | grep -a -m1 -E '^(committed=|FAIL)')
-    case "$vm" in
-      committed=*) printf '%s\twindows-vm\tmemory\t%s\n' "$now" "$vm" ;;
-      *) printf '%s\twindows-vm\tmemory\tnot answering%s\n' "$now" "${vm:+: $vm}" ;;
-    esac
+    [ "${#vm_pids[@]}" = 0 ] || wait "${vm_pids[@]}"
+    for vm_name in $sample_vms; do cat "$dir/.memory-$vm_name.line" 2>/dev/null; rm -f "$dir/.memory-$vm_name.line"; done
   } >> "$dir/memory.log"
 }
 
@@ -302,10 +318,12 @@ if [ "${1:-}" = flaky ]; then
   flaky_tests "$@"; exit $?
 fi
 if [ "${1:-}" = memory-sample ]; then
-  [ -d "${2:-}" ] || { echo "usage: $0 memory-sample <run folder>"; exit 2; }
-  sample_memory_once "$2"; exit $?
+  [ -d "${2:-}" ] || { echo "usage: $0 memory-sample <run folder> [<VM name>...]"; exit 2; }
+  dir="$2"; shift 2
+  [ "$#" = 0 ] || SAMPLE_VMS="$*"
+  sample_memory_once "$dir"; exit $?
 fi
-[ "$#" = 0 ] || { echo "usage: $0 (the run: inputs in the environment, see the top of this file) | replay <commit> <commit>... | flaky <part> <report.json>... | memory-sample <run folder>"; exit 2; }
+[ "$#" = 0 ] || { echo "usage: $0 (the run: inputs in the environment, see the top of this file) | replay <commit> <commit>... | flaky <part> <report.json>... | memory-sample <run folder> [<VM name>...]"; exit 2; }
 
 WHO="${ORCH_STARTED_BY:-}"
 [ -n "$WHO" ] || { echo "MISSING ORCH_STARTED_BY: who starts this run (your name, the agent's). Nothing done"; exit 2; }
