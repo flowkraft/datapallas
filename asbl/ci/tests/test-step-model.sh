@@ -17,7 +17,8 @@
 #   5. the server zip is the pack's only (the Linux build makes none): release-rerun.sh run windows-vm-server (a dry run)
 #      takes a kept pack's zip and no build of this host, stops without one, and packs first with REBUILD=yes.
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
-# checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host;
+# checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host; its
+# kept files are small ones made from this commit (fixtures/make-kept-files.py), which the stages check from inside;
 # docker, curl, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
 # built, uploaded, pushed or started. Takes about a minute.
 # Callers: a person or an agent, from the shell, after changing the step model.
@@ -52,10 +53,11 @@ STUBS="$SCRATCH/stubs"; mkdir -p "$STUBS"
 export STUB_CALLS="$SCRATCH/calls.log"; : > "$STUB_CALLS"
 cat > "$STUBS/docker" <<'STUB'
 #!/bin/bash
-# stub docker: records the call; an image's id is the kept one; nothing else exists
+# stub docker: records the call; an image's id is the kept one (STUB_IMAGE_ID), with no label (the check from inside reads
+# it from the kept image file); nothing else exists
 echo "docker $*" >> "$STUB_CALLS"
 case "$1 ${2:-}" in
-  "image inspect") echo "sha256:the-kept-image" ;;
+  "image inspect") case "$*" in *Labels*) exit 1 ;; esac; echo "$STUB_IMAGE_ID" ;;
   *) exit 1 ;;
 esac
 STUB
@@ -144,14 +146,12 @@ V=$(grep -m1 -oP '(?<=<version>)[^<]+' "$SANDBOX/bkend/reporting/src/main/extern
 export RELEASE_ARTIFACTS_DIR="$SCRATCH/artifacts"
 KEPT="$RELEASE_ARTIFACTS_DIR/$V-${C:0:8}"; mkdir -p "$KEPT"
 sha() { sha256sum "$1" | cut -d' ' -f1; }
-for name in datapallas-server-docker.zip datapallas.zip datapallas-server.zip datapallas-src.zip; do echo "the kept $name" > "$KEPT/$name"; done
-{ echo "version=$V"; echo "commit=$C"; echo "docker.result=PASS"
-  echo "docker.file=datapallas-server-docker.zip size=$(stat -c %s "$KEPT/datapallas-server-docker.zip") sha256=$(sha "$KEPT/datapallas-server-docker.zip")"
-  echo "docker.image=flowkraft/datapallas-server:$V id=sha256:the-kept-image built_as=flowkraft/datapallas-server:$V-${C:0:7}"
-  echo "windows.result=PASS"
-  for name in datapallas.zip datapallas-server.zip datapallas-src.zip; do
-    echo "windows.file=$name size=$(stat -c %s "$KEPT/$name") sha256=$(sha "$KEPT/$name")"
-  done; } > "$KEPT/MANIFEST.txt"
+# its files: small ones made from this commit that pass the check from inside (release-keep.sh inside), which every stage
+# runs before its upload; the image is the fixture's (its id in the manifest, its label in the kept image file)
+export STUB_IMAGE_ID
+STUB_IMAGE_ID=$(python3 -I "$REPO_ROOT/asbl/ci/tests/fixtures/make-kept-files.py" "$KEPT" "$REPO_ROOT" "$C" "$V") ||
+  { echo "FAIL  fixtures/make-kept-files.py could not make the kept files"; exit 1; }
+printf 'docker.result=PASS\nwindows.result=PASS\n' >> "$KEPT/MANIFEST.txt"
 # rehearsed <name>: a scratch release record with both channels' passed rehearsals of those files
 rehearsed() {
   export RELEASE_STATE_DIR="$SCRATCH/upload-state-$1"; mkdir -p "$RELEASE_STATE_DIR"

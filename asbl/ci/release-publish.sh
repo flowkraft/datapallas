@@ -23,7 +23,10 @@
 #       against the list. Records rehearsal.windows (PASS with rehearsal=, sha256= and the parts that proved the files,
 #       RELEASE_PROVEN_PARTS from its caller: dp-ci.sh win release, upload-kept; or FAIL with reason=). Nothing outside
 #       rehearsal/ is written. Before the upload, this host deletes the Windows files an earlier rehearsal left anywhere
-#       under rehearsal/ (the cleanup, below), with its own credentials.
+#       under rehearsal/ (the cleanup, below), with its own credentials. Before all that, with UPLOAD=no too, the files
+#       checked from inside (inside_check, below): the list's files must be the ones kept in
+#       <RELEASE_ARTIFACTS_DIR>/<version>-<commit, 8> (RELEASE_KEPT_DIR another), and each this version and this commit
+#       from inside (asbl/ci/release-keep.sh inside); a refusal uploads nothing and is this stage's FAIL, with the reason.
 #
 #   bash asbl/ci/release-publish.sh stage-docker
 #       The Docker rehearsal's upload (job dp-ci-release-step2-release-docker), built once on this host: this checkout on
@@ -39,7 +42,9 @@
 #       the build must be of that commit, the image that id and the zip that sha256, else nothing is pushed: what goes out
 #       is what was proven. RELEASE_KEPT_DIR (set by upload-kept): no build; the image's build tag and the zip are the ones
 #       that folder's manifest keeps. With UPLOAD=no, step 1 not complete is said (the upload would be refused), not a failure:
-#       nothing is uploaded, and every upload checks it.
+#       nothing is uploaded, and every upload checks it. Before the image is loaded, tagged or pushed, with UPLOAD=no too,
+#       the files checked from inside, as stage-files: the zip and the proven image must be the ones kept in the folder
+#       of this version and commit, and each this version and this commit from inside.
 #
 #   UPLOAD=no|yes DRY_RUN=no|yes  bash asbl/ci/release-publish.sh upload-kept [docker|windows]
 #       Release day (plan-pre-release-artifacts-ready): the files the day-before run kept, uploaded as they are, no rebuild:
@@ -140,6 +145,28 @@ channel_files() { case "$1" in docker) echo datapallas-server-docker.zip ;; wind
 hard_delete() { rclone deletefile -q --b2-hard-delete "$RELEASE_RCLONE_REMOTE/$1" 2>&1; }
 # the sha256 of a published file as a user downloads it; the query string only gets past the CDN's cache
 sha_by_download() { curl -fsSL --max-time 3600 "$1?check=$(date +%s)-$RANDOM" 2>/dev/null | sha256sum | cut -d' ' -f1; }
+# inside_check <channel> <kept folder> <name>:<sha256>...: THE FILES CHECKED FROM INSIDE, before any upload, by both stages:
+# the files to upload must be the ones the folder keeps (its manifest's sha256; for docker, the proven image its image too,
+# RELEASE_PROVEN_IMAGE_ID), and each this version and this commit from inside (asbl/ci/release-keep.sh inside, printed).
+# Returns 1 with the reason in INSIDE_WHY.
+inside_check() {
+  local ch="$1" f="$2" p out rc; shift 2
+  INSIDE_WHY=""
+  [ -f "$f/MANIFEST.txt" ] ||
+    { INSIDE_WHY="the files checked from inside: no kept release in $f (release-keep.sh keeps the files before any stage)"; return 1; }
+  for p in "$@"; do
+    grep -qx "$ch\.file=${p%%:*} size=[0-9]* sha256=${p#*:}" "$f/MANIFEST.txt" ||
+      { INSIDE_WHY="the files checked from inside: ${p%%:*} (sha256 $(printf '%.16s' "${p#*:}")...) is not the file kept in $f"; return 1; }
+  done
+  [ "$ch" != docker ] || [ -z "${RELEASE_PROVEN_IMAGE_ID:-}" ] || grep -q "^docker\.image=[^ ]* id=$RELEASE_PROVEN_IMAGE_ID " "$f/MANIFEST.txt" ||
+    { INSIDE_WHY="the files checked from inside: the proven image $RELEASE_PROVEN_IMAGE_ID is not the image kept in $f"; return 1; }
+  out=$(bash "$HERE/release-keep.sh" inside "$f" "$ch"); rc=$?
+  printf '%s\n' "$out"
+  [ "$rc" = 0 ] && return 0
+  INSIDE_WHY="the files checked from inside refuse them: $(printf '%s\n' "$out" | sed -n 's/^MISMATCH  //p' | head -3 | paste -sd ';' -)"
+  [ -n "$(printf '%s\n' "$out" | sed -n 's/^MISMATCH  //p')" ] || INSIDE_WHY="the files checked from inside could not run (exit $rc, above)"
+  return 1
+}
 upload_checked() {  # upload_checked <file> <folder> [<name>]: rclone it to <folder>/, download it back, compare the sha256
   local n want got out
   n=${3:-$(basename "$1")}; want=$(sha_of "$1")
@@ -456,7 +483,8 @@ upload_kept() {
       else bash "$HERE/dp-ci.sh" win rclone-ensure "$([ "$dry" = 1 ] && echo check || echo print)"; fi
       bash "$HERE/dp-ci.sh" win put-dist $([ "$UPLOAD" = yes ] || echo --check) "$f" $(sed -n 's/^windows\.file=\([^ ]*\) size=[0-9]* sha256=\([0-9a-f]*\)$/\1:\2/p' "$f/MANIFEST.txt") ||
         { rm -f "$list"; echo "UPLOAD_KEPT FAIL windows: the VM's asbl\\dist does not hold the kept files (above)"; return 1; }
-      RELEASE_COMMIT="$c" UPLOAD=$UPLOAD RELEASE_PROVEN_PARTS="$(RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" parts rehearsal.windows)" \
+      RELEASE_KEPT_DIR="$f" RELEASE_COMMIT="$c" UPLOAD=$UPLOAD \
+        RELEASE_PROVEN_PARTS="$(RELEASE_COMMIT="$c" bash "$HERE/release-state.sh" parts rehearsal.windows)" \
         bash "$0" stage-files "$v" "$list" || { rm -f "$list"; echo "UPLOAD_KEPT FAIL windows (above)"; return 1; }
       rm -f "$list"
     fi
@@ -658,6 +686,8 @@ case "$cmd" in
     folder="$REHEARSAL_FOLDER/$v-${c:0:8}"
     files=""   # <name>:<sha256> of each, as the VM checks them before it uploads
     for n in $names; do files="$files $n:$(sed -n "s/^sha256   \([0-9a-f]\{64\}\)  [0-9]*  $n\$/\1/p" "$list")"; done
+    # $files unquoted: one <name>:<sha256> word each
+    inside_check windows "${RELEASE_KEPT_DIR:-$RELEASE_ARTIFACTS_DIR/$v-${c:0:8}}" $files || fail "$INSIDE_WHY"
     if [ "$UPLOAD" != yes ]; then
       would "rclone lsf -R $RELEASE_RCLONE_REMOTE/$REHEARSAL_FOLDER/, then rclone deletefile --b2-hard-delete each $(channel_files windows) an earlier rehearsal left there  -> those files gone from the bucket"
       bash "$HERE/dp-ci.sh" win stage-upload --print "${RELEASE_RCLONE_REMOTE#*:}/$folder" $files
@@ -734,6 +764,8 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
     fi
     zip="${RELEASE_KEPT_DIR:+$RELEASE_KEPT_DIR/datapallas-server-docker.zip}"; zip="${zip:-asbl/dist/datapallas-server-docker.zip}"
     [ -s "$zip" ] || fail "$zip is missing (the build's)"
+    inside_check docker "${RELEASE_KEPT_DIR:-$RELEASE_ARTIFACTS_DIR/$v-${c:0:8}}" "datapallas-server-docker.zip:$(sha_of "$zip")" ||
+      fail "$INSIDE_WHY"
     # a kept image the daemon lost (this host's nightly image cleanup): back from the kept folder's copy (release-keep.sh
     # IMAGE_FILE); the id checks below say whether it is the proven one
     if [ -n "${RELEASE_KEPT_DIR:-}" ] && ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1 &&
@@ -789,5 +821,5 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
     mark_run publish "$@"
     ;;
   *)
-    sed -n '2,103p' "$0"; exit 2 ;;
+    sed -n '2,109p' "$0"; exit 2 ;;
 esac
