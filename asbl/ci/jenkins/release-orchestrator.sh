@@ -76,6 +76,13 @@
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs], RELEASE_STATE_DIR,
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [300]     seconds between two samples of memory.log
+#   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
+#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many subsets
+#     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
+#   THE MACHINES: RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf], the machines file (asbl/ci/release-machines.sh,
+#   with asbl/ci/release-layout.example.conf): RELEASE_STEPS, the memory per host test server and per VM, the VMs and the
+#   lanes each runs. Checked before anything starts (exit 2 with a REFUSED line per broken rule); every run prints the
+#   SCHEDULE it expects, each part's time from the last release runs' marks.
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
 #   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict.
 #
@@ -96,6 +103,7 @@ set -uo pipefail
 cd "$(dirname "$0")/../../.." || exit 2
 . asbl/ci/marks.sh
 . asbl/ci/reuse-or-rebuild.sh
+. asbl/ci/release-machines.sh
 
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
 STATE="bash asbl/ci/release-state.sh"
@@ -253,6 +261,11 @@ VERSION="${RELEASE_VERSION:-}"
 [ -z "$VERSION" ] || [ "$EXECUTION" = 1 ] || { echo "FAIL  RELEASE_VERSION is step 0's, execution 1 only"; exit 2; }
 RED="${DRY_RUN_RED:-}"
 [ -z "$RED" ] || [ "$DRY" = yes ] || { echo "FAIL  DRY_RUN_RED is for a dry run only"; exit 2; }
+FULL_SET_JOBS="${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-1}"
+WINDOWS_VMS_USED="${USE_N_NUMBER_OF_WINDOWS_VMS:-1}"
+machines_answer=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS_USED") ||
+  { printf '%s\n' "$machines_answer"; echo "REFUSED: the machines file (${RELEASE_REHEARSAL_CONF:-/root/release-rehearsal.conf}) does not allow N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED (above). Nothing done"; exit 2; }
+machines_load
 if [ "$DRY" = no ]; then
   # one start at a time: the lock lives as long as this run and the parts it started
   exec 9>>"$LOG_DIR/release-orchestrator.lock"
@@ -583,6 +596,8 @@ echo "        execution  host: build + linux-proof (step 2, DOCKER_RELEASE_PART=
 echo "                   VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
 echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
 echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+echo "$machines_answer"
+machines_schedule "$FULL_SET_JOBS" "$WINDOWS_VMS_USED" "$full" 2>&1 || echo "SCHEDULE  not available: asbl/ci/release-estimate.py failed (above)"
 [ -z "$needed" ] || step1_lanes
 [ -f "$PARTS/step1-build.rc" ] && summarize step1-build "$(part_verdict step1-build)" "$PARTS/step1-build.log"
 s1_red=0

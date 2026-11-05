@@ -115,6 +115,10 @@ export ROUND_ORCHESTRATOR="bash $STUB/orchestrator" ROUND_RELEASE_STATE="bash $S
 export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E=true ROUND_POLL=1
 # the VM's made-up address: dp-ci.sh win stop reaches only the stub ssh
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
+# a start's machines check (asbl/ci/release-machines.sh check --press) on stand-ins: the host's memory, virsh (VM a running)
+export RELEASE_MEMINFO="$SCRATCH/meminfo"; printf 'MemAvailable:   %s kB\n' $((64 * 1048576)) > "$RELEASE_MEMINFO"
+printf '#!/bin/bash\n# stub virsh: every VM is running\necho running\n' > "$STUB/bin/virsh"; chmod +x "$STUB/bin/virsh"
+unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL
 
 round() { bash "$ROUND_SCRIPT" "$@"; }

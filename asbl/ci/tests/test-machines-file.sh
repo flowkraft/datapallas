@@ -1,0 +1,255 @@
+#!/bin/bash
+# The machines file of a release round (asbl/ci/release-machines.sh, its example asbl/ci/release-layout.example.conf, and
+# what the orchestrator does with it):
+#   1. no file gives the defaults; the caller's environment goes before the file; a file others may read is refused;
+#   2. every layout of the example file passes the rules, for every N and M, and the example's layouts are the defaults;
+#   3. each broken rule is refused, with its numbers: the steps, the values, too few VMs, a lane twice or missing, an
+#      unknown lane, Robot not last or not on the pack's VM, Electron before the server light set; and at a press: a
+#      VM's settings file or libvirt VM missing, the memory rule (only the VMs a round starts count), /var's free disk;
+#   4. the lane times read from release runs' marks (a dry run's folder ignored, a red part not used), the expected
+#      schedule for 4 and 4 and for in-order;
+#   5. the orchestrator: RELEASE_STEPS=in-order gives 16.6.2's dry-run order, a dry run prints the schedule, and a
+#      layout it cannot run is refused before anything starts.
+# Every folder is a scratch one; virsh, df, docker and ssh are stubs first on PATH: nothing is started, no live folder is
+# touched, no settings file of this host is read. Takes about 40 seconds (two orchestrator dry runs).
+# Callers: a person or an agent, from the shell, after changing the machines file's reader or the orchestrator's use of it.
+#   bash asbl/ci/tests/test-machines-file.sh
+# Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
+set -uo pipefail
+cd "$(dirname "$0")/../../.." || exit 2
+MACHINES=asbl/ci/release-machines.sh
+EXAMPLE=asbl/ci/release-layout.example.conf
+ORCHESTRATOR=asbl/ci/jenkins/release-orchestrator.sh
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/test-machines-file.XXXXXX") || exit 2
+trap 'rm -rf "$SCRATCH"' EXIT
+FAILED_CASES=0
+check() {  # check <what> <command...>: PASS when the command succeeds
+  local what="$1"; shift
+  if "$@"; then echo "PASS  $what"; else echo "FAIL  $what"; FAILED_CASES=$((FAILED_CASES + 1)); fi
+}
+same() {  # same <expected> <actual>: equal, or both printed
+  [ "$1" = "$2" ] && return 0
+  printf '      expected: %s\n      actual:   %s\n' "$1" "$2"; return 1
+}
+has() {  # has <text> <text>: the text is in it, or what it holds is printed
+  case "$2" in *"$1"*) return 0 ;; esac
+  printf '      no "%s" in:\n%s\n' "$1" "$(printf '%s\n' "$2" | sed 's/^/        /' | tail -15)"; return 1
+}
+
+# ---- the stand-ins: the VMs' states, /var's free disk, the host's memory, the VMs' settings files ----
+STUBS="$SCRATCH/stubs"; mkdir -p "$STUBS" "$SCRATCH/vm-conf"
+cat > "$STUBS/virsh" <<'STUB'
+#!/bin/bash
+# stub virsh: domstate <domain> answers from $STUB_VM_STATES ("<domain>=<state> ..."), a domain not there does not exist
+[ "${1:-}" = domstate ] || exit 0
+for pair in ${STUB_VM_STATES:-}; do [ "${pair%%=*}" = "${2:-}" ] && { echo "${pair#*=}"; exit 0; }; done
+echo "error: failed to get domain '${2:-}'" >&2; exit 1
+STUB
+cat > "$STUBS/df" <<'STUB'
+#!/bin/bash
+# stub df: /var has $STUB_VAR_FREE_GB GB free
+printf ' Avail\n %sG\n' "${STUB_VAR_FREE_GB:-400}"
+STUB
+for c in docker ssh; do printf '#!/bin/bash\nexit 0\n' > "$STUBS/$c"; done
+chmod +x "$STUBS"/*
+export PATH="$STUBS:$PATH"
+export WIN_CI_CONF="$SCRATCH/vm-conf/win-ci.env" WIN_VM_CONF_DIR="$SCRATCH/vm-conf" RELEASE_MEMINFO="$SCRATCH/meminfo"
+for v in a b c d; do : > "$SCRATCH/vm-conf/win-ci-$v.env"; done; : > "$WIN_CI_CONF"
+export STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off win10-dev-c=shut-off win10-dev-d=shut-off"
+memory_gb() { printf 'MemTotal:       131072000 kB\nMemAvailable:   %s kB\n' $(($1 * 1048576)) > "$RELEASE_MEMINFO"; }
+memory_gb 100
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
+  SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
+for key in $(compgen -v | grep -E '^(VM_LANES_|VM_DOMAIN_)'); do unset "$key"; done
+export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
+# settings <line>...: the machines file, root-only, holding those lines; settings_example [<line>...]: the example plus them
+settings() { printf '%s\n' "$@" > "$RELEASE_REHEARSAL_CONF"; chmod 600 "$RELEASE_REHEARSAL_CONF"; }
+settings_example() { { cat "$EXAMPLE"; printf '%s\n' "$@"; } > "$RELEASE_REHEARSAL_CONF"; chmod 600 "$RELEASE_REHEARSAL_CONF"; }
+machines() { bash "$MACHINES" "$@" 2>&1; }
+# refused <expected text> <command...>: exit 2 and that text in a REFUSED line
+refused() {
+  local text="$1" out rc; shift
+  out=$("$@" 2>&1); rc=$?
+  [ "$rc" = 2 ] || { echo "      exit $rc, not 2:"; printf '%s\n' "$out" | sed 's/^/        /' | tail -8; return 1; }
+  has "$text" "$(printf '%s\n' "$out" | grep '^REFUSED\|^MISSING')"
+}
+
+# ---- 1. no file, the environment first, a file others may read ----
+rm -f "$RELEASE_REHEARSAL_CONF"
+check "no file: the defaults (together, 5 GB per server, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
+"RELEASE_STEPS=together
+RELEASE_SERVER_GB=5
+RELEASE_WINDOWS_VMS=a
+WIN_VM_MEMORY_GB=12
+RELEASE_MIN_FREE_GB=16
+RELEASE_ESTIMATES_FILE=/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json
+VM_LANES_1_a=\"pack docker-proof server-light electron-light robot\"
+VM a: libvirt win10-dev, settings $WIN_CI_CONF" "$(machines show)"
+check "no file: 1 and 1 pass the check" has "MACHINES OK steps=together jobs=1 vms=1 (a)" "$(machines check 1 1)"
+settings "RELEASE_STEPS=together" "RELEASE_SERVER_GB=7"
+check "the caller's environment goes before the file" same "RELEASE_STEPS=in-order RELEASE_SERVER_GB=7" \
+  "$(RELEASE_STEPS=in-order machines show | grep -E '^RELEASE_(STEPS|SERVER_GB)=' | paste -sd' ')"
+chmod 644 "$RELEASE_REHEARSAL_CONF"
+check "a file others may read: refused (exit 2)" refused "MISSING a settings file only its owner reads" machines check 1 1
+
+# ---- 2. the example file ----
+settings_example
+example_ok() {
+  local n m out
+  for n in 1 2 3 4; do for m in 1 2 3 4; do
+    out=$(machines check "$n" "$m") || { echo "      N=$n M=$m:"; printf '%s\n' "$out" | sed 's/^/        /'; return 1; }
+  done; done
+}
+check "every layout of the example passes the rules, for every N and M (1 to 4)" example_ok
+check "the example names the VMs a to d only" same 'RELEASE_WINDOWS_VMS="a b c d"' "$(grep '^RELEASE_WINDOWS_VMS=' "$EXAMPLE" | sed 's/ *#.*//')"
+check "the example's layouts are the defaults (the same show with and without its VM_LANES lines)" same \
+  "$(machines show)" "$(grep -v '^VM_LANES_' "$EXAMPLE" > "$RELEASE_REHEARSAL_CONF"; machines show)"
+check "the example's 4 VMs: a, b, c, d, each with its libvirt name and settings file" same \
+"VM a: libvirt win10-dev, settings $WIN_CI_CONF
+VM b: libvirt win10-dev-b, settings $SCRATCH/vm-conf/win-ci-b.env
+VM c: libvirt win10-dev-c, settings $SCRATCH/vm-conf/win-ci-c.env
+VM d: libvirt win10-dev-d, settings $SCRATCH/vm-conf/win-ci-d.env" "$(settings_example; machines show | grep '^VM ')"
+
+# ---- 3. each broken rule refused, with its numbers ----
+settings_example "RELEASE_STEPS=in-order"
+check "in-order with N=2: refused" refused "RELEASE_STEPS=in-order runs 16.6.2's order with nothing split: N and M must be 1 (got N=2, M=1)" machines check 2 1
+settings_example "RELEASE_STEPS=sideways"
+check "an unknown RELEASE_STEPS: refused" refused "RELEASE_STEPS=sideways: it must be together or in-order" machines check 1 1
+settings_example
+check "N=5: refused" refused "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=5: it must be 1, 2, 3 or 4" machines check 5 1
+check "M=0: refused" refused "USE_N_NUMBER_OF_WINDOWS_VMS=0: it must be 1, 2, 3 or 4" machines check 1 0
+settings_example "RELEASE_SERVER_GB=five"
+check "a memory that is no number: refused" refused "RELEASE_SERVER_GB=five: it must be a whole number of GB" machines check 1 1
+settings_example 'RELEASE_WINDOWS_VMS="a b"'
+check "M=3 with 2 VMs named: refused" refused "USE_N_NUMBER_OF_WINDOWS_VMS=3, but RELEASE_WINDOWS_VMS has 2 VM(s) (a b): the others are not created yet" machines check 1 3
+settings_example 'VM_LANES_2_b="docker-proof electron-light pack"'
+check "a lane twice: refused, with the layout" refused 'the layout for 2 VM(s) runs pack 2 times: every lane runs once (VM_LANES_2_a="pack server-light robot" VM_LANES_2_b="docker-proof electron-light pack")' machines check 1 2
+settings_example 'VM_LANES_2_b="docker-proof"'
+check "a lane missing: refused" refused "the layout for 2 VM(s) runs electron-light 0 times" machines check 1 2
+settings_example 'VM_LANES_3_c="electron-light coffee"'
+check "an unknown lane: refused" refused "VM_LANES_3_c names 'coffee': the lanes are pack docker-proof server-light electron-light robot" machines check 1 3
+settings_example 'VM_LANES_2_a="pack robot server-light"'
+check "Robot not last on its VM: refused" refused 'VM_LANES_2_a="pack robot server-light": Robot must be last on its VM (it removes Java)' machines check 1 2
+settings_example 'VM_LANES_2_a="pack server-light"' 'VM_LANES_2_b="docker-proof electron-light robot"'
+check "Robot away from the pack's VM: refused" refused 'VM_LANES_2_b="docker-proof electron-light robot": Robot runs on the pack'"'"'s VM' machines check 1 2
+settings_example 'VM_LANES_1_a="pack docker-proof electron-light server-light robot"'
+check "Electron before the server light set on one VM: refused" refused 'VM_LANES_1_a="pack docker-proof electron-light server-light robot": the server light set comes before the Electron light set on one VM' machines check 1 1
+settings_example
+rm -f "$SCRATCH/vm-conf/win-ci-b.env"
+check "press: VM b's settings file missing: refused (the plain check does not ask)" \
+  bash -c 'out=$(bash "$1" check 1 2 --press); [ "$?" = 2 ] && grep -qF "REFUSED VM b has no settings file $2" <<< "$out" && bash "$1" check 1 2 >/dev/null' \
+  _ "$MACHINES" "$SCRATCH/vm-conf/win-ci-b.env"
+: > "$SCRATCH/vm-conf/win-ci-b.env"
+check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
+memory_gb 60
+check "press: N=4 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
+  "memory: N=4 M=4 needs 61 GB (5 host test servers x 5 GB, VMs b c d to start x 12 GB), 60 GB are available now: -1 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  machines check 4 4 --press
+check "press: only the VMs a round starts count (b c d running: 25 GB needed)" has \
+  "needs 25 GB of 60 GB available, 35 GB stay free (rule 16)" \
+  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 4 4 --press)"
+memory_gb 100
+check "press: N=4 M=4 with 100 GB available: OK, with the numbers" has \
+  "MACHINES OK steps=together jobs=4 vms=4 (a b c d), memory: needs 61 GB of 100 GB available, 39 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "$(machines check 4 4 --press)"
+check "press: /var with 20 GB free: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
+
+# ---- 4. the lane times from the marks, and the schedule ----
+RUNS="$SCRATCH/runs"
+run_folder() {  # run_folder <name>: a real orchestrator run's folder, with parts that passed (and one red part)
+  local d="$RUNS/$1"; mkdir -p "$d"
+  cat > "$d/run.log" <<'LOG'
+PART    step1-build START 2026-11-03T23:20:00Z on 0123abcd: the build
+PART    step1-build END rc=0 2026-11-03T23:50:00Z (log x)
+PART    lane2-docker-server-auth START 2026-11-03T23:50:00Z on 0123abcd: step 1 docker-server-auth (release-step1.sh)
+PART    lane2-docker-server-auth END rc=0 2026-11-04T00:10:00Z (log x)
+PART    lane1-docker-server-full START 2026-11-04T00:10:00Z on 0123abcd: step 1 docker-server-full (release-step1.sh)
+PART    lane1-docker-server-full END rc=0 2026-11-04T10:10:00Z (log x)
+PART    windows-pack START 2026-11-04T10:10:00Z on 0123abcd: step 3's pack
+PART    windows-pack END rc=1 2026-11-04T11:00:00Z (log x)
+LOG
+  printf '0\n' > "$d/step1-build.rc"; printf '0\n' > "$d/lane2-docker-server-auth.rc"; printf '0\n' > "$d/lane1-docker-server-full.rc"
+  printf '1\n' > "$d/windows-pack.rc"
+  printf '######## DOCKER RELEASE STEP 3/6 START x\n######## DOCKER RELEASE STEP 3/6 END rc=0  2026-11-04T11:00:00Z  took=3000s (50m0s)  :: the Linux proof\n' > "$d/docker-linux.log"
+  printf '0\n' > "$d/docker-linux.rc"
+  printf '%s\n' '######## DOCKER RELEASE STEP 4/6 START x' '>>> npmwc started on the VM desktop  2026-11-04T11:00:00Z' \
+    '<<< prepare finished  EXIT=0  2026-11-04T11:40:00Z' '######## DOCKER RELEASE STEP 4/6 END rc=0  2026-11-04T14:40:00Z  took=13200s (220m0s)  :: x' > "$d/docker-windows.log"
+}
+run_folder 20261103T231939Z-release-orchestrator-execution-1-version-16.6.2
+mkdir -p "$RUNS/20261104T231939Z-release-orchestrator-execution-1-dry-run"
+printf 'PART    step1-build START 2026-11-04T23:20:00Z on x: y\nPART    step1-build END rc=0 2026-11-05T23:20:00Z (log x)\n' > "$RUNS/20261104T231939Z-release-orchestrator-execution-1-dry-run/run.log"
+printf '0\n' > "$RUNS/20261104T231939Z-release-orchestrator-execution-1-dry-run/step1-build.rc"
+lanes=$(RUN_RECORD_DIR="$RUNS" machines lanes)
+lane_line() { printf '%s\n' "$lanes" | awk -v lane="$1" '$1 == lane { print $2, $3 }'; }
+F=20261103T231939Z-release-orchestrator-execution-1-version-16.6.2
+check "lanes: the build, the auth file and the full set from the PART lines (a dry run's folder ignored)" same \
+  "30.0 $F|20.0 $F|600.0 $F" "$(lane_line build)|$(lane_line auth)|$(lane_line full-docker-server)"
+check "lanes: the Linux proof from its mark; the Windows Docker proof without its prepare (220 - 40 min)" same \
+  "50.0 $F|180.0 $F|40.0 $F" "$(lane_line linux-proof)|$(lane_line docker-proof)|$(lane_line prepare)"
+check "lanes: a red pack is not used, the 16.6.2 default stands" same "77.0 default" "$(lane_line pack | cut -d' ' -f1,2)"
+empty_runs="$SCRATCH/no-runs"; mkdir -p "$empty_runs"
+schedule() {  # schedule <N> <M> <full target>: the library's schedule, as the orchestrator calls it
+  RUN_RECORD_DIR="$empty_runs" bash -c '. "$1"; machines_load && machines_schedule "$2" "$3" "$4"' _ "$MACHINES" "$@" 2>&1
+}
+settings_example
+out=$(schedule 4 4 docker-server)
+check "schedule 4 4: each VM runs its layout, the prepare before its first e2e lane" same \
+  "VM a pack|VM a robot|VM b prepare|VM b server-light|VM c prepare|VM c electron-light|VM d prepare|VM d docker-proof" \
+  "$(printf '%s\n' "$out" | awk '$1 == "VM" { print $1, $2, $3 }' | paste -sd'|')"
+check "schedule 4 4: the server light set waits for the pack (on another VM)" has \
+  "VM b   server-light                    1:17 ->  3:16   119 min  (waits for the pack's datapallas-server.zip)" "$out"
+check "schedule 4 4: four subsets and step 2's server, about 4 h 50, the memory needed" bash -c \
+  'grep -c "e2e full ./4 (instance" <<< "$1" | grep -qx 4 && grep -qF "TOTAL     about 4 h 50 (the last part to end: VM d docker-proof)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
+settings_example "RELEASE_STEPS=in-order"
+out=$(schedule 1 1 docker-server)
+check "schedule in-order: step 1 first, the VM after it, about 21 h 20 on the 16.6.2 defaults" bash -c \
+  'grep -qF "VM a   pack                           11:14 -> 12:31" <<< "$1" && grep -qF "TOTAL     about 21 h 20 (the last part to end: VM a robot)" <<< "$1"' _ "$out"
+
+# ---- 5. the orchestrator ----
+# dry_run <name> [VAR=value...]: an orchestrator dry run on scratch folders (no release record: step 1 runs every lane)
+dry_run() {
+  local name="$1" dir="$SCRATCH/$1"; shift
+  mkdir -p "$dir/logs" "$dir/state" "$dir/artifacts"
+  env LOG_DIR="$dir/logs" RUN_RECORD_DIR="$dir/runs" RELEASE_STATE_DIR="$dir/state" RELEASE_ARTIFACTS_DIR="$dir/artifacts" \
+    WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts" \
+    ORCH_STARTED_BY=test-machines-file DRY_RUN=yes "$@" bash "$ORCHESTRATOR" > "$dir/console.log" 2>&1
+  echo "$?" > "$dir/rc"
+}
+settings "RELEASE_STEPS=in-order"
+dry_run in-order
+console="$SCRATCH/in-order/console.log"
+# the parts in the order they started: step 1's on this host, then the two tracks of the execution
+starts() { sed -n 's/^PART    \([^ ]*\) START .*/\1/p' "$1" | paste -sd' '; }
+ends_before_start() {  # ends_before_start <log> <part> <later part>: <part> ended before <later part> started
+  local end start
+  end=$(grep -n "^PART    $2 END" "$1" | cut -d: -f1); start=$(grep -n "^PART    $3 START" "$1" | cut -d: -f1)
+  [ -n "$end" ] && [ -n "$start" ] && [ "$end" -lt "$start" ] || { echo "      $2 ends at line ${end:-none}, $3 starts at line ${start:-none}"; return 1; }
+}
+in_order() {
+  local log="$1" s1 full
+  full=$(sed -n 's/^PART    lane1-\([a-z-]*\)-full START.*/\1/p' "$log")
+  s1="step1-build lane2-docker-server-auth lane1-$full-full"
+  same 0 "$(cat "$SCRATCH/in-order/rc")" &&
+    same "$s1" "$(starts "$log" | cut -d' ' -f1-3)" &&
+    ends_before_start "$log" "lane1-$full-full" windows-pack && ends_before_start "$log" "lane1-$full-full" docker-linux &&
+    ends_before_start "$log" docker-linux docker-windows && ends_before_start "$log" windows-pack docker-windows &&
+    ends_before_start "$log" docker-windows windows-after-pack && ends_before_start "$log" docker-windows docker-keep &&
+    same "step0 build linux-proof pack windows-docker-proof server-light electron-light robot docker-verdict windows-verdict" \
+      "$(sed -n '/^SUMMARY /,/^FLAKY/p' "$log" | awk '$1 != "SUMMARY" && $1 != "FLAKY" && $1 !~ /^(step1|lane)/ { print $1 }' | paste -sd' ' | sed 's/^/step0 /; s/^step0 step0/step0/')"
+}
+check "RELEASE_STEPS=in-order: 16.6.2's dry-run order (step 1's lanes, then the host and VM tracks as before, the same summary)" in_order "$console"
+check "RELEASE_STEPS=in-order: 16.6.2's ORDER lines" same \
+"        execution  host: build + linux-proof (step 2, DOCKER_RELEASE_PART=linux), then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended
+                   VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),
+                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict
+                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once" "$(grep -A3 '^        execution  host:' "$console")"
+check "a dry run prints the schedule, each part with its expected time" bash -c \
+  'grep -q "^SCHEDULE  steps in-order;" "$1" && grep -qE "^  VM a   robot +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +41 min" "$1" && grep -q "^TOTAL     about " "$1"' _ "$console"
+rm -f "$RELEASE_REHEARSAL_CONF"
+dry_run refused USE_N_NUMBER_OF_WINDOWS_VMS=2
+check "the orchestrator, 2 VMs asked and only VM a: refused before anything starts (exit 2, no run folder)" bash -c \
+  '[ "$(cat "$1/rc")" = 2 ] && grep -qF "REFUSED: the machines file ($2) does not allow N=1 M=2 (above). Nothing done" "$1/console.log" && [ ! -d "$1/runs" ]' \
+  _ "$SCRATCH/refused" "$RELEASE_REHEARSAL_CONF"
+
+echo "$([ "$FAILED_CASES" = 0 ] && echo "ALL PASS" || echo "$FAILED_CASES FAILED") test-machines-file"
+[ "$FAILED_CASES" = 0 ]

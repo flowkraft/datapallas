@@ -2,7 +2,7 @@
 # The release round: one press takes a version to "ready to upload". release-orchestrator.sh runs the steps (step 0, step 1's
 # lanes, steps 2 and 3 on one commit); a red run leads to a fix round by rule, then the round runs again from the start.
 # Called by the Jenkins job dp-ci-release-steps-0-3-rehearsal; a person or an AI coordinator runs the same from a shell, the
-# job's five parameters being environment variables with the same names and defaults.
+# job's parameters being environment variables with the same names and defaults.
 #
 # SUBCOMMANDS
 #   start      the checks, then the round starts detached and this returns (exit 5, running). Refused, nothing started
@@ -51,6 +51,15 @@
 #                              and the preflights get DRY_RUN=yes: nothing runs, builds, records or uploads
 #     E2E_APPROVAL [empty]     the owner's written decision to go on without step 1's lanes, passed to every run of the round
 #                              (with E2E_APPROVAL_USER); held by the round's process only, never written in a file
+#   Advanced (Parallelization): 1 to 4 each; the machines they use come from the settings file (below)
+#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many subsets, each on its own host
+#                                                             test server
+#     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs, each running the
+#                                                             lanes of the layout for that many VMs
+#     Checked before anything starts (asbl/ci/release-machines.sh check <N> <M>): the machines file's rules, enough VMs
+#     named, the layout's rules; a real round also what the host must have now (check <N> <M> --press): each added VM's
+#     settings file, each VM in libvirt, the memory rule with the host's available memory, /var's free disk. Refused: exit 2,
+#     one REFUSED line per broken rule, with its numbers
 #   Not parameters: ROUND_STARTED_BY, who starts it (required; the job reads it from the build's cause); MODE and UPLOAD
 #   (always a rehearsal with no upload); the retries (always 1); the test switches.
 #
@@ -68,14 +77,17 @@
 # THE SETTINGS FILE  RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf]: this host's, not in the repo, root's (the user
 #   running this), mode 600 or 400, read as shell: RELEASE_FIXER="<command>" (the fix round's agent: below) and
 #   DRY_RUN_RED="<parts>" (a dry round only: the orchestrator's parts that come out red, to try the red paths). Missing = no
-#   fixer, no red parts. 16.6.3 adds the machines here.
+#   fixer, no red parts. The machines of a round are there too: RELEASE_STEPS, RELEASE_SERVER_GB, RELEASE_WINDOWS_VMS,
+#   WIN_VM_MEMORY_GB, RELEASE_MIN_FREE_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
+#   default, in asbl/ci/release-layout.example.conf; read by asbl/ci/release-machines.sh).
 # THE FIXER (RELEASE_FIXER, outside the public repo: devops-gitops bkend-infra/scripts/jenkins/release-fixer.sh)
 #   <fixer> start <run folder> <fix round n>   prints FIX_RUN=<name> and FIX_PLAN=<the fix round's plan>
 #   <fixer> status <name>                      prints FIX_STATUS=RUNNING|DONE|BLOCKED|STOPPED <the plan's status line>
 #   <fixer> stop <name>
 #   Each gets DRY_RUN (yes in a dry round: it starts no agent).
 # THE ROUND FOLDER  <LOG_DIR>/release-rounds/<UTC>-release-<version or "current">/
-#   round.state  key=value: state, why, version, on_failures, pin, run, run_<n> (each run's folder), result, fix_round,
+#   round.state  key=value: state, why, version, on_failures, jobs, vms (the Advanced values), pin, run, run_<n> (each
+#                run's folder), result, fix_round,
 #                fix_run, fix_plan, automatic_reruns, dry_run, approval (given|none), started_by, started, updated, driver_pid
 #   round.log    the console: the round's lines (ROUND ...) and each run's orchestrator console
 #   proceed      written by proceed, taken by the waiting round
@@ -107,6 +119,9 @@ ROUND_RELEASE_PUBLISH="${ROUND_RELEASE_PUBLISH:-bash asbl/ci/release-publish.sh}
 ROUND_SCHEDULED_E2E="${ROUND_SCHEDULED_E2E:-bash asbl/ci/jenkins/scheduled-e2e.sh}"
 SCHEDULED_E2E_PID="$LOG_DIR/scheduled-e2e.pid"   # the scheduled job's run, while it lasts (asbl/ci/jenkins/scheduled-e2e.sh)
 ROUND_POLL="${ROUND_POLL:-30}"
+FULL_SET_JOBS="${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-1}"   # Advanced (Parallelization), see THE PARAMETERS
+WINDOWS_VMS_USED="${USE_N_NUMBER_OF_WINDOWS_VMS:-1}"
+. asbl/ci/release-machines.sh
 MAX_AUTOMATIC_RERUNS=2   # owner, 2026-10-30: at most two re-runs without a review
 UNREADABLE_FIX_STATUS_LIMIT=20   # that many looks in a row with no FIX_STATUS line: the fix round is BLOCKED, it waits for a person
 SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
@@ -217,6 +232,7 @@ run_once() {
   (
     export ORCH_STARTED_BY="release round $(basename "$dir"), started by $ROUND_STARTED_BY" EXECUTION="$execution" \
       RELEASE_VERSION="$version" RELEASE_PIN="$pin" MODE=rehearsal UPLOAD=no DRY_RUN="$ROUND_DRY_RUN" \
+      SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS="$FULL_SET_JOBS" USE_N_NUMBER_OF_WINDOWS_VMS="$WINDOWS_VMS_USED" \
       DRY_RUN_RED="$([ "$ROUND_DRY_RUN" = yes ] && printf '%s' "$SETTINGS_DRY_RUN_RED")" E2E_APPROVAL="$E2E_APPROVAL" \
       E2E_APPROVAL_USER="$([ -n "$E2E_APPROVAL" ] && printf '%s' "${E2E_APPROVAL_USER:-$ROUND_STARTED_BY}")"
     exec $ROUND_ORCHESTRATOR < /dev/null 9>&-
@@ -343,6 +359,9 @@ start_round() {
   [ -n "$who" ] || refuse "MISSING ROUND_STARTED_BY: who starts this round (your name, the agent's)"
   out=$(read_settings) || refuse "$out"
   read_settings
+  # the machines file's rules for the chosen Advanced values, before anything is stopped or started
+  out=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS_USED") ||
+    { printf '%s\n' "$out"; refuse "the machines file does not allow N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED (above: bash asbl/ci/release-machines.sh check $FULL_SET_JOBS $WINDOWS_VMS_USED)"; }
   # a release press goes before a scheduled run: stop it, then ask whether the CI is free
   pid=$(cat "$SCHEDULED_E2E_PID" 2>/dev/null)
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
@@ -351,6 +370,13 @@ start_round() {
     for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 2; done
   fi
   out=$(busy_reason); [ -z "$out" ] || refuse "the CI is busy: $out"
+  # a real round's memory and disk, with the CI free: the memory rule against the host's available memory now (a dry round
+  # starts no server and no VM)
+  if [ "$ROUND_DRY_RUN" = no ]; then
+    out=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS_USED" --press) ||
+      { printf '%s\n' "$out"; refuse "the host cannot hold N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED now (above: bash asbl/ci/release-machines.sh check $FULL_SET_JOBS $WINDOWS_VMS_USED --press)"; }
+    printf '%s\n' "$out"
+  fi
   version="$RELEASE_VERSION"
   [ -n "$version" ] || version=$(git show "origin/main:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+')
   ! both_channels_released "$version" || refuse "$version is public on both channels already (release-state.sh released): give the next version in RELEASE_VERSION"
@@ -363,11 +389,13 @@ start_round() {
   dir="$ROUNDS_DIR/$(date -u +%Y%m%dT%H%M%SZ)-release-${RELEASE_VERSION:-current}"
   mkdir -p "$dir" || refuse "cannot make $dir"
   : > "$dir/round.log"
-  state_set "$dir" state=running run=0 version="$version" on_failures="$ON_FAILURES" pin="$RELEASE_PIN" dry_run="$ROUND_DRY_RUN" \
+  state_set "$dir" state=running run=0 version="$version" on_failures="$ON_FAILURES" jobs="$FULL_SET_JOBS" vms="$WINDOWS_VMS_USED" \
+    pin="$RELEASE_PIN" dry_run="$ROUND_DRY_RUN" \
     approval="$([ -n "$E2E_APPROVAL" ] && echo given || echo none)" started_by="$who" started="$(now)" automatic_reruns=0 \
     why="starting" fixer="${RELEASE_FIXER:-none}"
-  { say "STARTED by $who: version ${RELEASE_VERSION:-$version (no step 0)}, ON_FAILURES=$ON_FAILURES, DRY_RUN=$ROUND_DRY_RUN${RELEASE_PIN:+, RELEASE_PIN=$RELEASE_PIN}$([ -n "$E2E_APPROVAL" ] && echo ', E2E_APPROVAL given'), fixer: ${RELEASE_FIXER:-none set (report only)}"; } >> "$dir/round.log"
-  export RELEASE_VERSION RELEASE_PIN ON_FAILURES E2E_APPROVAL ROUND_STARTED_BY="$who" DRY_RUN="$ROUND_DRY_RUN"
+  { say "STARTED by $who: version ${RELEASE_VERSION:-$version (no step 0)}, ON_FAILURES=$ON_FAILURES, DRY_RUN=$ROUND_DRY_RUN${RELEASE_PIN:+, RELEASE_PIN=$RELEASE_PIN}$([ -n "$E2E_APPROVAL" ] && echo ', E2E_APPROVAL given'), fixer: ${RELEASE_FIXER:-none set (report only)}, Advanced N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED"; } >> "$dir/round.log"
+  export RELEASE_VERSION RELEASE_PIN ON_FAILURES E2E_APPROVAL ROUND_STARTED_BY="$who" DRY_RUN="$ROUND_DRY_RUN" \
+    SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS="$FULL_SET_JOBS" USE_N_NUMBER_OF_WINDOWS_VMS="$WINDOWS_VMS_USED"
   setsid nohup bash "$0" __drive "$dir" > /dev/null 2>&1 < /dev/null &
   exec 9>&-
   echo "STARTED the release round $dir (its process $!): follow it with  bash asbl/ci/jenkins/release-rehearsal.sh follow"

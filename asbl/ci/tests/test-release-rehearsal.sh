@@ -7,7 +7,8 @@
 #   already public (refused, nothing started); the dev servers' dp-ci.sh --inside (not busy); red with report-only; red,
 #   review, proceed, then green; red three times with fix-prove-then-rerun-automatically; a BLOCKED fix round; stop in
 #   each state; status's one line in each state; help; what a start passes the orchestrator (a press does the same); what
-#   the Jenkins job shows: label, review and reports.
+#   the Jenkins job shows: label, review and reports; the machines file's check at a start (asbl/ci/release-machines.sh:
+#   too many VMs, too little memory, refused; the Advanced values passed on).
 # Every folder is a scratch one: no live folder is touched, nothing real is started. Takes about 70 seconds.
 # Callers: a person or an agent, from the shell, after changing the round.
 #   bash asbl/ci/tests/test-release-rehearsal.sh
@@ -54,6 +55,7 @@ echo $$ > "$STUB/orchestrator.pid"
 approval=none; [ -n "${E2E_APPROVAL:-}" ] && approval="given:${E2E_APPROVAL_USER:-}"
 echo "run=$n EXECUTION=${EXECUTION:-} RELEASE_VERSION=${RELEASE_VERSION:-} RELEASE_PIN=${RELEASE_PIN:-} MODE=${MODE:-} UPLOAD=${UPLOAD:-} DRY_RUN=${DRY_RUN:-} DRY_RUN_RED=${DRY_RUN_RED:-} approval=$approval started_by=${ORCH_STARTED_BY:-}" >> "$STUB/orchestrator-calls"
 tr '\0' ' ' < /proc/$$/cmdline >> "$STUB/orchestrator-cmdlines"; echo >> "$STUB/orchestrator-cmdlines"
+echo "N=${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-} M=${USE_N_NUMBER_OF_WINDOWS_VMS:-}" >> "$STUB/advanced-calls"
 folder="$STUB/runs/run-$n"; mkdir -p "$folder"
 echo "PARTS   one log per part in $folder"
 sleep "$(cat "$STUB/orchestrator-sleep" 2>/dev/null || echo 0)"
@@ -109,6 +111,13 @@ export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
 export ROUND_ORCHESTRATOR="bash $STUB/orchestrator" ROUND_RELEASE_STATE="bash $STUB/release-state"
 export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E="bash $STUB/scheduled-e2e" ROUND_POLL=1
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL E2E_APPROVAL_USER
+unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
+# the machines check of a start (asbl/ci/release-machines.sh) on stand-ins: VM a's settings file, the host's memory
+# (64 GB available) and virsh (every VM running); /var's free disk is this host's
+export WIN_CI_CONF="$STUB/win-ci.env" RELEASE_MEMINFO="$STUB/meminfo"; : > "$WIN_CI_CONF"
+available_memory_gb() { printf 'MemAvailable:   %s kB\n' $(($1 * 1048576)) > "$RELEASE_MEMINFO"; }
+available_memory_gb 64
+printf '#!/bin/bash\n# stub virsh: every VM is running\necho running\n' > "$STUB/bin/virsh"; chmod +x "$STUB/bin/virsh"
 
 settings() {  # settings <fixer|none> [<DRY_RUN_RED>]: the settings file, root-only
   { [ "$1" = none ] || echo "RELEASE_FIXER=\"bash $STUB/fixer\""; echo "DRY_RUN_RED=\"${2:-}\""; } > "$RELEASE_REHEARSAL_CONF"
@@ -220,6 +229,27 @@ fresh green
 chmod 644 "$RELEASE_REHEARSAL_CONF"
 out=$(start); rc=$?
 check "a settings file others can read: refused, exit 2, nothing started" refused_nothing_started "MISSING a settings file only its owner reads" "$out" "$rc"
+
+# ---- the machines file's check: refused before anything is stopped or started; the values passed on ----
+fresh green
+out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2; start); rc=$?
+check "2 VMs asked, only VM a in the machines file: refused, exit 2, nothing started" \
+  refused_nothing_started "the machines file does not allow N=1 M=2" "$out" "$rc"
+check "2 VMs asked: the broken rule said, with its numbers" has "USE_N_NUMBER_OF_WINDOWS_VMS=2, but RELEASE_WINDOWS_VMS has 1 VM(s) (a)" "$out"
+fresh green; available_memory_gb 20
+out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2; start); rc=$?
+check "N=2 with 20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=2 M=1 now" "$out" "$rc"
+check "N=2 with 20 GB available: the memory rule's numbers said" \
+  has "needs 15 GB (3 host test servers x 5 GB), 20 GB are available now: 5 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
+fresh green
+out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2 DRY_RUN=yes; start); rc=$?; follow > /dev/null
+check "N=2 with 20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"
+available_memory_gb 64
+fresh green
+out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=3; start); rc=$?; follow > /dev/null
+check "N=3 with 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=3 vms=1 (a), memory: needs 20 GB of 64 GB available" "$out"
+check "N=3: the orchestrator gets the Advanced values" same "N=3 M=1" "$(cat "$STUB/advanced-calls")"
+check "N=3: the round's state keeps them" has "jobs=3" "$(cat "$LOG_DIR"/release-rounds/*/round.state)"
 
 # ---- a scheduled run is stopped first ----
 fresh green; sleeper; echo "$SLEEPER" > "$LOG_DIR/scheduled-e2e.pid"
