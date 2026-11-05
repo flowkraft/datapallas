@@ -12,6 +12,14 @@
 #           proof), step 1's lanes 2 and 1 (a lane that needs the build NOT RUN when the build is red), then step 2's keep
 #           part once the Windows Docker proof ended
 #     VM    as in 4. below: the pack, the Windows Docker proof once the build ended, the server light set, Electron, Robot
+#     VMs   with USE_N_NUMBER_OF_WINDOWS_VMS=M above 1, one track per VM instead: each VM runs its lanes of the layout for M
+#           VMs (VM_LANES_<M>_<name>, asbl/ci/release-machines.sh), in order, each when its inputs exist: the Windows Docker
+#           proof once the build ended, the server light set once the pack ended (it installs its datapallas-server.zip),
+#           Robot after the pack on the pack's VM. Each VM whose lanes test on its e2e package prepares it once per pin
+#           (win-e2e.sh prepare): at its start, or right after the pack on the pack's VM (seconds: a green pack stamps its
+#           own package); a red prepare stops none of its lanes: each prepares the package itself first, as when pressed
+#           alone. Each lane alone (WIN_RELEASE_HALF=<lane>); once every lane ended, step 3's verdict on the pack's VM
+#           (WIN_RELEASE_HALF=verdict)
 #   Step 1 is not asked before steps 2 and 3: their parts get RELEASE_STEP1_AT_SIGNOFF=yes, which release-state.sh
 #   step1-guard honours inside this run only, and the sign-off asks it at the end (release-state.sh step1-guard): not green
 #   = the run is red. Every lane runs whatever the release record says (no verdict carried: a run after fixes starts from
@@ -49,7 +57,8 @@
 # read there:
 #   run.log            this console
 #   <id>.log, <id>.rc  one per part started (step0, step1-build, lane*, docker-linux, docker-windows, docker-keep,
-#                      windows-pack, windows-after-pack): its output and its exit code ("-" = not run)
+#                      windows-pack, windows-after-pack; with more VMs windows-prepare-<vm>, windows-server-light,
+#                      windows-electron-light, windows-robot, windows-verdict): its output and its exit code ("-" = not run)
 #   result.txt         written at every end: key=value lines, then one tab-separated line per part of the summary
 #                        result=green|red  dry_run=yes|no  execution=1|2  version=<x.y.z>  pin=<commit>
 #                        kept=<the kept folder of the pin, or empty>  step1=green|red|not-run  summary=<run.log>
@@ -100,11 +109,13 @@
 #   THE VMS (release-machines.sh, A ROUND'S VMS): before anything starts, each VM the parts use gets WIN_VM_MEMORY_GB
 #   (--config) when its definition differs; before its first part, a VM that is off is started and waited for (its
 #   started.txt line: part vm-<name>, kind domain), else its parts are red ("VM <name> did not start"); after its last
-#   part, a VM this run started is shut down (<PARTS>/vm-<name>.rc then); a running VM is left running. VM a (win10-dev)
-#   runs every Windows part. A dry run asks virsh only what is (domstate, dumpxml) and says what it would do;
+#   part, a VM this run started is shut down (<PARTS>/vm-<name>.rc then); a running VM is left running. With one VM, VM a
+#   (win10-dev) runs every Windows part; with M, the first M of RELEASE_WINDOWS_VMS, each its lanes (HOW, VMs). A dry run
+#   asks virsh only what is (domstate, dumpxml) and says what it would do;
 #   DRY_RUN_RED=vm-<name> makes an off VM not start.
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
-#   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict.
+#   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict;
+#   with more VMs also prepare-<name>, a VM's e2e package.
 #
 # USE:
 #   ORCH_STARTED_BY=<name> DRY_RUN=yes bash asbl/ci/jenkins/release-orchestrator.sh
@@ -164,17 +175,23 @@ MEMORY_EVERY="${MEMORY_EVERY:-300}"
 # what_part_starts <part>: the things that part starts and that outlive a stop of this script, one "<kind> TAB <name> TAB
 # <what>" line each (the kinds of started.txt); a part that starts nothing outside this script's processes prints nothing
 what_part_starts() {
-  local run_container bundle windows_driver
+  local run_container bundle windows_driver vm=a
   run_container=$(printf 'container\tdp-ci\tthe run container of dp-ci.sh')
   bundle=$(printf 'compose\t%s\tthe docker-server bundle under test' "$DOCKER_SERVER_BUNDLE")
   windows_driver=$(printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh' "$WIN_PID")
+  case "$1" in docker-windows|windows-*)   # the part's VM: its driver's pid file and its scheduled tasks (VM a: windows-vm)
+    vm=$(vm_of_part "$1")
+    windows_driver=$(printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh' "$(win_vm_pidfile "$vm")") ;;
+  esac
   case "$1" in
     step1-build|lane1-web-full) echo "$run_container" ;;
     lane1-docker-server-full|lane2-docker-server-auth) printf '%s\n' "$run_container" "$bundle" ;;
     docker-linux) printf '%s\n' "$run_container" "$bundle" \
       "$(printf 'container\tdp-ci-one-command\tthe image alone, run as the self-host page says (dp-ci.sh docker_one_command)')" ;;
-    docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win docker-e2e')" ;;
-    windows-pack|windows-after-pack) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win release')" ;;
+    docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win docker-e2e' "$(win_vm_suffix "$vm")")" ;;
+    windows-pack|windows-after-pack|windows-server-light|windows-electron-light|windows-robot|windows-verdict)
+      printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win release' "$(win_vm_suffix "$vm")")" ;;
+    windows-prepare-*) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win prepare' "$(win_vm_suffix "$vm")")" ;;
     vm-*) printf 'domain\t%s\tthe Windows VM %s, started by this run (virsh start): shut down after its last part\n' \
       "$(machines_domain_of "${1#vm-}")" "${1#vm-}" ;;
   esac
@@ -306,7 +323,44 @@ POLL=$([ "$DRY" = yes ] && echo 1 || echo 30)
 export MODE=rehearsal UPLOAD=no DRY_RUN=no
 echo "INPUTS  execution=$EXECUTION version=${VERSION:-none (no step 0)} mode=rehearsal upload=no dry_run=$DRY${RED:+ dry_run_red=$RED} approval=$([ -n "${E2E_APPROVAL:-}" ] && echo "given in the environment, passed on to the guards" || echo none)"
 echo "PARTS   one log per part in $PARTS"
-RUN_VMS=a   # the VMs this run's parts use: VM a runs every Windows part (THE VMS, above)
+RUN_VMS=$(machines_vms_for "$WINDOWS_VMS_USED")   # the VMs this run's parts use (THE VMS, above): VM a alone with one VM
+# vm_of_lane <lane>: the VM that runs that lane in this run's layout (VM a with one VM)
+vm_of_lane() {
+  local v l
+  for v in $RUN_VMS; do for l in $(machines_lanes_of "$WINDOWS_VMS_USED" "$v"); do [ "$l" = "$1" ] && { echo "$v"; return; }; done; done
+  echo a
+}
+# vm_of_part <part>: the VM a Windows part runs on
+vm_of_part() {
+  case "$1" in
+    windows-prepare-*) echo "${1#windows-prepare-}" ;;
+    windows-pack|windows-verdict) vm_of_lane pack ;;
+    docker-windows) vm_of_lane docker-proof ;;
+    windows-server-light|windows-electron-light|windows-robot) vm_of_lane "${1#windows-}" ;;
+    *) echo a ;;
+  esac
+}
+PACK_VM=$(vm_of_lane pack)
+# vm_needs_package <vm>: a lane of that VM tests on the VM's e2e package (the light sets, the Windows Docker proof)
+vm_needs_package() {
+  local l
+  for l in $(machines_lanes_of "$WINDOWS_VMS_USED" "$1"); do case "$l" in docker-proof|server-light|electron-light) return 0 ;; esac; done
+  return 1
+}
+# vm_order <vm>: its parts in order, as the ORDER line says them (more VMs)
+vm_order() {
+  local l out=""
+  [ "$1" = "$PACK_VM" ] || ! vm_needs_package "$1" || out="prepare (its e2e package, once per pin), "
+  for l in $(machines_lanes_of "$WINDOWS_VMS_USED" "$1"); do
+    case "$l" in
+      pack) out="${out}pack (WIN_RELEASE_HALF=pack), "; ! vm_needs_package "$1" || out="${out}prepare (right after the pack: seconds, the pack stamps its package), " ;;
+      docker-proof) out="${out}windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows), " ;;
+      server-light) out="${out}server-light once the pack ended (on its datapallas-server.zip, kept), " ;;
+      *) out="${out}$l, " ;;
+    esac
+  done
+  printf '%s' "${out%, }"
+}
 for vm in $RUN_VMS; do machines_vm_memory_set "$vm" "$([ "$DRY" = yes ] && echo dry)"; done
 start_memory_sampler
 
@@ -356,7 +410,9 @@ simulate() {
       echo "######## DOCKER RELEASE STEP 1/6 START  (dry run)"
       simulated_mark "DOCKER RELEASE STEP 2/6" build || return 1
       simulated_mark "DOCKER RELEASE STEP 3/6" linux-proof ;;
-    windows-pack) simulated_mark "RELEASE STEP 1/5" pack ;;
+    windows-pack)
+      echo "RELEASE_ARTIFACTS=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/${VERSION:-<version>}-${PIN:0:8} (dry run: the folder this half would begin)"
+      simulated_mark "RELEASE STEP 1/5" pack ;;
     docker-windows) simulated_mark "DOCKER RELEASE STEP 4/6" windows-docker-proof ;;
     windows-after-pack)
       # the parts that install the pack's files need it kept: the server light set its datapallas-server.zip, Robot all three
@@ -373,6 +429,29 @@ simulate() {
       echo "######## RELEASE STEP 4/5 END rc=$r  (dry run)"
       for p in pack windows-verdict; do red_in_dry_run "$p" && any=1; done
       [ "$r" = 0 ] && [ "$any" = 0 ] && echo "RELEASE_RESULT dry run: rehearsal=PASS" && return 0
+      echo "RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
+    windows-prepare-*)
+      echo "dry run: VM ${1#windows-prepare-}'s e2e package: pack-prepare-for-e2e.bat only when its stamp is not ${PIN:0:8}"
+      red_in_dry_run "${1#windows-}" && { echo "FAILED: ${1#windows-} red (DRY_RUN_RED)"; return 1; }
+      return 0 ;;
+    # the lanes alone (more VMs): what the pack left is its part's exit code, whichever VM packed
+    windows-server-light)
+      echo "######## RELEASE STEP 2/5 START  (dry run)"
+      if [ "$(cat "$PARTS/windows-pack.rc" 2>/dev/null)" != 0 ]; then echo "not run: there is no kept pack (FAIL) whose datapallas-server.zip it would install"; r=1
+      elif red_in_dry_run server-light; then echo "FAILED: server-light red (DRY_RUN_RED)"; r=1; fi
+      echo "######## RELEASE STEP 2/5 END rc=$r  (dry run)"
+      return "$r" ;;
+    windows-electron-light) simulated_mark "RELEASE STEP 3/5" electron-light ;;
+    windows-robot)
+      echo "######## RELEASE STEP 4/5 START  (dry run)"
+      if [ "$(cat "$PARTS/windows-pack.rc" 2>/dev/null)" != 0 ]; then echo "not run: there is no pack (FAIL) to test"; r=1
+      elif red_in_dry_run robot; then echo "FAILED: robot red (DRY_RUN_RED)"; r=1; fi
+      echo "######## RELEASE STEP 4/5 END rc=$r  (dry run)"
+      return "$r" ;;
+    windows-verdict)
+      for p in windows-pack windows-server-light windows-electron-light windows-robot; do [ "$(cat "$PARTS/$p.rc" 2>/dev/null)" = 0 ] || any=1; done
+      red_in_dry_run windows-verdict && any=1
+      [ "$any" = 0 ] && echo "RELEASE_RESULT dry run: rehearsal=PASS" && return 0
       echo "RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
     docker-keep)
       for p in build linux-proof windows-docker-proof docker-verdict; do red_in_dry_run "$p" && any=1; done
@@ -637,9 +716,15 @@ echo "ORDER   steps 1, 2 and 3 together (RELEASE_STEPS=together), on two tracks:
 echo "        host, one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time):"
 echo "                   docker-linux (step 2's build, then its Linux proof, DOCKER_RELEASE_PART=linux), then step 1's$(for l in $needed; do printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done)"
 echo "                   then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
+if [ "$WINDOWS_VMS_USED" = 1 ]; then
 echo "        VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
 echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
 echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+else
+echo "        VMs, meanwhile, one track each, its lanes of the layout for $WINDOWS_VMS_USED VMs in order (one part at a time per VM):"
+for vm in $RUN_VMS; do echo "                   VM $vm: $(vm_order "$vm")"; done
+echo "                   then windows-verdict on VM $PACK_VM once every lane ended (WIN_RELEASE_HALF=verdict)"
+fi
 echo "        step 1 at the sign-off, after every part: steps 2 and 3 do not wait for it ($STEP1_SWITCH)"
 else
 echo "ORDER   step 1     host: ${needed:+step1-build (when a lane takes the build), }$(for l in step1.docker-server-auth "step1.$full-full"; do case " $needed " in *" $l "*) printf '%s, ' "$(lane_part "$l" | cut -d' ' -f1)" ;; esac; done)done"
@@ -764,8 +849,62 @@ track_vm() {
     env $STEP1_SWITCH WIN_RELEASE_HALF=after-pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
   vm_down a
 }
+# ---- more VMs: one track each, its lanes of the layout (HOW, VMs) ----
+# vm_prepare <vm>: its e2e package, once per pin (seconds when its stamp is the pin's already)
+vm_prepare() {
+  run_part "windows-prepare-$1" "VM $1's e2e package, once per pin (win-e2e.sh prepare: built only when its stamp is not ${PIN:0:8})" \
+    env WIN_VM="$1" FOLLOW_PIDFILE="$(win_vm_pidfile "$1")" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh prepare
+}
+lane_id() { case "$1" in pack) echo windows-pack ;; docker-proof) echo docker-windows ;; *) echo "windows-$1" ;; esac; }   # lane_id <lane>: its part
+# vm_lanes_track <vm>: that VM's lanes in order, each when its inputs exist; the VM shut down after them when this run
+# started it (the pack's VM after the verdict)
+vm_lanes_track() {
+  local v="$1" lane pidf
+  pidf=$(win_vm_pidfile "$v")
+  if ! vm_up "$v"; then
+    vm_red "$VM_WHY" $(for lane in $(machines_lanes_of "$WINDOWS_VMS_USED" "$v"); do lane_id "$lane"; done)
+    [ "$v" != "$(vm_of_lane docker-proof)" ] || touch "$PARTS/.docker-windows-done"
+    echo "$VM_WHY" > "$PARTS/.vm-$v-red"
+    [ "$v" = "$PACK_VM" ] || vm_down "$v"
+    return
+  fi
+  [ "$v" = "$PACK_VM" ] || ! vm_needs_package "$v" || vm_prepare "$v"
+  for lane in $(machines_lanes_of "$WINDOWS_VMS_USED" "$v"); do
+    case "$lane" in
+      pack)
+        run_part windows-pack "step 3's pack on VM $v, kept (WIN_RELEASE_HALF=pack)" env $STEP1_SWITCH WIN_VM="$v" WIN_RELEASE_HALF=pack FOLLOW_PIDFILE="$pidf" $WINDOWS
+        ! vm_needs_package "$v" || vm_prepare "$v" ;;
+      docker-proof)
+        until grep -aq '^######## DOCKER RELEASE STEP 2/6 END' "$PARTS/docker-linux.log" 2>/dev/null || [ -f "$PARTS/docker-linux.rc" ]; do sleep "$POLL"; done
+        if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
+          run_part docker-windows "step 2's Windows Docker proof on VM $v (DOCKER_RELEASE_PART=windows)" env $STEP1_SWITCH WIN_VM="$v" DOCKER_RELEASE_PART=windows $DOCKER
+        else not_run docker-windows "no build of ${PIN:0:8} to prove (the build is not green)"; fi
+        touch "$PARTS/.docker-windows-done" ;;
+      server-light|electron-light|robot)
+        # the server light set installs the pack's datapallas-server.zip: once the pack ended (Robot follows it on its VM);
+        # every lane records its part in the folder the pack's half begins (its step list emptied then): once it began
+        if [ "$lane" = server-light ]; then until [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done
+        else until grep -aq '^RELEASE_ARTIFACTS=' "$PARTS/windows-pack.log" 2>/dev/null || [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done; fi
+        run_part "windows-$lane" "step 3's $lane on VM $v (WIN_RELEASE_HALF=$lane)" env $STEP1_SWITCH WIN_VM="$v" WIN_RELEASE_HALF="$lane" FOLLOW_PIDFILE="$pidf" $WINDOWS ;;
+    esac
+  done
+  [ "$v" = "$PACK_VM" ] || vm_down "$v"
+}
+# track_vms: every VM's track at once; once every lane ended, step 3's verdict on the pack's VM, which is then shut down
+# when this run started it
+track_vms() {
+  local v pids=()
+  for v in $RUN_VMS; do vm_lanes_track "$v" & pids+=("$!"); done
+  wait "${pids[@]}"
+  if [ -f "$PARTS/.vm-$PACK_VM-red" ]; then vm_red "$(cat "$PARTS/.vm-$PACK_VM-red")" windows-verdict
+  else
+    run_part windows-verdict "step 3's verdict on VM $PACK_VM, every lane ended (WIN_RELEASE_HALF=verdict)" \
+      env $STEP1_SWITCH WIN_VM="$PACK_VM" WIN_RELEASE_HALF=verdict FOLLOW_PIDFILE="$(win_vm_pidfile "$PACK_VM")" $WINDOWS
+  fi
+  vm_down "$PACK_VM"
+}
 track_host & host_pid=$!
-track_vm & vm_pid=$!
+if [ "$WINDOWS_VMS_USED" = 1 ]; then track_vm & vm_pid=$!; else track_vms & vm_pid=$!; fi
 wait "$host_pid"; wait "$vm_pid"
 for vm in $RUN_VMS; do vm_down "$vm"; done   # a VM this run started whose track ended early
 if [ "$DRY" = yes ]; then
@@ -792,11 +931,14 @@ summarize build "$(build_verdict)" "$PARTS/docker-linux.log"
 summarize linux-proof "$(mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 3/6")" "$PARTS/docker-linux.log"
 summarize pack "$(mark_verdict "$PARTS/windows-pack.log" "$(mark_of_part pack)")" "$PARTS/windows-pack.log"
 summarize windows-docker-proof "$(mark_verdict "$PARTS/docker-windows.log" "$(mark_of_part windows-docker-proof)")" "$PARTS/docker-windows.log"
+# the Windows lanes' logs: one VM, the after-pack half's; more VMs, each lane's own, and the verdict's
+WIN_VERDICT_PART=$([ "$WINDOWS_VMS_USED" = 1 ] && echo windows-after-pack || echo windows-verdict)
 for part in server-light electron-light robot; do
-  summarize "$part" "$(mark_verdict "$PARTS/windows-after-pack.log" "$(mark_of_part "$part")")" "$PARTS/windows-after-pack.log"
+  lane_log="$PARTS/$([ "$WINDOWS_VMS_USED" = 1 ] && echo windows-after-pack || echo "windows-$part").log"
+  summarize "$part" "$(mark_verdict "$lane_log" "$(mark_of_part "$part")")" "$lane_log"
 done
 summarize docker-verdict "$(part_verdict docker-keep)" "$PARTS/docker-keep.log"
-summarize windows-verdict "$(part_verdict windows-after-pack)" "$PARTS/windows-after-pack.log"
+summarize windows-verdict "$(part_verdict "$WIN_VERDICT_PART")" "$PARTS/$WIN_VERDICT_PART.log"
 folder=$(kept_folder)
 if [ "$ALL_GREEN" = 0 ] && [ "$DRY" = no ] && [ -n "$folder" ]; then
   echo "THE FAILURES TO FIX (execution $EXECUTION, ${folder%/}):"

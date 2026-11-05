@@ -223,8 +223,9 @@ check "  about 12 h 10, the memory the memory rule counts" bash -c \
   'grep -qF "TOTAL     about 12 h 10 (the last part to end: host e2e full 4/4)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
 settings_example "RELEASE_STEPS=in-order"
 out=$(schedule 1 1 docker-server)
-check "schedule in-order: step 1 first, the VM after it, about 21 h 20 on the 16.6.2 defaults" bash -c \
-  'grep -qF "VM a   pack                           11:14 -> 12:31" <<< "$1" && grep -qF "TOTAL     about 21 h 20 (the last part to end: VM a robot)" <<< "$1"' _ "$out"
+check "schedule in-order: step 1 first, the VM after it, about 20 h 25 on the 16.6.2 defaults (no prepare after its green pack)" bash -c \
+  'grep -qF "VM a   pack                           11:14 -> 12:31" <<< "$1" && grep -qF "VM a   prepare                        12:31 -> 12:31     0 min  (kept by the green pack before it: seconds)" <<< "$1" &&
+   grep -qF "TOTAL     about 20 h 25 (the last part to end: VM a robot)" <<< "$1"' _ "$out"
 
 # ---- 5. the orchestrator ----
 # dry_run <name> [VAR=value...]: an orchestrator dry run on scratch folders (no release record: step 1 runs every lane)

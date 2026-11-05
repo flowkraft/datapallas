@@ -126,14 +126,21 @@ def lanes_of_run(folder):
         found["docker-proof"] = v - prep
         if prep > 5:
             found["prepare"] = prep
+    # one VM: the after-pack half's log; more VMs: each lane's own part (windows-<lane>.log) and each VM's prepare part
     after = read_text(os.path.join(folder, "windows-after-pack.log"))
     for lane, label in (("server-light", "RELEASE STEP 2/5"), ("electron-light", "RELEASE STEP 3/5"),
                         ("robot", "RELEASE STEP 4/5")):
-        v = mark_minutes(after, label)
+        log = after if mark_minutes(after, label) is not None else read_text(os.path.join(folder, "windows-%s.log" % lane))
+        v = mark_minutes(log, label)
         if v is not None:
-            prep = prepare_minutes(section(after, label))
+            prep = prepare_minutes(section(log, label))
             found[lane] = v - prep
             if prep > 5 and "prepare" not in found:
+                found["prepare"] = prep
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if "prepare" not in found and re.match(r"windows-prepare-[a-z0-9]+\.log$", name):
+            prep = prepare_minutes(read_text(os.path.join(folder, name)))
+            if prep > 5:   # a stamp of this commit already there takes seconds
                 found["prepare"] = prep
     return found
 
@@ -256,7 +263,8 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
             rows.append(("host", label, clock, clock + minutes, note))
             clock += minutes
         offset = 0.0
-    # the VMs: each runs its lanes in order, each when its inputs exist; the prepare before its first e2e lane
+    # the VMs: each runs its lanes in order, each when its inputs exist; the prepare before its first e2e lane, seconds
+    # after a green pack on the same VM (it stamps its NoExe package as the VM's e2e package)
     pack_vm = next((v for v in vms if "pack" in layouts[v]), vms[0])
     clock = {v: offset for v in vms}
     pack_end = None
@@ -277,8 +285,12 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
                     ready = max(ready, pack_end)
                 if lane in E2E_VM_LANES and not prepared[v]:
                     start = clock[v]
-                    rows.append(("VM " + v, "prepare", start, start + m["prepare"], "the VM's e2e package, once per pin"))
-                    clock[v] = start + m["prepare"]
+                    if v == pack_vm and pack_end is not None:
+                        minutes, note = 0, "kept by the green pack before it: seconds"
+                    else:
+                        minutes, note = m["prepare"], "the VM's e2e package, once per pin"
+                    rows.append(("VM " + v, "prepare", start, start + minutes, note))
+                    clock[v] = start + minutes
                     prepared[v] = True
                     ready = max(ready, clock[v])
                 end = ready + m[lane]
