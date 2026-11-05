@@ -770,13 +770,27 @@ else
   PIN=$(git rev-parse --verify -q "origin/main^{commit}") || { echo "FAIL  no origin/main"; finish 2; }
   why="origin/main at the start$([ "$DRY" = yes ] && echo ', as last fetched (a dry run fetches nothing)')"
 fi
+# The parts of an execution start in the same second on this one checkout, and the first thing each does is put it on the
+# pin (sync_host_repo in dp-ci.sh). When that is a real move, one part's git status reads the files the other part's merge
+# is writing and finds "local changes to tracked files": that part is red in seconds (16.6.3's first press, 2026-11-05: the
+# pack, 7 s in, while the build went on). So the move is made here, once, while no part exists: each part's own
+# sync_host_repo then finds the checkout on the pin and writes nothing. A checkout with local changes, or past the pin, is
+# left as it is: the parts' guard refuses it and says why, as before.
+put_checkout_on_pin() {
+  [ "$(git rev-parse HEAD)" != "$PIN" ] || return 0
+  [ -z "$(git status --porcelain --untracked-files=no)" ] || return 0
+  git merge -q --ff-only "$PIN" >/dev/null 2>&1
+  [ "$(git rev-parse HEAD)" != "$PIN" ] || echo "        this checkout moved forward to it, here, before any part starts"
+}
 export RELEASE_PIN="$PIN"
 echo "PIN     execution $EXECUTION on ${PIN:0:8} ($why): $(git log -1 --format='%s' "$PIN")"
 echo "        every part builds, packs and tests ${PIN:0:8}; main may move meanwhile"
 if [ "$DRY" = yes ]; then
   if [ "$(git rev-parse HEAD)" = "$PIN" ]; then echo "        this checkout is on it"
-  elif git merge-base --is-ancestor HEAD "$PIN"; then echo "        this checkout ($(git rev-parse --short HEAD)) would be moved forward to it by the first part"
+  elif git merge-base --is-ancestor HEAD "$PIN"; then echo "        this checkout ($(git rev-parse --short HEAD)) would be moved forward to it here, before any part starts"
   else echo "        this checkout ($(git rev-parse --short HEAD)) is past the pin or off its history: every real part would refuse it"; fi
+else
+  put_checkout_on_pin
 fi
 if [ "$EXECUTION" = 2 ]; then
   out=$(RERUN_COMMIT="$PIN" bash asbl/ci/release-rerun.sh show 2>&1); printf '%s\n' "$out"
