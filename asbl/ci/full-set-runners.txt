@@ -1,0 +1,99 @@
+# asbl/ci/full-set-runners.txt: STEP 1'S FULL SET IN 2, 3 OR 4 RUNNERS, each spec file whole in one runner.
+#
+# What it is: a release's step 1 may run its full set (the web lane, dp-ci.sh's full mode) split into N jobs, each in a
+# runner of its own (a Docker engine of its own, asbl/ci/e2e-runners.sh), N being the job's
+# SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS. With 1 (the default) runner 1 runs the whole full set: no list.
+# These are the layouts for 2, 3 and 4, split by area, so that each runner takes about the same time.
+# How it is read (asbl/ci/full-set-runners.py):
+#   1. Every line that is not blank or a comment is "<jobs> <runner> <spec file under frend/reporting/e2e/>", or
+#      "<jobs> <runner> the-rest".
+#   2. In each layout exactly one runner is "the rest": it runs its own files and every file of the full set that no
+#      other runner of the layout lists, so a new spec file always runs (in the rest) until someone places it.
+#   3. The full set is what dp-ci.sh's full mode selects at the checkout (its E2E_SPEC): every *.spec.ts but the auth
+#      file (auth-authorization-server, which runs on its own before) and the Electron-only file
+#      (let-me-update-migrate-configuration).
+# The check (full-set-runners.py check; refused, exit 2, naming the file): a file in two runners of a layout; a file
+# the full set leaves out (the auth file, the Electron-only file); the specs that use the test licence key (found by
+# reading the specs: they activate, check or deactivate it, and the licence server holds one seat for it) not all in
+# one runner. A listed file that no longer exists is a WARN only.
+# Times (test minutes on 16.6.2's web full set; 16.6.1's docker-server full set in brackets; full-set-runners.py times):
+#   4 jobs: 165 (160), 152 (155), 159 (148), 134 (132)   mean 152 (149)   the farthest 11.9% off
+#   3 jobs: 195 (190), 194 (196), 220 (209)              mean 203 (198)   8.2% off
+#   2 jobs: 299 (292), 310 (304)                         mean 304 (298)   2.0% off
+# Callers: release-step1.sh and the orchestrator (step 1 in N jobs) through full-set-runners.py pattern, which gives
+# each runner its E2E_RUNNER_FILES; a person or an agent, after moving a file:
+#   python3 asbl/ci/full-set-runners.py check
+#   python3 asbl/ci/full-set-runners.py files 4 2
+#   python3 asbl/ci/full-set-runners.py times 4 --report <a full set's -playwright.json>
+# Test: asbl/ci/tests/test-runner-lists.sh.
+
+# ---- 4 jobs ----
+# runner 1: the dashboards' demos and the explore use cases
+4 1 specs/features/canvas-dashboard-demos.spec.ts
+4 1 specs/features/explore-data-use-cases.spec.ts
+# runner 2: the canvas, the explore views, the AI Hub and the third-party apps, the cube modes
+4 2 specs/features/canvas-mechanics.spec.ts
+4 2 specs/features/canvas-dashboard-demos-low-code.spec.ts
+4 2 specs/features/explore-data-visualizations.spec.ts
+4 2 specs/features/apps-third-party.spec.ts
+4 2 specs/features/apps-ai-hub.spec.ts
+4 2 specs/features/explore-data-smart-defaults.spec.ts
+4 2 specs/areas/cube-modes-parity.spec.ts
+# runner 3: reporting, the connections, OLAP and the Grails and Next.js apps
+4 3 specs/features/reporting.spec.ts
+4 3 specs/areas/connections.spec.ts
+4 3 specs/features/analytics-olap.spec.ts
+4 3 specs/features/apps-grails-nextjs.spec.ts
+4 3 specs/features/apps-grails-nextjs-tabulator.spec.ts
+4 3 specs/features/apps-grails-nextjs-pivot.spec.ts
+4 3 specs/features/apps-grails-nextjs-charts.spec.ts
+4 3 specs/features/apps-grails-nextjs-dashboards.spec.ts
+# runner 4: every other file, apps-custom and the licence specs among them
+4 4 the-rest
+
+# ---- 3 jobs: runners 1, 2 and 3 of 4, the rest's files shared out by area and time; the licence specs in runner 3 ----
+3 1 specs/features/canvas-dashboard-demos.spec.ts
+3 1 specs/features/explore-data-use-cases.spec.ts
+3 1 specs/areas/dashboard-demos.spec.ts
+3 1 specs/features/reporting-dashboards.spec.ts
+3 2 specs/features/canvas-mechanics.spec.ts
+3 2 specs/features/canvas-dashboard-demos-low-code.spec.ts
+3 2 specs/features/explore-data-visualizations.spec.ts
+3 2 specs/features/apps-third-party.spec.ts
+3 2 specs/features/apps-ai-hub.spec.ts
+3 2 specs/features/explore-data-smart-defaults.spec.ts
+3 2 specs/areas/cube-modes-parity.spec.ts
+3 2 specs/features/apps-custom.spec.ts
+3 2 specs/features/apps-cms-wordpress.spec.ts
+3 2 specs/areas/cube-stories.spec.ts
+3 2 specs/areas/cubes-definitions.spec.ts
+3 2 specs/features/samples.spec.ts
+3 3 specs/features/reporting.spec.ts
+3 3 specs/areas/connections.spec.ts
+3 3 specs/features/analytics-olap.spec.ts
+3 3 specs/features/apps-grails-nextjs.spec.ts
+3 3 specs/features/apps-grails-nextjs-tabulator.spec.ts
+3 3 specs/features/apps-grails-nextjs-pivot.spec.ts
+3 3 specs/features/apps-grails-nextjs-charts.spec.ts
+3 3 specs/features/apps-grails-nextjs-dashboards.spec.ts
+3 3 the-rest
+
+# ---- 2 jobs: runners 1 and 4 of 4 together, 2 and 3 together ----
+2 1 specs/features/canvas-dashboard-demos.spec.ts
+2 1 specs/features/explore-data-use-cases.spec.ts
+2 1 the-rest
+2 2 specs/features/canvas-mechanics.spec.ts
+2 2 specs/features/canvas-dashboard-demos-low-code.spec.ts
+2 2 specs/features/explore-data-visualizations.spec.ts
+2 2 specs/features/apps-third-party.spec.ts
+2 2 specs/features/apps-ai-hub.spec.ts
+2 2 specs/features/explore-data-smart-defaults.spec.ts
+2 2 specs/areas/cube-modes-parity.spec.ts
+2 2 specs/features/reporting.spec.ts
+2 2 specs/areas/connections.spec.ts
+2 2 specs/features/analytics-olap.spec.ts
+2 2 specs/features/apps-grails-nextjs.spec.ts
+2 2 specs/features/apps-grails-nextjs-tabulator.spec.ts
+2 2 specs/features/apps-grails-nextjs-pivot.spec.ts
+2 2 specs/features/apps-grails-nextjs-charts.spec.ts
+2 2 specs/features/apps-grails-nextjs-dashboards.spec.ts
