@@ -1254,14 +1254,16 @@ APPS_ASSEMBLED_FROM="cms-webportal-playground bkend/reporting/src/main/external-
 
 # app_sources_key <commit> <folder>: one hash of what the app's images are built from at <commit>: its folder, the build
 # contexts its compose file names (the AI Hub's code-server: ../__devcontainer) and what the assembler copies into it;
-# "-" when one of them is not in <commit>
+# "-" when one of them is not in <commit>. The paths are sorted with LC_ALL=C, so every caller gets the same key: under
+# en_US.UTF-8 (Jenkins) sort ignores the underscores of _ai-hub and __devcontainer, under C (a shell, an agent) it does
+# not, and the AI Hub's key differed by caller; 16.6.2's Windows Docker proof then rebuilt its unchanged images (32 min)
 app_sources_key() {
   local commit=$1 folder=$2 path object key=""
   for path in $( { echo "$APPS_IN_REPO/$folder"
       git -C "$REPO" show "$commit:$APPS_IN_REPO/$folder/docker-compose.yml" 2>/dev/null |
         sed -nE "s/^\s*(context|build):\s*[\"']?([^\"' #]+).*/\2/p" |
         while read -r path; do echo "$APPS_IN_REPO/$(realpath -m --relative-to=/ "/$folder/$path")"; done
-      awk -v f="$folder" '$1 == f { print $2 }' <<< "$APPS_ASSEMBLED_FROM"; } | sort -u); do
+      awk -v f="$folder" '$1 == f { print $2 }' <<< "$APPS_ASSEMBLED_FROM"; } | LC_ALL=C sort -u); do
     object=$(git -C "$REPO" rev-parse --verify -q "$commit:$path") || { echo -; return; }
     key+="$path $object"$'\n'
   done
