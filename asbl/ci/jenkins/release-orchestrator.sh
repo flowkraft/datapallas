@@ -4,7 +4,19 @@
 # scripts it calls (release-set-version.sh, release-step1.sh, release-docker.sh, win-e2e.sh release), the ones the jobs run.
 # It replaces /root/pra2-chain.sh, outside the repo, which stays as it is.
 #
-# HOW, in order (execution 2: the same from 2, after the fixes):
+# HOW: two orders, as the machines file's RELEASE_STEPS says (asbl/ci/release-machines.sh).
+# TOGETHER, the default (release 16.6.3): 0., 2. and 5. as below; then steps 1, 2 and 3 start at once, on two tracks, every
+#   part to its end whatever the others say:
+#     host  one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time: the shipped compose
+#           files fix the container names, the ports and the network): step 2's linux part (the build, then the Linux
+#           proof), step 1's lanes 2 and 1 (a lane that needs the build NOT RUN when the build is red), then step 2's keep
+#           part once the Windows Docker proof ended
+#     VM    as in 4. below: the pack, the Windows Docker proof once the build ended, the server light set, Electron, Robot
+#   Step 1 is not asked before steps 2 and 3: their parts get RELEASE_STEP1_AT_SIGNOFF=yes, which release-state.sh
+#   step1-guard honours inside this run only, and the sign-off asks it at the end (release-state.sh step1-guard): not green
+#   = the run is red. Every lane runs whatever the release record says (no verdict carried: a run after fixes starts from
+#   scratch, step 1 included). The step jobs pressed alone, MODE=upload and MODE=public keep every check.
+# IN-ORDER (RELEASE_STEPS=in-order, 16.6.2's order, the off switch), in order (execution 2: the same from 2, after the fixes):
 #   0. who started it, first: STARTED_BY=<who>  <UTC time>  :: release orchestrator ... (asbl/ci/marks.sh run_record_begin);
 #      its folder <RUN_RECORD_DIR>/<UTC>-release-orchestrator-.../ holds run.log (this console) and one log per part;
 #   1. step 0, only when RELEASE_VERSION is given (execution 1): release-set-version.sh with DRY_RUN=yes, then for real;
@@ -266,6 +278,9 @@ WINDOWS_VMS_USED="${USE_N_NUMBER_OF_WINDOWS_VMS:-1}"
 machines_answer=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS_USED") ||
   { printf '%s\n' "$machines_answer"; echo "REFUSED: the machines file (${RELEASE_REHEARSAL_CONF:-/root/release-rehearsal.conf}) does not allow N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED (above). Nothing done"; exit 2; }
 machines_load
+STEPS="$RELEASE_STEPS"   # together or in-order (HOW, above)
+# the switch only this run gives its step 2 and step 3 parts: their step 1 guard skipped, step 1 asked at the sign-off
+STEP1_SWITCH=$([ "$STEPS" = together ] && echo RELEASE_STEP1_AT_SIGNOFF=yes)
 if [ "$DRY" = no ]; then
   # one start at a time: the lock lives as long as this run and the parts it started
   exec 9>>"$LOG_DIR/release-orchestrator.lock"
@@ -552,17 +567,27 @@ if [ "$EXECUTION" = 2 ]; then
 fi
 
 # ---- 3. step 1 ----
-mark_start "STEP 1" "the lanes a release needs, not green on ${PIN:0:8} yet: lanes 2 and 1, on this host"
+if [ "$STEPS" = together ]; then
+  mark_start "STEPS 1, 2 AND 3" "together on ${PIN:0:8}: host = step 2's build and Linux proof, step 1's lanes 2 and 1, step 2's keep, one at a time; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
+else
+  mark_start "STEP 1" "the lanes a release needs, not green on ${PIN:0:8} yet: lanes 2 and 1, on this host"
+fi
 full=$(RELEASE_COMMIT="$PIN" DRY_RUN=yes $STATE full-lane --choose 2>&1 | sed -n 's/^FULL_LANE=\([a-z-]*\) .*/\1/p' | head -1)
 [ -n "$full" ] || { echo "FAILED: this release's full lane cannot be read (release-state.sh full-lane --choose)"; full=unknown; }
 needed=""
 for lane in "step1.docker-server-auth" "step1.$full-full"; do
+  [ "$STEPS" = in-order ] || { needed="$needed $lane"; continue; }   # together: every lane, no verdict carried
   # (E2E_APPROVAL left out: with it, `require` would record an approval; the steps' guards take it, not this question)
   if out=$(E2E_APPROVAL="" RELEASE_COMMIT="$PIN" $STATE require "$lane" 2>&1); then
     echo "step 1  ${lane#step1.} is green for ${PIN:0:8} already: $(printf '%s\n' "$out" | tail -1)"
   else needed="$needed $lane"; fi
 done
-echo "step 1  to run:${needed:- nothing}; the Windows light sets are step 3's"
+if [ "$STEPS" = together ]; then
+  echo "step 1  to run:$needed, whatever the release record says (a run after fixes starts from scratch, step 1 included);"
+  echo "        checked at the sign-off, once every part ended; the Windows light sets are step 3's"
+else
+  echo "step 1  to run:${needed:- nothing}; the Windows light sets are step 3's"
+fi
 # lane_part <lane>: its part id and the release-step1.sh environment that runs it
 lane_part() {
   case "$1" in
@@ -590,22 +615,40 @@ step1_lanes() {
     case " $needed " in *" $lane "*) run_lane "$lane" ;; esac
   done
 }
+if [ "$STEPS" = together ]; then
+echo "ORDER   steps 1, 2 and 3 together (RELEASE_STEPS=together), on two tracks:"
+echo "        host, one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time):"
+echo "                   docker-linux (step 2's build, then its Linux proof, DOCKER_RELEASE_PART=linux), then step 1's$(for l in $needed; do printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done)"
+echo "                   then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
+echo "        VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
+echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
+echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+echo "        step 1 at the sign-off, after every part: steps 2 and 3 do not wait for it ($STEP1_SWITCH)"
+else
 echo "ORDER   step 1     host: ${needed:+step1-build (when a lane takes the build), }$(for l in step1.docker-server-auth "step1.$full-full"; do case " $needed " in *" $l "*) printf '%s, ' "$(lane_part "$l" | cut -d' ' -f1)" ;; esac; done)done"
 echo "                   VM: nothing (step 1 runs on this host only)"
 echo "        execution  host: build + linux-proof (step 2, DOCKER_RELEASE_PART=linux), then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
 echo "                   VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
 echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
 echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+fi
 echo "$machines_answer"
 machines_schedule "$FULL_SET_JOBS" "$WINDOWS_VMS_USED" "$full" 2>&1 || echo "SCHEDULE  not available: asbl/ci/release-estimate.py failed (above)"
+# step1_verdicts: step 1's lanes in the summary; sets s1_red (one lane not PASS)
+step1_verdicts() {
+  local lane id v
+  s1_red=0
+  for lane in $needed; do
+    read -r id _ <<< "$(lane_part "$lane")"
+    v=$(part_verdict "$id"); summarize "$id" "$v" "$PARTS/$id.log"
+    [ "${v%%|*}" = PASS ] || s1_red=1
+  done
+}
+# in-order (16.6.2): step 1's lanes now, then the guard of steps 2 and 3; together: the lanes run on the host track (4.)
+if [ "$STEPS" = in-order ]; then
 [ -z "$needed" ] || step1_lanes
 [ -f "$PARTS/step1-build.rc" ] && summarize step1-build "$(part_verdict step1-build)" "$PARTS/step1-build.log"
-s1_red=0
-for lane in $needed; do
-  read -r id _ <<< "$(lane_part "$lane")"
-  v=$(part_verdict "$id"); summarize "$id" "$v" "$PARTS/$id.log"
-  [ "${v%%|*}" = PASS ] || s1_red=1
-done
+step1_verdicts
 # the guard steps 2 and 3 make, asked now (DRY_RUN=yes: an approval is printed here, recorded by the steps themselves)
 if [ "$DRY" = yes ]; then
   [ "$s1_red" = 0 ] && guard_ok=1 || guard_ok=0
@@ -620,30 +663,48 @@ if [ "$guard_ok" = 0 ]; then
   echo "  then start the orchestrator again with RELEASE_PIN=${PIN:0:8} (or with the owner's approval, E2E_APPROVAL)"
   [ "$DRY" = yes ] || finish 1
 fi
+fi
 
-# ---- 4. the execution: two tracks ----
-mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
+# ---- 4. the execution: two tracks (together: steps 1, 2 and 3, under the mark opened in 3.) ----
+[ "$STEPS" = together ] ||
+  mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
 DOCKER="bash asbl/ci/jenkins/release-docker.sh"
 WINDOWS="bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh release"
 # build_verdict: the build's verdict from the linux part's log, once its mark ended or the part did
 build_verdict() { mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 2/6"; }
+# step1_lanes_after_the_build: together, step 1's lanes on the host track, after step 2's linux part; a lane on the
+# docker-server target installs the build's zip and image, so it does not run when the build is red
+step1_lanes_after_the_build() {
+  local lane id envs
+  for lane in $needed; do
+    read -r id envs <<< "$(lane_part "$lane")"
+    case " $envs " in
+      *" E2E_TARGET=docker-server "*)
+        if [ "$(build_verdict | cut -d'|' -f1)" != PASS ]; then
+          not_run "$id" "no build of ${PIN:0:8} to test (the build is not green)"; continue
+        fi ;;
+    esac
+    run_lane "$lane"
+  done
+}
 track_host() {
-  run_part docker-linux "step 2's build, then its Linux proof (DOCKER_RELEASE_PART=linux)" env DOCKER_RELEASE_PART=linux $DOCKER
+  run_part docker-linux "step 2's build, then its Linux proof (DOCKER_RELEASE_PART=linux)" env $STEP1_SWITCH DOCKER_RELEASE_PART=linux $DOCKER
+  [ "$STEPS" = in-order ] || step1_lanes_after_the_build
   until [ -e "$PARTS/.docker-windows-done" ]; do sleep "$POLL"; done
   if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
-    run_part docker-keep "step 2's keep, guard and verdict (DOCKER_RELEASE_PART=keep)" env DOCKER_RELEASE_PART=keep $DOCKER
+    run_part docker-keep "step 2's keep, guard and verdict (DOCKER_RELEASE_PART=keep)" env $STEP1_SWITCH DOCKER_RELEASE_PART=keep $DOCKER
   else not_run docker-keep "no build of ${PIN:0:8} to keep (the build is not green)"; fi
 }
 track_vm() {
-  run_part windows-pack "step 3's pack, kept (WIN_RELEASE_HALF=pack)" env WIN_RELEASE_HALF=pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
+  run_part windows-pack "step 3's pack, kept (WIN_RELEASE_HALF=pack)" env $STEP1_SWITCH WIN_RELEASE_HALF=pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
   # the build ended when its mark did (or the linux part ended before it)
   until grep -aq '^######## DOCKER RELEASE STEP 2/6 END' "$PARTS/docker-linux.log" 2>/dev/null || [ -f "$PARTS/docker-linux.rc" ]; do sleep "$POLL"; done
   if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
-    run_part docker-windows "step 2's Windows Docker proof (DOCKER_RELEASE_PART=windows)" env DOCKER_RELEASE_PART=windows $DOCKER
+    run_part docker-windows "step 2's Windows Docker proof (DOCKER_RELEASE_PART=windows)" env $STEP1_SWITCH DOCKER_RELEASE_PART=windows $DOCKER
   else not_run docker-windows "no build of ${PIN:0:8} to prove (the build is not green)"; fi
   touch "$PARTS/.docker-windows-done"
   run_part windows-after-pack "step 3's server light set, Electron light set, Robot and verdict (WIN_RELEASE_HALF=after-pack)" \
-    env WIN_RELEASE_HALF=after-pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
+    env $STEP1_SWITCH WIN_RELEASE_HALF=after-pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
 }
 track_host & host_pid=$!
 track_vm & vm_pid=$!
@@ -657,6 +718,17 @@ fi
 mark_end 0
 
 # ---- 5. the summary ----
+if [ "$STEPS" = together ]; then
+  step1_verdicts
+  # the sign-off's step 1 check (the guard steps 2 and 3 skipped in this run): not green = the run is red
+  if [ "$DRY" = yes ]; then
+    [ "$s1_red" = 0 ] && guard_ok=1 || guard_ok=0
+    echo "dry run: the sign-off: step 1 $([ "$guard_ok" = 1 ] && echo "green on ${PIN:0:8} once the lanes above pass" || echo "red (DRY_RUN_RED): the run is red")"
+  elif RELEASE_COMMIT="$PIN" DRY_RUN=yes $STATE step1-guard; then guard_ok=1
+  else guard_ok=0; fi
+  STEP1_RESULT=$([ "$guard_ok" = 1 ] && echo green || echo red)
+  [ "$guard_ok" = 1 ] || { ALL_GREEN=0; echo "SIGN-OFF: step 1 is not green on ${PIN:0:8} (above): the run is red, whatever steps 2 and 3 say"; }
+fi
 summarize build "$(build_verdict)" "$PARTS/docker-linux.log"
 summarize linux-proof "$(mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 3/6")" "$PARTS/docker-linux.log"
 summarize pack "$(mark_verdict "$PARTS/windows-pack.log" "$(mark_of_part pack)")" "$PARTS/windows-pack.log"

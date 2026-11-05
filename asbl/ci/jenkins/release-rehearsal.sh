@@ -1,6 +1,7 @@
 #!/bin/bash
 # The release round: one press takes a version to "ready to upload". release-orchestrator.sh runs the steps (step 0, step 1's
-# lanes, steps 2 and 3 on one commit); a red run leads to a fix round by rule, then the round runs again from the start.
+# lanes, steps 2 and 3 on one commit); a red run leads to a fix round by rule, then the round runs again from scratch,
+# step 1 included (every lane, whatever the release record says; RELEASE_STEPS=in-order: 16.6.2's, green lanes kept).
 # Called by the Jenkins job dp-ci-release-steps-0-3-rehearsal; a person or an AI coordinator runs the same from a shell, the
 # job's parameters being environment variables with the same names and defaults.
 #
@@ -13,7 +14,7 @@
 #   follow [--from <byte>] [--for <seconds>]   the round's console (round.log) from that byte; without --for, until the round
 #              is no longer running or fixing; with it, at most that long (the job's polls of under a minute). The last line
 #              is  FOLLOW next=<byte to go on from> state=<state>
-#   proceed    a round waiting for review runs again from the start (PROCEED_BY=<who> says who)
+#   proceed    a round waiting for review runs again from scratch, step 1 included (PROCEED_BY=<who> says who)
 #   stop       the round stops, in this order: its process group (the round, its run, the run's parts); then what the
 #              run started that outlives that group, from its started.txt: each entry of a part that had not ended, a
 #              container or compose stack created since its entry (docker stop), the Windows driver of a pid file written
@@ -38,7 +39,7 @@
 #     ON_FAILURES [fix-prove-then-wait-for-review]   what a red run leads to:
 #       fix-prove-then-wait-for-review      a fix round (the fixer: every failure's root cause from the code and the git
 #                                           history, real fixes, each proven by re-running only what failed), then the
-#                                           round waits for proceed; proceed = run again from the start
+#                                           round waits for proceed; proceed = run again from scratch, step 1 included
 #       fix-prove-then-rerun-automatically  the same fix round, then the round runs again by itself; after 2 such re-runs
 #                                           it waits for proceed
 #       report-only                         the round ends red with the failure report; no agent
@@ -53,7 +54,8 @@
 #                              (with E2E_APPROVAL_USER); held by the round's process only, never written in a file
 #   Advanced (Parallelization): 1 to 4 each; the machines they use come from the settings file (below)
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many subsets, each on its own host
-#                                                             test server
+#                                                             test server; above 1 refused for now (this host's one
+#                                                             Docker engine runs one DataPallas e2e set at a time)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs, each running the
 #                                                             lanes of the layout for that many VMs
 #     Checked before anything starts (asbl/ci/release-machines.sh check <N> <M>): the machines file's rules, enough VMs
@@ -311,10 +313,10 @@ wait_for_review() {
   say "WAITING FOR REVIEW: $2"
   [ -z "$plan" ] || say "  the fix plan: $plan; its report: ${plan%.md}-run-report.md"
   [ -z "$pin" ] || { say "  the commits since the run's pin ${pin:0:8} (origin/main as last fetched):"; git log --oneline "$pin..origin/main" 2>/dev/null | head -40 | sed 's/^/    /'; }
-  say "  proceed: run again from the start (release-rehearsal.sh proceed); stop: end the round (release-rehearsal.sh stop)"
+  say "  proceed: run again from scratch, step 1 included (release-rehearsal.sh proceed); stop: end the round (release-rehearsal.sh stop)"
   rm -f "$dir/proceed"
   until [ -e "$dir/proceed" ]; do sleep "$ROUND_POLL"; done
-  say "PROCEED by $(cat "$dir/proceed" 2>/dev/null): the round runs again from the start"
+  say "PROCEED by $(cat "$dir/proceed" 2>/dev/null): the round runs again from scratch, step 1 included"
   rm -f "$dir/proceed"
 }
 # the round itself, in its own detached process (start launches it): runs, fix rounds, reviews, until green, red or stopped
@@ -435,7 +437,7 @@ proceed_round() {
   [ "$state" = waiting-for-review ] || { echo "NOTHING TO PROCEED: the round is not waiting for review"; status_line "$dir"; exit "$(exit_code_of_state "$state")"; }
   echo "${PROCEED_BY:-${ROUND_STARTED_BY:-someone}} at $(now)" > "$dir/proceed"
   for _ in $(seq 1 $((ROUND_POLL + 10))); do [ "$(round_state "$dir")" != waiting-for-review ] && break; sleep 1; done
-  echo "PROCEEDED: the round runs again from the start"
+  echo "PROCEEDED: the round runs again from scratch, step 1 included"
   status_line "$dir"
   state=$(round_state "$dir"); exit "$(exit_code_of_state "$state")"
 }
@@ -479,7 +481,7 @@ review_round() {
     echo "  the commits since the run's pin ${pin:0:8}:"
     git log --oneline "$pin..origin/main" 2>/dev/null | head -40 | sed 's/^/    /'
   fi
-  echo "  Proceed = run again from the start. Stop = the round ends (release-rehearsal.sh stop)."
+  echo "  Proceed = run again from scratch, step 1 included. Stop = the round ends (release-rehearsal.sh stop)."
   exit 3
 }
 # report_files_of_run <run folder>: the report files its result.txt lists, that exist: the result itself, the summary, the

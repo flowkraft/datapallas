@@ -236,20 +236,25 @@ out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2; start); rc=$?
 check "2 VMs asked, only VM a in the machines file: refused, exit 2, nothing started" \
   refused_nothing_started "the machines file does not allow N=1 M=2" "$out" "$rc"
 check "2 VMs asked: the broken rule said, with its numbers" has "USE_N_NUMBER_OF_WINDOWS_VMS=2, but RELEASE_WINDOWS_VMS has 1 VM(s) (a)" "$out"
-fresh green; available_memory_gb 20
+fresh green
 out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2; start); rc=$?
-check "N=2 with 20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=2 M=1 now" "$out" "$rc"
-check "N=2 with 20 GB available: the memory rule's numbers said" \
-  has "needs 15 GB (3 host test servers x 5 GB), 20 GB are available now: 5 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
+check "N=2: refused, exit 2, nothing started (one Docker engine: N above 1 is not possible yet)" \
+  refused_nothing_started "the machines file does not allow N=2 M=1" "$out" "$rc"
+check "N=2: the reason said" has "this host's one Docker engine runs one DataPallas e2e set at a time" "$out"
+fresh green; available_memory_gb 20
+out=$(start); rc=$?
+check "20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=1 M=1 now" "$out" "$rc"
+check "20 GB available: the memory rule's numbers said" \
+  has "needs 10 GB (2 host test servers x 5 GB), 20 GB are available now: 10 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
 fresh green
-out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2 DRY_RUN=yes; start); rc=$?; follow > /dev/null
-check "N=2 with 20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"
+out=$(export DRY_RUN=yes; start); rc=$?; follow > /dev/null
+check "20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"
 available_memory_gb 64
-fresh green
-out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=3; start); rc=$?; follow > /dev/null
-check "N=3 with 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=3 vms=1 (a), memory: needs 20 GB of 64 GB available" "$out"
-check "N=3: the orchestrator gets the Advanced values" same "N=3 M=1" "$(cat "$STUB/advanced-calls")"
-check "N=3: the round's state keeps them" has "jobs=3" "$(cat "$LOG_DIR"/release-rounds/*/round.state)"
+fresh green; : > "$STUB/win-ci-b.env"
+out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2 RELEASE_WINDOWS_VMS="a b" WIN_VM_CONF_DIR="$STUB"; start); rc=$?; follow > /dev/null
+check "M=2 with VMs a and b, 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=1 vms=2 (a b), memory: needs 10 GB of 64 GB available" "$out"
+check "M=2: the orchestrator gets the Advanced values" same "N=1 M=2" "$(cat "$STUB/advanced-calls")"
+check "M=2: the round's state keeps them" bash -c 'grep -qx "jobs=1" "$@" && grep -qx "vms=2" "$@"' _ "$LOG_DIR"/release-rounds/*/round.state
 
 # ---- a scheduled run is stopped first ----
 fresh green; sleeper; echo "$SLEEPER" > "$LOG_DIR/scheduled-e2e.pid"

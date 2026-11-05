@@ -5,8 +5,11 @@
 #      2026-11-01) trimmed to its suites, titles and each try's status: Playwright counts two flaky tests there, one passed
 #      on its retry (listed) and one whose retry was skipped (a failure, not listed);
 #   3. memory.log's sampler, with stub docker and ssh commands.
+# The dry runs are in 16.6.2's order (RELEASE_STEPS=in-order), whose parts the cases name; the steps together, the
+# default, leave the same files: asbl/ci/tests/test-step-independence.sh checks their parts and verdicts.
 # Every folder is a scratch one, and docker and ssh are stubs first on PATH that record each call: nothing is started,
-# no live folder is touched. Takes about 40 seconds (a dry run's part lasts two seconds).
+# no live folder is touched, no machines file of this host is read. Takes about 40 seconds (a dry run's part lasts two
+# seconds).
 # Callers: a person or an agent, from the shell, after changing the orchestrator.
 #   bash asbl/ci/tests/test-orchestrator-outputs.sh
 # Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
@@ -53,14 +56,15 @@ export PATH="$STUBS:$PATH"
 # the Windows VM's settings for dp-ci.sh win ps: made-up ones, and no win-ci.env read
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
 export STUB_BUNDLE="$REPO_ROOT/frend/reporting/testground/docker-server/DataPallas"
+export RELEASE_REHEARSAL_CONF="$SCRATCH/no-release-rehearsal.conf"
 
 # ---- 1. result.txt and started.txt of two dry runs ----
-# dry_run <name> [DRY_RUN_RED]: a dry run on scratch folders; prints its run folder
+# dry_run <name> [DRY_RUN_RED]: a dry run on scratch folders, in 16.6.2's order; prints its run folder
 dry_run() {
   local dir="$SCRATCH/$1"
   mkdir -p "$dir/logs" "$dir/state" "$dir/artifacts"
   env LOG_DIR="$dir/logs" RUN_RECORD_DIR="$dir/runs" RELEASE_STATE_DIR="$dir/state" RELEASE_ARTIFACTS_DIR="$dir/artifacts" \
-    ORCH_STARTED_BY=test-orchestrator-outputs DRY_RUN=yes DRY_RUN_RED="${2:-}" bash "$ORCHESTRATOR" > "$dir/console.log" 2>&1
+    ORCH_STARTED_BY=test-orchestrator-outputs DRY_RUN=yes DRY_RUN_RED="${2:-}" RELEASE_STEPS=in-order bash "$ORCHESTRATOR" > "$dir/console.log" 2>&1
   echo "$?" > "$dir/rc"
   ls -1d "$dir"/runs/*release-orchestrator*/ 2>/dev/null | tail -1
 }

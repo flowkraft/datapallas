@@ -63,7 +63,8 @@
 #   bash asbl/ci/dp-ci.sh build-if-needed
 #       This checkout on origin/main (a fast-forward, never a reset), then `build` only when the newest successful build is
 #       not of this commit, its image and datapallas-server-docker.zip still here; ends with BUILD_TAG=<version>-<commit>. The jobs that
-#       install what `build` makes run it first themselves. DRY_RUN=1 [0] = only say whether a build is needed.
+#       install what `build` makes run it first themselves. DRY_RUN=1 [0] = only say whether a build is needed. One build
+#       per commit: a second one asking while the first builds waits for that build, then builds nothing (build-once.sh).
 #
 #   E2E_SPEC=<regex> E2E_GREP=<regex> bash asbl/ci/dp-ci.sh e2e
 #       The REAL e2e, the release check, through the SAME gulp flow as `npm run custom:start-server-and-e2e-web`, on this
@@ -4117,17 +4118,26 @@ if [ "$TASK" = build-if-needed ]; then
       [ -n "$t" ] && { echo "$t $(basename "$f")"; return 0; }
     done
   }
-  read -r tag blog <<< "$(newest_build)"
-  if [ -n "${tag:-}" ] && [ "${tag#*-}" = "$SHA" ] && docker image inspect "$SERVER_IMAGE_REPO:$tag" >/dev/null 2>&1 &&
-     [ -s asbl/dist/datapallas-server-docker.zip ]; then
+  # built: the newest successful build is of this commit, and its image and datapallas-server-docker.zip are still here
+  is_built() {
+    read -r tag blog <<< "$(newest_build)"
+    [ -n "${tag:-}" ] && [ "${tag#*-}" = "$SHA" ] && docker image inspect "$SERVER_IMAGE_REPO:$tag" >/dev/null 2>&1 &&
+      [ -s asbl/dist/datapallas-server-docker.zip ]
+  }
+  if is_built; then
     echo "BUILD: $SHA is built already ($blog) - nothing to build"
   elif [ "${DRY_RUN:-0}" = 1 ]; then
     echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and datapallas-server-docker.zip must be on this host) - a real run builds it first (dp-ci.sh build, about 40 min)"
     exit 0
   else
     echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and datapallas-server-docker.zip must be on this host) - building it first (dp-ci.sh build, about 40 min)"
-    FOLLOW_PIDFILE="" bash "$REPO/asbl/ci/jenkins/follow-ci.sh" run bash "$REPO/asbl/ci/dp-ci.sh" build ||
+    # one build per commit: a part that asks while another one builds waits for that build, then builds nothing
+    . "$REPO/asbl/ci/build-once.sh"
+    mkdir -p "$LOG_DIR"
+    build_once "$LOG_DIR/build-if-needed.lock" is_built \
+      env FOLLOW_PIDFILE="" bash "$REPO/asbl/ci/jenkins/follow-ci.sh" run bash "$REPO/asbl/ci/dp-ci.sh" build ||
       { echo "FAIL  the build of $SHA failed (its log above)"; exit 1; }
+    [ "$BUILD_ONCE" != meanwhile ] || echo "BUILD: $SHA was built meanwhile, by the part that held the lock ($blog) - nothing built here"
     read -r tag blog <<< "$(newest_build)"
     [ "${tag#*-}" = "$SHA" ] || { echo "FAIL  the build ended, but the newest successful build is of '${tag#*-}', not $SHA"; exit 1; }
   fi

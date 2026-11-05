@@ -111,6 +111,12 @@
 # this commit or else the newest on another one) and recorded on the commit as approval.step1 (DRY_RUN=yes|1: printed
 # only). Any other text = refused, the text shown, even when the lanes are green: a mistyped approval is never silent.
 # An approval is never a lane: a later check without one reads the lanes only.
+# THE STEPS TOGETHER (RELEASE_STEP1_AT_SIGNOFF=yes, release 16.6.3): the orchestrator starts steps 2 and 3 beside step 1
+# and checks step 1 at the run's sign-off, so it gives its step 2 and step 3 parts this switch, and step1-guard (at the
+# start of steps 2 and 3, and at step 2's keep) says SKIPPED and exits 0. Honoured only inside such a run: a pinned
+# rehearsal (RELEASE_PIN set, UPLOAD not yes) while the orchestrator's lock (<LOG_DIR>/release-orchestrator.lock) is held.
+# Anywhere else (a step job pressed alone, MODE=upload, MODE=public) the switch is said to be ignored and the lanes are
+# checked as always. `require step1`, every upload's check (upload-kept), never reads it.
 #
 # version-check <channel> (owner, 2026-10-22: the release takes its version from settings.xml; the same as the released
 # version = do nothing, greater = release). Each release job runs it for its own channel before any work:
@@ -626,6 +632,14 @@ case "$cmd" in
     exit 1
     ;;
   step1-guard)
+    if [ "${RELEASE_STEP1_AT_SIGNOFF:-}" = yes ]; then
+      flock -n -E 75 "$LOG_DIR/release-orchestrator.lock" true 2>/dev/null; lock_rc=$?
+      if [ -n "${RELEASE_PIN:-}" ] && [ "${UPLOAD:-no}" != yes ] && [ "$lock_rc" = 75 ]; then
+        echo "SKIPPED: the step 1 guard: the orchestrator runs the steps together and checks step 1 on ${commit:0:8} at its sign-off (RELEASE_STEP1_AT_SIGNOFF); every upload checks it again"
+        exit 0
+      fi
+      echo "note: RELEASE_STEP1_AT_SIGNOFF=yes ignored: only a pinned rehearsal inside an orchestrator run skips this guard (RELEASE_PIN=${RELEASE_PIN:-none}, UPLOAD=${UPLOAD:-no}, the orchestrator's lock $([ "$lock_rc" = 75 ] && echo held || echo free)); step 1 is checked as always"
+    fi
     required_step1 choose step1-guard || exit 2
     if approval_phrase; then
       approval_accept step1-guard; rc=$?

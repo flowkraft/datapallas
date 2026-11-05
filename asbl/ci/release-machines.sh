@@ -20,12 +20,16 @@
 #   bash asbl/ci/release-machines.sh lanes              the time of each lane, and the run it comes from
 #   N = SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS (step 1's full set in N subsets), M =
 #   USE_N_NUMBER_OF_WINDOWS_VMS (the Windows lanes over M VMs); 1 to 4 each, 1 = nothing split (the job's defaults).
+#   N above 1 is refused for now: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose
+#   files fix the container names, the ports and the network), so the host's parts run one after another, the full set
+#   whole (the 16.6.3 plan, TODO 4).
 #
 # THE SETTINGS FILE: RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf], root's, mode 600 or 400, read as shell (the
 # file release-rehearsal.sh reads RELEASE_FIXER from). Its keys, each with the default it takes when missing (a key set
 # in the caller's environment goes before the file's, for a run from a shell):
-#   RELEASE_STEPS [together]    together: after step 0, steps 1, 2 and 3 start at once; in-order: 16.6.2's order (step
-#                               1, then steps 2 and 3), the off switch of every speedup (with N = M = 1 only)
+#   RELEASE_STEPS [together]    together: after step 0, steps 1, 2 and 3 start at once (the host's parts one after
+#                               another, the VM's beside them); in-order: 16.6.2's order (step 1, then steps 2 and 3),
+#                               the off switch of every speedup (with N = M = 1 only)
 #   RELEASE_SERVER_GB [5]       one host test server's memory (its server, its database containers, the browser)
 #   RELEASE_WINDOWS_VMS [a]     the Windows VMs that exist, in order: a = win10-dev (win-ci.env); each other VM's
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
@@ -139,6 +143,8 @@ machines_check() {
       refuse_rule "RELEASE_STEPS=in-order runs 16.6.2's order with nothing split: N and M must be 1 (got N=$n, M=$m)" ;;
     *) refuse_rule "RELEASE_STEPS=$RELEASE_STEPS: it must be together or in-order" ;;
   esac
+  [ "$n" = 1 ] || [ "$RELEASE_STEPS" != together ] ||
+    refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so the full set runs whole: N must be 1"
   for key in RELEASE_SERVER_GB WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done

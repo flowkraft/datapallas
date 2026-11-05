@@ -237,17 +237,24 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
         # 16.6.2: step 1 (the build, the auth file, the full set), then steps 2 and 3 side by side
         auth_end = build_end + m["auth"]
         step1_end = auth_end + subsets[0][0]
-        rows.append(("host", "auth (instance 0)", build_end, auth_end, "step 1"))
-        rows.append(("host", "e2e full (instance 0)", auth_end, step1_end, "step 1, whole"))
-        rows.append(("host", "Linux proof (instance 0)", step1_end, step1_end + m["linux-proof"], "step 2"))
+        rows.append(("host", "auth", build_end, auth_end, "step 1"))
+        rows.append(("host", "e2e full", auth_end, step1_end, "step 1, whole"))
+        rows.append(("host", "Linux proof", step1_end, step1_end + m["linux-proof"], "step 2"))
         offset = step1_end
     else:
+        # the steps together on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped
+        # compose files fix the container names, the ports and the network): the host's parts one after another, step
+        # 2's Linux proof first (the VM's Windows Docker proof needs only the build), then step 1; the VMs from the start
+        proof_end = build_end + m["linux-proof"]
+        auth_end = proof_end + m["auth"]
+        rows.append(("host", "Linux proof", build_end, proof_end, "step 2"))
+        rows.append(("host", "auth", proof_end, auth_end, "step 1"))
+        clock = auth_end
         for k, (minutes, group) in enumerate(subsets, 1):
-            label = "e2e full %d/%d (instance %d)" % (k, n, k - 1) if n > 1 else "e2e full (instance 0)"
-            rows.append(("host", label, build_end, build_end + minutes, "%d spec files" % len(group) if group else "whole"))
-        auth_end = build_end + m["auth"]
-        rows.append(("host", "auth (instance %d)" % n, build_end, auth_end, "step 1's auth file, on step 2's server"))
-        rows.append(("host", "Linux proof (instance %d)" % n, auth_end, auth_end + m["linux-proof"], "step 2"))
+            label = "e2e full %d/%d" % (k, n) if n > 1 else "e2e full"
+            note = "step 1, %d spec files, one subset at a time" % len(group) if n > 1 else "step 1, whole"
+            rows.append(("host", label, clock, clock + minutes, note))
+            clock += minutes
         offset = 0.0
     # the VMs: each runs its lanes in order, each when its inputs exist; the prepare before its first e2e lane
     pack_vm = next((v for v in vms if "pack" in layouts[v]), vms[0])

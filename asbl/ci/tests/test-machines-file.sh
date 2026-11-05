@@ -2,7 +2,8 @@
 # The machines file of a release round (asbl/ci/release-machines.sh, its example asbl/ci/release-layout.example.conf, and
 # what the orchestrator does with it):
 #   1. no file gives the defaults; the caller's environment goes before the file; a file others may read is refused;
-#   2. every layout of the example file passes the rules, for every N and M, and the example's layouts are the defaults;
+#   2. every layout of the example file passes the rules, for N = 1 and every M (N above 1 refused: one Docker engine),
+#      and the example's layouts are the defaults;
 #   3. each broken rule is refused, with its numbers: the steps, the values, too few VMs, a lane twice or missing, an
 #      unknown lane, Robot not last or not on the pack's VM, Electron before the server light set; and at a press: a
 #      VM's settings file or libvirt VM missing, the memory rule (only the VMs a round starts count), /var's free disk;
@@ -95,12 +96,20 @@ check "a file others may read: refused (exit 2)" refused "MISSING a settings fil
 # ---- 2. the example file ----
 settings_example
 example_ok() {
-  local n m out
-  for n in 1 2 3 4; do for m in 1 2 3 4; do
-    out=$(machines check "$n" "$m") || { echo "      N=$n M=$m:"; printf '%s\n' "$out" | sed 's/^/        /'; return 1; }
+  local m out
+  for m in 1 2 3 4; do
+    out=$(machines check 1 "$m") || { echo "      N=1 M=$m:"; printf '%s\n' "$out" | sed 's/^/        /'; return 1; }
+  done
+}
+check "every layout of the example passes the rules, for N = 1 and every M (1 to 4)" example_ok
+n_refused() {  # N above 1, every M: refused, this host's one Docker engine named
+  local n m
+  for n in 2 3 4; do for m in 1 2 3 4; do
+    refused "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time" \
+      machines check "$n" "$m" >/dev/null || { echo "      N=$n M=$m: not refused as expected"; return 1; }
   done; done
 }
-check "every layout of the example passes the rules, for every N and M (1 to 4)" example_ok
+check "N above 1 (2 to 4), every M: refused, one Docker engine (the report's TODO 4)" n_refused
 check "the example names the VMs a to d only" same 'RELEASE_WINDOWS_VMS="a b c d"' "$(grep '^RELEASE_WINDOWS_VMS=' "$EXAMPLE" | sed 's/ *#.*//')"
 check "the example's layouts are the defaults (the same show with and without its VM_LANES lines)" same \
   "$(machines show)" "$(grep -v '^VM_LANES_' "$EXAMPLE" > "$RELEASE_REHEARSAL_CONF"; machines show)"
@@ -142,16 +151,18 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 : > "$SCRATCH/vm-conf/win-ci-b.env"
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
-check "press: N=4 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=4 M=4 needs 61 GB (5 host test servers x 5 GB, VMs b c d to start x 12 GB), 60 GB are available now: -1 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
-  machines check 4 4 --press
-check "press: only the VMs a round starts count (b c d running: 25 GB needed)" has \
-  "needs 25 GB of 60 GB available, 35 GB stay free (rule 16)" \
-  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 4 4 --press)"
+check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
+  "memory: N=1 M=4 needs 46 GB (2 host test servers x 5 GB, VMs b c d to start x 12 GB), 60 GB are available now: 14 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  machines check 1 4 --press
+check "press: only the VMs a round starts count (b c d running: 10 GB needed)" has \
+  "needs 10 GB of 60 GB available, 50 GB stay free (rule 16)" \
+  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
 memory_gb 100
-check "press: N=4 M=4 with 100 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=4 vms=4 (a b c d), memory: needs 61 GB of 100 GB available, 39 GB stay free (rule 16); /var 400 GB free (rule 50)" \
-  "$(machines check 4 4 --press)"
+check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 46 GB of 100 GB available, 54 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "$(machines check 1 4 --press)"
+check "press: N=4 with 100 GB available: refused, one Docker engine" refused \
+  "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4: not possible yet: this host's one Docker engine" machines check 4 4 --press
 check "press: /var with 20 GB free: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
 
 # ---- 4. the lane times from the marks, and the schedule ----
@@ -198,8 +209,16 @@ check "schedule 4 4: each VM runs its layout, the prepare before its first e2e l
   "$(printf '%s\n' "$out" | awk '$1 == "VM" { print $1, $2, $3 }' | paste -sd'|')"
 check "schedule 4 4: the server light set waits for the pack (on another VM)" has \
   "VM b   server-light                    1:17 ->  3:16   119 min  (waits for the pack's datapallas-server.zip)" "$out"
-check "schedule 4 4: four subsets and step 2's server, about 4 h 50, the memory needed" bash -c \
-  'grep -c "e2e full ./4 (instance" <<< "$1" | grep -qx 4 && grep -qF "TOTAL     about 4 h 50 (the last part to end: VM d docker-proof)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
+host_parts() {  # host_parts <schedule>: "<part> <start>-<end>" of each host row, in order
+  printf '%s\n' "$1" | awk '$1 == "host" { line = $0; sub(/^ *host +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
+    name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
+    printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }'
+}
+check "schedule 4 4: this host's parts one at a time (one engine), the four subsets after each other" same \
+  "build 0:00-0:34|Linux proof 0:34-1:29|auth 1:29-1:49|e2e full 1/4 1:49-4:24|e2e full 2/4 4:24-6:59|e2e full 3/4 6:59-9:34|e2e full 4/4 9:34-12:09" \
+  "$(host_parts "$out")"
+check "  about 12 h 10, the memory the memory rule counts" bash -c \
+  'grep -qF "TOTAL     about 12 h 10 (the last part to end: host e2e full 4/4)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
 settings_example "RELEASE_STEPS=in-order"
 out=$(schedule 1 1 docker-server)
 check "schedule in-order: step 1 first, the VM after it, about 21 h 20 on the 16.6.2 defaults" bash -c \

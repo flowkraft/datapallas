@@ -9,7 +9,7 @@
 #      the full lane and the auth lane PASS; refused when either is missing or red; no Windows lane asked for;
 #   2. release-publish.sh upload-kept (DRY_RUN=yes) refuses each channel without those two lanes, and passes that check
 #      with both;
-#   3. an orchestrator dry run: step 1 is lanes 1 and 2 on this host, and no VM part in step 1;
+#   3. an orchestrator dry run (RELEASE_STEPS=in-order): step 1 is lanes 1 and 2 on this host, and no VM part in step 1;
 #   4. each step one channel: a rehearsal is PASS only with each of its parts PASS (release-state.sh record refuses any
 #      other PASS, and require counts one recorded otherwise red); upload-kept refuses Windows without both light sets
 #      green and Docker without its Windows Docker proof; the orchestrator's VM track runs step 3's parts in their order,
@@ -76,7 +76,7 @@ chmod +x "$STUBS/docker" "$STUBS/curl" "$STUBS/ssh"
 export PATH="$STUBS:$PATH"
 # made-up settings: no settings file of this host is read (the Windows VM's, the publish credentials)
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
-export RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env"
+export RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env" RELEASE_REHEARSAL_CONF="$SCRATCH/no-release-rehearsal.conf"
 unset E2E_APPROVAL E2E_APPROVAL_USER RELEASE_PIN
 
 C=$(git rev-parse HEAD)
@@ -191,10 +191,12 @@ for ch in docker windows; do
 done
 check "upload-kept: nothing pushed, uploaded or loaded" lacks "docker push" "$(cat "$STUB_CALLS")"
 
-echo "---- 3. an orchestrator dry run: step 1 on this host only ----"
+# (16.6.2's order, RELEASE_STEPS=in-order, whose step 1 is a block of its own; with the steps together, the default,
+# test-step-independence.sh checks that step 1's lanes run on this host)
+echo "---- 3. an orchestrator dry run, RELEASE_STEPS=in-order: step 1 on this host only ----"
 D="$SCRATCH/orchestrator"; mkdir -p "$D/logs" "$D/state" "$D/artifacts"
 env LOG_DIR="$D/logs" RUN_RECORD_DIR="$D/runs" RELEASE_STATE_DIR="$D/state" RELEASE_ARTIFACTS_DIR="$D/artifacts" \
-  ORCH_STARTED_BY=test-step-model DRY_RUN=yes bash asbl/ci/jenkins/release-orchestrator.sh > "$D/console.log" 2>&1
+  ORCH_STARTED_BY=test-step-model DRY_RUN=yes RELEASE_STEPS=in-order bash asbl/ci/jenkins/release-orchestrator.sh > "$D/console.log" 2>&1
 RUN=$(ls -1d "$D"/runs/*release-orchestrator*/ 2>/dev/null | tail -1)
 console=$(cat "$D/console.log")
 FULL=$(awk -F'\t' '$1 == "part" && $2 ~ /^lane1-/ { print substr($2, 7) }' "$RUN/result.txt")

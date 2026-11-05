@@ -231,7 +231,7 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
 
 ### dp-ci-release-steps-0-3-rehearsal
 
-- **What:** the release round, one press: `asbl/ci/jenkins/release-rehearsal.sh`, which the job only starts, follows and answers (a light wrapper; a person or an AI coordinator runs the same from a shell, the five parameters being its environment). Run 1: step 0, step 1's lanes, then steps 2 and 3 on one commit (`release-orchestrator.sh`), as a rehearsal: built, proven and kept, nothing uploaded. A red run: a fix round (`ON_FAILURES`), then the round runs again from the start (step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning). Green: both `UPLOAD=yes` preflights checked by name, then "ready to upload" with the next presses; the upload stays a separate press.
+- **What:** the release round, one press: `asbl/ci/jenkins/release-rehearsal.sh`, which the job only starts, follows and answers (a light wrapper; a person or an AI coordinator runs the same from a shell, the five parameters being its environment). Run 1: step 0, then steps 1, 2 and 3 together on one commit (`release-orchestrator.sh`; the order below), as a rehearsal: built, proven and kept, nothing uploaded. A red run: a fix round (`ON_FAILURES`), then the round runs again from the start (step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning). Green: both `UPLOAD=yes` preflights checked by name, then "ready to upload" with the next presses; the upload stays a separate press.
 - **When:** a release, the day before the release day. After it is green: steps 2 and 3 with `MODE=upload UPLOAD=yes`, then `MODE=public` on each, then step 4.
 - **The form**, three groups, each under a separator line with its name (the `parameter-separator` plugin; without it the seed leaves the lines out):
 
@@ -247,7 +247,7 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   ```
 
   - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.
-  - `ON_FAILURES`: `fix-prove-then-wait-for-review` (default: the build pauses with Proceed, showing the fix plan, its report and the commits; Proceed = run again from the start), `fix-prove-then-rerun-automatically` (it runs again by itself; after 2 such re-runs it waits), `report-only` (it ends red with the failure report, no agent). A fix round that ends BLOCKED always waits.
+  - `ON_FAILURES`: `fix-prove-then-wait-for-review` (default: the build pauses with Proceed, showing the fix plan, its report and the commits; Proceed = run again from scratch, step 1 included), `fix-prove-then-rerun-automatically` (it runs again by itself; after 2 such re-runs it waits), `report-only` (it ends red with the failure report, no agent). A fix round that ends BLOCKED always waits.
   - `RELEASE_PIN` (empty: run 1 on step 0's commit or origin/main), `DRY_RUN` (`no`; `yes` = each run is the orchestrator's dry run, nothing runs, builds, records or uploads: to check the job after a CI change), `E2E_APPROVAL` (the shared text of steps 2 and 3; passed to every run of the round, sent to the host on stdin, never on a command line, and never written in a file by the round).
   - Not parameters: who started it (the build's cause), `MODE` and `UPLOAD` (always a rehearsal, no upload), the retries (always 1), the test switches.
 - **The build:** `agent none`; only short SSH calls take an executor. It follows the round's console (`release-rehearsal.sh follow --from <byte> --for 45`) in polls of under a minute, so a Jenkins restart only resumes the polling. A round waiting for a review: the pause shows `release-rehearsal.sh review` (why, the fix plan with its status line, its report, the red run, the commits since the run's pin), outside any node; Proceed calls `proceed`. An Abort pressed by a person, the build's or the pause's, calls `stop` (at the pause, only while the round still waits there); a restart never does, and the job has no timeout on purpose.
@@ -283,6 +283,8 @@ step3 release-windows-vm  MODE=public     (UPLOAD=yes; rehearsal/V-C -> newest/ 
    v
 step4 demo-public                         (demo.datapallas.com installs the published release, see OD4)
 ```
+
+**The round starts steps 1, 2 and 3 together** (`dp-ci-release-steps-0-3-rehearsal`, `RELEASE_STEPS=together`, the default of the machines file `/root/release-rehearsal.conf`): this host runs its parts one after another, step 2's build and Linux proof, step 1's two lanes, step 2's keep (its one Docker engine runs one DataPallas e2e set at a time: the shipped compose files fix the container names, the ports and the network), and the VM runs its parts beside them. Steps 2 and 3 do not wait for step 1: the run's sign-off checks it, and every upload checks it again. A run after fixes starts from scratch, step 1 included. `RELEASE_STEPS=in-order` keeps the order above (16.6.2's).
 
 Why this order:
 
