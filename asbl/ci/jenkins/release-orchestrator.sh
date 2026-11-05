@@ -65,7 +65,9 @@
 #                        container <name>     a container of this host's Docker (dp-ci: dp-ci.sh's run container)
 #                        compose <folder>     the docker-server bundle a Linux e2e brings up there (docker compose)
 #                        pidfile <path>       a process that outlives this one (win-e2e.sh's Windows driver)
-#                        vm <name>            the Windows VM's scheduled tasks of that lane (dp-ci.sh win stop <step>)
+#                        vm <name>            the Windows VM's scheduled tasks of that lane (dp-ci.sh win stop <step>);
+#                                             windows-vm is VM a, windows-vm-<name> another
+#                        domain <libvirt name>  a Windows VM this run started (part vm-<name>): shut down by a stop
 #                      A dry run writes the lines it would write, marked dry-run: it started none of them
 #   memory.log         a real run only, every MEMORY_EVERY seconds while it runs: this host's free -m, docker stats of
 #                      the run's containers (started.txt's, and those of its compose folders), and the Windows VM's own
@@ -95,6 +97,12 @@
 #   with asbl/ci/release-layout.example.conf): RELEASE_STEPS, the memory per host test server and per VM, the VMs and the
 #   lanes each runs. Checked before anything starts (exit 2 with a REFUSED line per broken rule); every run prints the
 #   SCHEDULE it expects, each part's time from the last release runs' marks.
+#   THE VMS (release-machines.sh, A ROUND'S VMS): before anything starts, each VM the parts use gets WIN_VM_MEMORY_GB
+#   (--config) when its definition differs; before its first part, a VM that is off is started and waited for (its
+#   started.txt line: part vm-<name>, kind domain), else its parts are red ("VM <name> did not start"); after its last
+#   part, a VM this run started is shut down (<PARTS>/vm-<name>.rc then); a running VM is left running. VM a (win10-dev)
+#   runs every Windows part. A dry run asks virsh only what is (domstate, dumpxml) and says what it would do;
+#   DRY_RUN_RED=vm-<name> makes an off VM not start.
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
 #   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict.
 #
@@ -118,6 +126,7 @@ cd "$(dirname "$0")/../../.." || exit 2
 . asbl/ci/release-machines.sh
 
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
+. asbl/ci/win-vm.sh
 STATE="bash asbl/ci/release-state.sh"
 AUTH_SPEC='/features/auth-authorization-server\.spec\.ts$'   # lane 2, as seed.groovy's example names it
 
@@ -146,7 +155,7 @@ replay() {
 either() { case " $* " in *" rebuild "*) echo rebuild ;; *) echo reuse ;; esac; }
 
 # ---- the run folder's files that say what happened and what was started (see THE RUN FOLDER, above) ----
-WIN_PID="$LOG_DIR/win-e2e.pid"   # win-e2e.sh's one pid file for every Windows lane
+WIN_PID=$(win_vm_pidfile a)   # win-e2e.sh's pid file of VM a, which runs every Windows lane
 # the docker-server bundle a Linux e2e on E2E_TARGET=docker-server brings up in this checkout (dp-ci.sh docker_server_up)
 DOCKER_SERVER_BUNDLE="$PWD/frend/reporting/testground/docker-server/DataPallas"
 SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
@@ -166,6 +175,8 @@ what_part_starts() {
       "$(printf 'container\tdp-ci-one-command\tthe image alone, run as the self-host page says (dp-ci.sh docker_one_command)')" ;;
     docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win docker-e2e')" ;;
     windows-pack|windows-after-pack) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm\tdp-ci.sh win release')" ;;
+    vm-*) printf 'domain\t%s\tthe Windows VM %s, started by this run (virsh start): shut down after its last part\n' \
+      "$(machines_domain_of "${1#vm-}")" "${1#vm-}" ;;
   esac
 }
 # record_started <part>: its started.txt lines, before it starts
@@ -295,6 +306,8 @@ POLL=$([ "$DRY" = yes ] && echo 1 || echo 30)
 export MODE=rehearsal UPLOAD=no DRY_RUN=no
 echo "INPUTS  execution=$EXECUTION version=${VERSION:-none (no step 0)} mode=rehearsal upload=no dry_run=$DRY${RED:+ dry_run_red=$RED} approval=$([ -n "${E2E_APPROVAL:-}" ] && echo "given in the environment, passed on to the guards" || echo none)"
 echo "PARTS   one log per part in $PARTS"
+RUN_VMS=a   # the VMs this run's parts use: VM a runs every Windows part (THE VMS, above)
+for vm in $RUN_VMS; do machines_vm_memory_set "$vm" "$([ "$DRY" = yes ] && echo dry)"; done
 start_memory_sampler
 
 # ---- the parts: run one, or in a dry run say what it would run and write the marks it would leave ----
@@ -363,6 +376,9 @@ simulate() {
       echo "RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
     docker-keep)
       for p in build linux-proof windows-docker-proof docker-verdict; do red_in_dry_run "$p" && any=1; done
+      # the real keep reads the proofs' recorded verdicts: a Windows proof that never ran (its VM did not start) is no PASS
+      [ "$any" = 1 ] || [ "$(cat "$PARTS/docker-windows.rc" 2>/dev/null)" = 0 ] ||
+        { echo "FAILED: the Windows Docker proof did not pass (docker-windows), so step 2 keeps nothing"; any=1; }
       [ "$any" = 0 ] && echo "DOCKER_RELEASE_RESULT dry run: rehearsal=PASS" && return 0
       echo "DOCKER_RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
   esac
@@ -372,6 +388,7 @@ simulate() {
 mark_verdict() {
   local log="$1" label="$2" section end why
   [ -s "$log" ] || { echo "NOT RUN|never started"; return; }
+  why=$(head -1 "$log"); case "$why" in "red: "*) echo "FAIL|${why#red: }"; return ;; esac   # red without running (vm_red)
   if ! grep -aq "^######## $label START" "$log"; then
     why=$(grep -a -m1 -E '^(not run: |FAILED|REFUSED|MISSING|FAIL  |DOCKER_RELEASE_RESULT nothing)' "$log")
     echo "NOT RUN|${why#not run: }"; return
@@ -665,6 +682,42 @@ if [ "$guard_ok" = 0 ]; then
 fi
 fi
 
+# ---- the VMs: started when off, shut down after their last part (THE VMS, above) ----
+# vm_up <name>: the VM ready for its parts; 1 when it did not start (VM_WHY says why)
+vm_up() {
+  local dom rc
+  dom=$(machines_domain_of "$1")
+  case "$(machines_vm_state "$1")" in
+    running) return 0 ;;
+    missing) echo "WARN    VM $1: libvirt has no $dom: its parts run as they are (they fail at their SSH if it is down)"; return 0 ;;
+  esac
+  record_started "vm-$1"
+  if [ "$DRY" = yes ]; then
+    echo "WOULD   VM $1 ($dom) is off: virsh start, then wait for its SSH ($(machines_duration "${VM_SSH_WAIT_SECS:-900}") at most); shut down after its last part"
+    red_in_dry_run "vm-$1" || return 0
+    VM_WHY="VM $1 ($dom) did not start (DRY_RUN_RED)"; echo "$VM_WHY"; return 1
+  fi
+  machines_vm_start "$1" | tee "$PARTS/vm-$1.log"; rc=${PIPESTATUS[0]}
+  VM_WHY=$(tail -1 "$PARTS/vm-$1.log")
+  return "$rc"
+}
+# vm_down <name>: after the VM's last part: shut down when this run started it (its started.txt line), once
+vm_down() {
+  grep -q $'\t'"vm-$1"$'\tdomain\t' "$PARTS/started.txt" 2>/dev/null && [ ! -e "$PARTS/vm-$1.rc" ] || return 0
+  if [ "$DRY" = yes ]; then
+    echo "WOULD   VM $1 ($(machines_domain_of "$1")): shut down, its last part ended (virsh shutdown; virsh destroy after $(machines_duration "${VM_SHUTDOWN_WAIT_SECS:-600}"))"
+  else machines_vm_shutdown "$1" | tee -a "$PARTS/vm-$1.log"; fi
+  echo 0 > "$PARTS/vm-$1.rc"
+}
+# vm_red <why> <part>...: parts of a VM that did not start, red without running
+vm_red() {
+  local why="$1" id; shift
+  for id in "$@"; do
+    printf 'red: %s\nFAILED: %s\n' "$why" "$why" > "$PARTS/$id.log"; echo 1 > "$PARTS/$id.rc"
+    echo "PART    $id RED: $why"
+  done
+}
+
 # ---- 4. the execution: two tracks (together: steps 1, 2 and 3, under the mark opened in 3.) ----
 [ "$STEPS" = together ] ||
   mark_start "EXECUTION $EXECUTION" "steps 2 and 3 on ${PIN:0:8}: host = build, Linux proof, then the Docker keep; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
@@ -696,6 +749,10 @@ track_host() {
   else not_run docker-keep "no build of ${PIN:0:8} to keep (the build is not green)"; fi
 }
 track_vm() {
+  if ! vm_up a; then
+    vm_red "$VM_WHY" windows-pack docker-windows windows-after-pack
+    touch "$PARTS/.docker-windows-done"; vm_down a; return
+  fi
   run_part windows-pack "step 3's pack, kept (WIN_RELEASE_HALF=pack)" env $STEP1_SWITCH WIN_RELEASE_HALF=pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
   # the build ended when its mark did (or the linux part ended before it)
   until grep -aq '^######## DOCKER RELEASE STEP 2/6 END' "$PARTS/docker-linux.log" 2>/dev/null || [ -f "$PARTS/docker-linux.rc" ]; do sleep "$POLL"; done
@@ -705,10 +762,12 @@ track_vm() {
   touch "$PARTS/.docker-windows-done"
   run_part windows-after-pack "step 3's server light set, Electron light set, Robot and verdict (WIN_RELEASE_HALF=after-pack)" \
     env $STEP1_SWITCH WIN_RELEASE_HALF=after-pack FOLLOW_PIDFILE="$WIN_PID" $WINDOWS
+  vm_down a
 }
 track_host & host_pid=$!
 track_vm & vm_pid=$!
 wait "$host_pid"; wait "$vm_pid"
+for vm in $RUN_VMS; do vm_down "$vm"; done   # a VM this run started whose track ended early
 if [ "$DRY" = yes ]; then
   # what the guards of steps 2 and 3 will ask before their verdicts (release-docker.sh 6/6, win_release 5/5), on the main
   # this checkout knows: under the pin, whether the part tested it; for comparison, what an unpinned step would answer

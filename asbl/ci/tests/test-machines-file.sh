@@ -41,7 +41,9 @@ has() {  # has <text> <text>: the text is in it, or what it holds is printed
 STUBS="$SCRATCH/stubs"; mkdir -p "$STUBS" "$SCRATCH/vm-conf"
 cat > "$STUBS/virsh" <<'STUB'
 #!/bin/bash
-# stub virsh: domstate <domain> answers from $STUB_VM_STATES ("<domain>=<state> ..."), a domain not there does not exist
+# stub virsh: domstate <domain> answers from $STUB_VM_STATES ("<domain>=<state> ..."), a domain not there does not exist;
+# dumpxml: 12 GB defined
+[ "${1:-}" != dumpxml ] || { printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n"; exit 0; }
 [ "${1:-}" = domstate ] || exit 0
 for pair in ${STUB_VM_STATES:-}; do [ "${pair%%=*}" = "${2:-}" ] && { echo "${pair#*=}"; exit 0; }; done
 echo "error: failed to get domain '${2:-}'" >&2; exit 1

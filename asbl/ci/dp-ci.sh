@@ -201,6 +201,10 @@
 #       WIN_CI_CONF [/var/kraft-internalsystems/config/datapallas-ci/win-ci.env], root only (mode 600), with WIN_HOST,
 #       WIN_USER, WIN_SSH_KEY, WIN_KNOWN_HOSTS and WIN_REPO (the VM's checkout; the e2e and release lanes need it); the
 #       environment may set them instead. Never print that file.
+#       WIN_VM [a] picks the VM (RELEASE_WINDOWS_VMS in the machines file, asbl/ci/release-machines.sh): a is win10-dev,
+#       win-ci.env alone; another VM <name> reads win-ci.env, then its own WIN_VM_CONF_DIR/win-ci-<name>.env [/root],
+#       root only, of which only WIN_HOST counts (the same account, key and checkout path). Each VM has its own pid file
+#       (asbl/ci/win-vm.sh): one Windows run per VM at a time.
 #       check                   the VM answers and the PowerShell quoting path is intact.
 #       ssh <words...>          a command through cmd.exe (quote-free commands only).
 #       ps < script.ps1         a PowerShell script from stdin, sent as -EncodedCommand, so nothing in it needs escaping:
@@ -566,6 +570,22 @@ WIN_SSH_KEY="${WIN_SSH_KEY:-}"
 WIN_REPO="${WIN_REPO:-}"
 WIN_KNOWN_HOSTS="${WIN_KNOWN_HOSTS:-}"
 WIN_CONNECT_TIMEOUT="${WIN_CONNECT_TIMEOUT:-10}"
+# WIN_VM: which VM (the header, `win`). Its address only: an unreadable or open file, or one without WIN_HOST, stops
+# here, never falling back to VM a's address
+. "$REPO/asbl/ci/win-vm.sh"
+WIN_VM="${WIN_VM:-a}"
+WIN_VM_CONF=""
+if [ "$WIN_VM" != a ]; then
+  win_vm_name_ok "$WIN_VM" || { echo "FAIL  WIN_VM=$WIN_VM: a VM's name is lowercase letters and digits" >&2; exit 2; }
+  WIN_VM_CONF="${WIN_VM_CONF_DIR:-/root}/win-ci-$WIN_VM.env"
+  [ -r "$WIN_VM_CONF" ] || { echo "FAIL  WIN_VM=$WIN_VM: no settings file $WIN_VM_CONF (its WIN_HOST; root only, chmod 600)" >&2; exit 2; }
+  case "$(stat -c %a "$WIN_VM_CONF")" in
+    600|400) ;;
+    *) echo "FAIL  $WIN_VM_CONF must be readable by root only: chmod 600 $WIN_VM_CONF" >&2; exit 1 ;;
+  esac
+  WIN_HOST=$(unset WIN_HOST; . "$WIN_VM_CONF" >/dev/null 2>&1; printf '%s' "${WIN_HOST:-}")
+  [ -n "$WIN_HOST" ] || { echo "FAIL  WIN_VM=$WIN_VM: no WIN_HOST in $WIN_VM_CONF" >&2; exit 2; }
+fi
 
 # Every win_* entry point goes through this first, so an unconfigured machine fails with a sentence that
 # says what to do instead of an ssh error that does not.
@@ -1095,7 +1115,7 @@ PS
 #   publish-target <task>  the publish target of publish-demo-datapallas.com (load_publish_target),
 #                          nothing published
 prereq() {
-  local c n names miss=0 vm_ok=0 v pid p t java=""
+  local c n names miss=0 vm_ok=0 v pid p t java="" pidfile
   while [ "$#" -gt 0 ]; do
     c=$1; shift
     case "$c" in
@@ -1157,11 +1177,12 @@ prereq() {
             fi ;;
         esac ;;
       vm-free)
-        pid=$(cat "$LOG_DIR/win-e2e.pid" 2>/dev/null)
+        pidfile=$(win_vm_pidfile)
+        pid=$(cat "$pidfile" 2>/dev/null)
         p=$$
         while [ -n "$pid" ] && [ -n "$p" ] && [ "$p" -gt 1 ] && [ "$p" != "$pid" ]; do p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' '); done
         if [ -n "$pid" ] && [ "$p" != "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-          echo "MISSING a free Windows VM: another Windows run is going (pid $pid, $LOG_DIR/win-e2e.pid); wait until it ends (follow it: FOLLOW_PIDFILE=$LOG_DIR/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh attach), then run the job again"
+          echo "MISSING a free Windows VM: another Windows run is going (pid $pid, $pidfile); wait until it ends (follow it: FOLLOW_PIDFILE=$pidfile bash asbl/ci/jenkins/follow-ci.sh attach), then run the job again"
           miss=$((miss + 1))
         else
           echo "OK no other Windows run is going"
@@ -2658,7 +2679,7 @@ win_check() {
   local expected='a"b%c&d|e<f>g^h\i j'      # every character cmd.exe would mangle on the way
   win_conf_ok || { echo "WIN_CHECK_RESULT ssh=FAIL reason=not-configured"; return 1; }
   # deliberately not echoed: the host, the account name and the key path. A CI log is pasted around.
-  echo "target: configured from $WIN_CI_CONF"
+  echo "target: configured from $WIN_CI_CONF${WIN_VM_CONF:+, then $WIN_VM_CONF (VM $WIN_VM)}"
   [ -r "$WIN_SSH_KEY" ] || { echo "WIN_CHECK_RESULT ssh=FAIL reason=no-readable-key"; return 1; }
   ver=$(win_ssh ver 2>&1); rc=$?          # bare `ver`, not `cmd /c ver` — see the quoting note above
   if [ $rc != 0 ]; then

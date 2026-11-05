@@ -7,7 +7,7 @@
 #   3. memory.log's sampler, with stub docker and ssh commands.
 # The dry runs are in 16.6.2's order (RELEASE_STEPS=in-order), whose parts the cases name; the steps together, the
 # default, leave the same files: asbl/ci/tests/test-step-independence.sh checks their parts and verdicts.
-# Every folder is a scratch one, and docker and ssh are stubs first on PATH that record each call: nothing is started,
+# Every folder is a scratch one, and docker, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call: nothing is started,
 # no live folder is touched, no machines file of this host is read. Takes about 40 seconds (a dry run's part lasts two
 # seconds).
 # Callers: a person or an agent, from the shell, after changing the orchestrator.
@@ -51,7 +51,16 @@ echo "ssh $*" | cut -c1-400 >> "$STUB_CALLS"
 [ "${STUB_SSH_DOWN:-0}" = 1 ] && { echo "ssh: connect to host vm.invalid port 22: Connection timed out" >&2; exit 255; }
 echo "committed=8589934592 commit_peak=12884901888 commit_limit=21474836480 physical_total=17179869184 physical_available=4294967296"
 STUB
-chmod +x "$STUBS/docker" "$STUBS/ssh"
+cat > "$STUBS/virsh" <<'STUB'
+#!/bin/bash
+# stub virsh: every VM is running, 12 GB defined (a round's VMs: nothing to set, start or shut down)
+case "${1:-}" in
+  domstate) echo running ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  *)        exit 1 ;;
+esac
+STUB
+chmod +x "$STUBS/docker" "$STUBS/ssh" "$STUBS/virsh"
 export PATH="$STUBS:$PATH"
 # the Windows VM's settings for dp-ci.sh win ps: made-up ones, and no win-ci.env read
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"

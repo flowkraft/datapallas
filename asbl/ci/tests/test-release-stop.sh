@@ -9,8 +9,10 @@
 #      the step it was sent); the orchestrator ended; everything else left;
 #   2. stop again: nothing more is stopped;
 #   3. the round's process gone (a reboot) and another run holding the CI now: nothing is touched;
-#   4. the round's process gone and the CI free: what the run started is stopped.
-# Every folder is a scratch one; docker and ssh are stubs first on PATH. Takes about 10 seconds.
+#   4. the round's process gone and the CI free: what the run started is stopped;
+#   5. a run that started VM b and drives it, and started VM c, shut down already: VM a's steps stopped on VM a's host,
+#      VM b's on VM b's (WIN_VM=b), then VM b shut down (virsh shutdown); VM c left as it is.
+# Every folder is a scratch one; docker, ssh and virsh are stubs first on PATH. Takes about 15 seconds.
 # Callers: a person or an agent, from the shell, after changing release-rehearsal.sh's stop.
 #   bash asbl/ci/tests/test-release-stop.sh
 # Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
@@ -67,7 +69,8 @@ cat > "$STUB/bin/ssh" <<'EOF'
 encoded=no; for a in "$@"; do [ "$a" = -EncodedCommand ] && encoded=yes; done
 if [ "$encoded" = yes ]; then
   step=$(printf '%s' "${*: -1}" | base64 -d | iconv -f UTF-16LE -t UTF-8 | sed -n 's/.*schtasks \/end \/tn "dp-ci-\([a-z0-9-]*\)".*/\1/p' | head -1)
-  [ -n "$step" ] && { echo "$step" >> "$STUB/vm-stopped"; echo "STOPPED $step"; exit 0; }
+  host=""; for a in "$@"; do case "$a" in *@*) host="${a#*@}"; break ;; esac; done
+  [ -n "$step" ] && { echo "$step" >> "$STUB/vm-stopped"; echo "step $step on $host" >> "$STUB/events"; echo "STOPPED $step"; exit 0; }
 fi
 echo "ssh $*" | cut -c1-200 >> "$STUB/ssh-other"
 EOF
@@ -88,8 +91,14 @@ entry=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   printf '%s\tdocker-windows\tpidfile\t%s\treal\ta pid file older than its entry\n' "$entry" "$STUB/older.pid"
   printf '%s\tdocker-windows\tvm\twindows-vm\treal\tdp-ci.sh win docker-e2e\n' "$entry"
   printf '%s\tlane1-web-full\tcontainer\tdry-run-container\tdry-run\tthe run container of dp-ci.sh\n' "$entry"
+  if [ -n "${STUB_VMS:-}" ]; then   # case 5: VM b started by this run and driven, VM c started and shut down already
+    printf '%s\tvm-b\tdomain\twin10-dev-b\treal\tthe Windows VM b, started by this run (virsh start)\n' "$entry"
+    printf '%s\twindows-pack\tvm\twindows-vm-b\treal\tdp-ci.sh win docker-e2e\n' "$entry"
+    printf '%s\tvm-c\tdomain\twin10-dev-c\treal\tthe Windows VM c, started by this run (virsh start)\n' "$entry"
+  fi
 } > "$folder/started.txt"
 echo 0 > "$folder/step1-build.rc"
+[ -z "${STUB_VMS:-}" ] || echo 0 > "$folder/vm-c.rc"
 sleep 1.2
 created=$(date -u +%Y-%m-%dT%H:%M:%S.123456789Z); older=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S.000000000Z)
 printf '%s\n' "ended-part-container|$created|" "dp-ci|$created|" "bundle-datapallas-1|$created|$STUB/bundle" \
@@ -117,7 +126,19 @@ export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E=tr
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
 # a start's machines check (asbl/ci/release-machines.sh check --press) on stand-ins: the host's memory, virsh (VM a running)
 export RELEASE_MEMINFO="$SCRATCH/meminfo"; printf 'MemAvailable:   %s kB\n' $((64 * 1048576)) > "$RELEASE_MEMINFO"
-printf '#!/bin/bash\n# stub virsh: every VM is running\necho running\n' > "$STUB/bin/virsh"; chmod +x "$STUB/bin/virsh"
+cat > "$STUB/bin/virsh" <<'EOF'
+#!/bin/bash
+# stub virsh: a VM is running until it is shut down ($STUB/off-<domain>); shutdown and destroy recorded in $STUB/events
+case "${1:-}" in
+  domstate) [ -e "$STUB/off-$2" ] && echo "shut off" || echo running ;;
+  shutdown|destroy) echo "virsh $1 $2" >> "$STUB/events"; touch "$STUB/off-$2" ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x "$STUB/bin/virsh"
+# VM b's settings file (its WIN_HOST; the rest from VM a's)
+export WIN_VM_CONF_DIR="$SCRATCH/vm-conf"; mkdir -p "$WIN_VM_CONF_DIR"
+echo "WIN_HOST=vm-b.invalid" > "$WIN_VM_CONF_DIR/win-ci-b.env"; chmod 600 "$WIN_VM_CONF_DIR/win-ci-b.env"
 unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL
 
@@ -126,7 +147,8 @@ alive() { kill -0 "$(cat "$1" 2>/dev/null)" 2>/dev/null; }   # alive <pid file>
 # a round going, its stub orchestrator in its part; an older pid file with a live process (not this shell's child)
 round_going() {
   round stop > /dev/null 2>&1
-  rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/stopped "$STUB"/vm-stopped "$STUB"/containers "$STUB"/orchestrator-ready
+  rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/stopped "$STUB"/vm-stopped "$STUB"/containers "$STUB"/orchestrator-ready \
+    "$STUB"/events "$STUB"/off-*
   [ -f "$STUB/older.pid" ] && kill -KILL "$(cat "$STUB/older.pid")" 2>/dev/null
   ( sleep 300 > /dev/null 2>&1 & echo $! > "$STUB/older.pid" ); touch -d '1 hour ago' "$STUB/older.pid"
   ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 ON_FAILURES=report-only round start > /dev/null
@@ -179,6 +201,17 @@ check "process gone, the CI free: the VM's steps stopped (they outlive a reboot 
   same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
 check "process gone, the CI free: the run's compose container stopped, nothing else" same "bundle-datapallas-1" "$(lines "$STUB/stopped")"
 check "process gone, the CI free: exit 4, stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
+
+# ---- 5. the VMs a run started ----
+export STUB_VMS=yes
+round_going
+out=$(round stop); rc=$?
+unset STUB_VMS
+check "VMs: exit 4, the round stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
+check "  VM a's steps on VM a's host, VM b's on VM b's, then VM b shut down; VM c (ended) left" same \
+  "step npmwc on vm.invalid|step prepare on vm.invalid|step docker-e2e on vm.invalid|step npmwc on vm-b.invalid|step prepare on vm-b.invalid|step docker-e2e on vm-b.invalid|virsh shutdown win10-dev-b" \
+  "$(paste -sd'|' "$STUB/events" 2>/dev/null)"
+check "  stop says it shut VM b down" bash -c 'grep -q "^STOPPED VM b (win10-dev-b): shut down (virsh shutdown)" <<< "$1"' _ "$out"
 
 echo
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-release-stop"; exit 0; fi

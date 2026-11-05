@@ -5,7 +5,8 @@
 # with the layouts for 1 to 4 VMs; copy what you need from it into the settings file.
 #
 # SOURCED by asbl/ci/jenkins/release-rehearsal.sh and asbl/ci/jenkins/release-orchestrator.sh (machines_load,
-# machines_check, machines_vms_for, machines_lanes_of, machines_schedule); also a command, for a person or an AI agent:
+# machines_check, machines_vms_for, machines_lanes_of, machines_schedule, and a round's VMs: machines_vm_memory_set,
+# machines_vm_start, machines_vm_shutdown, below); also a command, for a person or an AI agent:
 #   bash asbl/ci/release-machines.sh show               the settings as read: the file's values, the defaults for the rest
 #   bash asbl/ci/release-machines.sh check <N> <M>      the file's rules for these Advanced values (the steps, the numbers,
 #                                                       enough VMs named, the layout's rules): exit 0 with "MACHINES OK
@@ -44,6 +45,11 @@
 # The rules of a layout (checked): every lane once; Robot on the pack's VM and last there (it installs the pack's zips,
 # and it removes Java); the server light set before the Electron light set when both are on one VM (the Electron
 # package empties asbl\dist).
+# A ROUND'S VMS (the orchestrator, real runs; virsh on this host): before the round, each VM it uses gets
+# WIN_VM_MEMORY_GB as its defined memory when it differs (--config: a running VM takes it at its next start); a VM that
+# is off is started, and waited for until it answers over SSH (dp-ci.sh win ssh ver, VM_SSH_WAIT_SECS [900] at most,
+# every VM_POLL_SECS [15]), else its lanes are red; a VM the round started is shut down after its last lane (virsh
+# shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); a VM that was running is left running.
 # Other inputs: WIN_CI_CONF [/var/kraft-internalsystems/config/datapallas-ci/win-ci.env] (VM a's, named only),
 # WIN_VM_CONF_DIR [/root], RELEASE_MEMINFO [/proc/meminfo], RUN_RECORD_DIR [<LOG_DIR>/runs] (the runs whose marks give
 # the times), LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci].
@@ -123,6 +129,65 @@ machines_vm_state() {
   local state
   state=$(virsh domstate "$(machines_domain_of "$1")" 2>/dev/null) || { echo missing; return; }
   case "$state" in running) echo running ;; *) echo off ;; esac
+}
+# machines_vm_memory_kib <name>: the VM's defined memory and current memory, in KiB ("<memory> <currentMemory>"), from its
+# definition (virsh dumpxml --inactive); nothing when virsh cannot read it
+machines_vm_memory_kib() {
+  local xml
+  xml=$(virsh dumpxml --inactive "$(machines_domain_of "$1")" 2>/dev/null) || return 0
+  printf '%s %s' "$(grep -oP "<memory unit='KiB'>\K[0-9]+" <<< "$xml" | head -1)" "$(grep -oP "<currentMemory unit='KiB'>\K[0-9]+" <<< "$xml" | head -1)"
+}
+# machines_vm_memory_set <name> [dry]: WIN_VM_MEMORY_GB as the VM's memory (virsh setmaxmem and setmem, --config) when
+# its definition differs; says what it did (dry: what it would do); 1 when it could not
+machines_vm_memory_set() {
+  local dom want=$((WIN_VM_MEMORY_GB * 1048576)) max cur
+  dom=$(machines_domain_of "$1")
+  read -r max cur <<< "$(machines_vm_memory_kib "$1")"
+  [ -n "${max:-}" ] || { echo "WARN    VM $1 ($dom): its defined memory cannot be read (virsh dumpxml --inactive): left as it is"; return 1; }
+  [ "$max" != "$want" ] || [ "${cur:-$max}" != "$want" ] || return 0
+  if [ "${2:-}" = dry ]; then
+    echo "WOULD   VM $1 ($dom): its memory set to $WIN_VM_MEMORY_GB GB (now $((max / 1048576)) GB; virsh setmaxmem and setmem --config: it takes it at its next start)"
+    return 0
+  fi
+  # lower: the current memory first, then the maximum; higher: the maximum first (current never above maximum)
+  if [ "$max" -gt "$want" ]; then
+    virsh setmem "$dom" "$want" --config >/dev/null 2>&1 && virsh setmaxmem "$dom" "$want" --config >/dev/null 2>&1
+  else
+    virsh setmaxmem "$dom" "$want" --config >/dev/null 2>&1 && virsh setmem "$dom" "$want" --config >/dev/null 2>&1
+  fi || { echo "WARN    VM $1 ($dom): virsh could not set its memory to $WIN_VM_MEMORY_GB GB: left at $((max / 1048576)) GB"; return 1; }
+  echo "VM      $1 ($dom): its memory set to $WIN_VM_MEMORY_GB GB, from $((max / 1048576)) GB (--config: it takes it at its next start)"
+}
+# machines_duration <seconds>: "15 min", or "40 s" under a minute
+machines_duration() { if [ "$1" -ge 60 ]; then echo "$(($1 / 60)) min"; else echo "$1 s"; fi; }
+# machines_vm_answers <name>: the VM answers over SSH now (dp-ci.sh win ssh ver)
+machines_vm_answers() { WIN_VM="$1" bash asbl/ci/dp-ci.sh win ssh ver >/dev/null 2>&1; }
+# machines_vm_start <name>: virsh start, then wait until it answers over SSH (VM_SSH_WAIT_SECS at most); 0 when it does,
+# 1 when it did not start or never answered ("VM <name> did not start ...": its lanes are red)
+machines_vm_start() {
+  local dom waited=0 wait="${VM_SSH_WAIT_SECS:-900}" every="${VM_POLL_SECS:-15}"
+  dom=$(machines_domain_of "$1")
+  virsh start "$dom" >/dev/null 2>&1 || { echo "VM $1 ($dom) did not start: virsh start failed"; return 1; }
+  echo "VM      $1 ($dom): started (virsh start); waiting for its SSH, $(machines_duration "$wait") at most"
+  until machines_vm_answers "$1"; do
+    [ "$waited" -lt "$wait" ] || { echo "VM $1 ($dom) did not start: no SSH answer within $(machines_duration "$wait") of virsh start"; return 1; }
+    sleep "$every"; waited=$((waited + every))
+  done
+  echo "VM      $1 ($dom): answers over SSH, after about $waited s"
+}
+# machines_vm_shutdown <name>: virsh shutdown, then virsh destroy when it is still running after VM_SHUTDOWN_WAIT_SECS
+machines_vm_shutdown() {
+  local dom waited=0 wait="${VM_SHUTDOWN_WAIT_SECS:-600}" every="${VM_POLL_SECS:-15}"
+  dom=$(machines_domain_of "$1")
+  [ "$(machines_vm_state "$1")" = running ] || { echo "VM      $1 ($dom): off already"; return 0; }
+  virsh shutdown "$dom" >/dev/null 2>&1 || echo "WARN    VM $1 ($dom): virsh shutdown failed"
+  while [ "$(machines_vm_state "$1")" = running ]; do
+    if [ "$waited" -ge "$wait" ]; then
+      virsh destroy "$dom" >/dev/null 2>&1
+      echo "VM      $1 ($dom): still running $(machines_duration "$wait") after virsh shutdown: virsh destroy"; return 0
+    fi
+    sleep "$every"; waited=$((waited + every))
+  done
+  echo "VM      $1 ($dom): shut down (virsh shutdown)"
 }
 # machines_available_gb: the host's available memory now, in whole GB (GiB, MemAvailable)
 machines_available_gb() { awk '/^MemAvailable:/ { printf "%d", $2 / 1048576 }' "${RELEASE_MEMINFO:-/proc/meminfo}"; }

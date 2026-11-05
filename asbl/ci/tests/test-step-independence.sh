@@ -19,7 +19,7 @@
 #   6. RELEASE_STEPS=in-order gives 16.6.2's dry run: step 1's lanes first, then steps 2 and 3, the same ORDER lines.
 # Every folder is a scratch one. release-docker.sh and upload-kept run in a sandbox: a sparse clone of this commit (asbl/ci
 # as it is in this checkout, committed in the sandbox's own history when it is not yet) whose origin is a local bare
-# repository; docker, curl and ssh are stubs first on PATH. No
+# repository; docker, curl, ssh and virsh are stubs first on PATH. No
 # machines file of this host is read. Nothing is built, uploaded, pushed or started. Takes about three minutes (a dry
 # run's part lasts two seconds).
 # Callers: a person or an agent, from the shell, after changing the order of the steps or a step 1 check.
@@ -76,7 +76,16 @@ cat > "$STUBS/ssh" <<'STUB'
 echo "ssh $*" | cut -c1-300 >> "$STUB_CALLS"
 echo "ssh: connect to host vm.invalid port 22: Connection timed out" >&2; exit 255
 STUB
-chmod +x "$STUBS/docker" "$STUBS/curl" "$STUBS/ssh"
+cat > "$STUBS/virsh" <<'STUB'
+#!/bin/bash
+# stub virsh: every VM is running, 12 GB defined (a round's VMs: nothing to set, start or shut down)
+case "${1:-}" in
+  domstate) echo running ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  *)        exit 1 ;;
+esac
+STUB
+chmod +x "$STUBS/docker" "$STUBS/curl" "$STUBS/ssh" "$STUBS/virsh"
 export PATH="$STUBS:$PATH"
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
 export RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env" RELEASE_REHEARSAL_CONF="$SCRATCH/no-release-rehearsal.conf"

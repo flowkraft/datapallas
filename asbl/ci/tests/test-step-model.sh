@@ -18,7 +18,7 @@
 #      takes a kept pack's zip and no build of this host, stops without one, and packs first with REBUILD=yes.
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
 # checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host;
-# docker, curl and ssh are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
+# docker, curl, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
 # built, uploaded, pushed or started. Takes about a minute.
 # Callers: a person or an agent, from the shell, after changing the step model.
 #   bash asbl/ci/tests/test-step-model.sh
@@ -72,7 +72,16 @@ cat > "$STUBS/ssh" <<'STUB'
 echo "ssh $*" | cut -c1-300 >> "$STUB_CALLS"
 echo "ssh: connect to host vm.invalid port 22: Connection timed out" >&2; exit 255
 STUB
-chmod +x "$STUBS/docker" "$STUBS/curl" "$STUBS/ssh"
+cat > "$STUBS/virsh" <<'STUB'
+#!/bin/bash
+# stub virsh: every VM is running, 12 GB defined (a round's VMs: nothing to set, start or shut down)
+case "${1:-}" in
+  domstate) echo running ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  *)        exit 1 ;;
+esac
+STUB
+chmod +x "$STUBS/docker" "$STUBS/curl" "$STUBS/ssh" "$STUBS/virsh"
 export PATH="$STUBS:$PATH"
 # made-up settings: no settings file of this host is read (the Windows VM's, the publish credentials)
 export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"

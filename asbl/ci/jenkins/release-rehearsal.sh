@@ -18,8 +18,9 @@
 #   stop       the round stops, in this order: its process group (the round, its run, the run's parts); then what the
 #              run started that outlives that group, from its started.txt: each entry of a part that had not ended, a
 #              container or compose stack created since its entry (docker stop), the Windows driver of a pid file written
-#              since (its process group), the VM's steps of that command (dp-ci.sh win stop); then its fix run (the
-#              fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
+#              since (its process group), the VM's steps of that command (dp-ci.sh win stop, on that VM), and last a
+#              Windows VM the run started (virsh shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); then
+#              its fix run (the fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
 #              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. Exit 4
 #   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2)
 #   label      the build's label for the job's build list, one line: "16.6.2 run 1 going", "16.6.2 waiting for review after
@@ -94,7 +95,8 @@
 #   round.log    the console: the round's lines (ROUND ...) and each run's orchestrator console
 #   proceed      written by proceed, taken by the waiting round
 # IS THE CI BUSY: runs, never process names (the dev servers' permanent dp-ci.sh --inside is no run): a dp-ci container
-#   (dp-ci.sh's one-run interlock), a live <LOG_DIR>/win-e2e.pid (a Windows run), <LOG_DIR>/release-orchestrator.lock held,
+#   (dp-ci.sh's one-run interlock), a live win-e2e pid file of any VM (a Windows run, asbl/ci/win-vm.sh),
+#   <LOG_DIR>/release-orchestrator.lock held,
 #   <LOG_DIR>/release-rehearsal.lock held (a round's process), the newest round fixing with its fix run going, or green and
 #   not yet released (a dry round's green holds nothing: it uploads nothing).
 #
@@ -124,6 +126,7 @@ ROUND_POLL="${ROUND_POLL:-30}"
 FULL_SET_JOBS="${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-1}"   # Advanced (Parallelization), see THE PARAMETERS
 WINDOWS_VMS_USED="${USE_N_NUMBER_OF_WINDOWS_VMS:-1}"
 . asbl/ci/release-machines.sh
+. asbl/ci/win-vm.sh
 MAX_AUTOMATIC_RERUNS=2   # owner, 2026-10-30: at most two re-runs without a review
 UNREADABLE_FIX_STATUS_LIMIT=20   # that many looks in a row with no FIX_STATUS line: the fix round is BLOCKED, it waits for a person
 SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
@@ -181,11 +184,13 @@ status_line() {  # status_line <round folder or empty> [<state>]
 # ---- is the CI busy ----
 # busy_reason: why the CI is busy, or nothing. Runs only: their lock and pid files and the newest round's state
 busy_reason() {
-  local pid dir state
+  local pid dir state pidfile
   if docker ps -a --filter 'name=^dp-ci$' --format '{{.Names}}' 2>/dev/null | grep -q .; then
     echo "a dp-ci run is going (its container dp-ci: docker logs -f dp-ci)"; return; fi
-  pid=$(cat "$LOG_DIR/win-e2e.pid" 2>/dev/null)
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then echo "a Windows run is going (pid $pid in $LOG_DIR/win-e2e.pid)"; return; fi
+  for pidfile in $(win_vm_pidfiles); do
+    pid=$(cat "$pidfile" 2>/dev/null)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then echo "a Windows run is going (pid $pid in $pidfile)"; return; fi
+  done
   if [ -e "$LOG_DIR/release-orchestrator.lock" ] && ! flock -n "$LOG_DIR/release-orchestrator.lock" true 2>/dev/null; then
     echo "a release orchestrator run is going ($LOG_DIR/release-orchestrator.lock)"; return; fi
   dir=$(newest_round)
@@ -563,10 +568,12 @@ stop_pidfile_process_since() {
   kill -0 "$pid" 2>/dev/null && { kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null; }
   echo "STOPPED process $pid of $1"
 }
+# vm_of_entry <name of a vm entry>: the VM it names (windows-vm: VM a; windows-vm-<name>: that VM)
+vm_of_entry() { case "$1" in windows-vm-*) echo "${1#windows-vm-}" ;; *) echo a ;; esac; }
 # stop_what_the_runs_started <round folder>: each unfinished entry, in its started.txt order (a part's Windows driver
-# before its VM steps, so the driver does not react to them)
+# before its VM steps, so the driver does not react to them); a VM the run started last, once its steps are stopped
 stop_what_the_runs_started() {
-  local utc part kind name what since container step
+  local utc part kind name what since container step vms=""
   while IFS=$'\t' read -r utc part kind name what; do
     since=$(epoch_of "$utc")
     case "$kind" in
@@ -577,11 +584,13 @@ stop_what_the_runs_started() {
       pidfile)   stop_pidfile_process_since "$name" "$since" ;;
       vm)        for step in $(vm_steps_of "$what"); do
                    # read whole, not piped to grep -q: an early grep exit would give dp-ci.sh a SIGPIPE, and pipefail its code
-                   if [[ "$(bash asbl/ci/dp-ci.sh win stop "$step" 2>&1)" == *"STOPPED $step"* ]]; then echo "STOPPED the VM's step $step ($part)"
-                   else echo "WARN    the VM's step $step ($part) was not confirmed stopped: bash asbl/ci/dp-ci.sh win stop $step"; fi
+                   if [[ "$(WIN_VM="$(vm_of_entry "$name")" bash asbl/ci/dp-ci.sh win stop "$step" 2>&1)" == *"STOPPED $step"* ]]; then echo "STOPPED the VM's step $step ($part)"
+                   else echo "WARN    the VM's step $step ($part) was not confirmed stopped: WIN_VM=$(vm_of_entry "$name") bash asbl/ci/dp-ci.sh win stop $step"; fi
                  done ;;
+      domain)    vms="$vms ${part#vm-}" ;;
     esac
   done < <(unfinished_started_entries "$1")
+  for vm in $vms; do machines_vm_shutdown "$vm" | sed 's/^VM      /STOPPED VM /'; done
 }
 stop_round() {
   local dir state recorded_state pid fix_run was_alive=no other_run
