@@ -4573,6 +4573,10 @@ fi
 
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$TASK-$SHA.log"
+# Made here, not by the container's first line: follow-ci.sh looks for this file the moment this launcher returns, and in
+# a runner it returns before the container has written anything (no firewall step to wait for). 16.6.3's first runner
+# lane was stopped 10 s after a good start with "no log to follow". The container appends to it (--inside).
+: >> "$LOG"
 ln -sfn "$LOG" "$LOG_DIR/latest.log"
 
 if [ -n "$E2E_RUNNER" ]; then

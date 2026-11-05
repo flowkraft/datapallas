@@ -107,13 +107,18 @@ case "${1:-}" in
           printf '{"config": {}, "suites": [{"title": "%s.spec.ts", "file": "specs/%s.spec.ts", "specs": [{"title": "t", "file": "specs/%s.spec.ts", "line": 1, "tests": [{"status": "%s", "projectName": "chromium", "results": [{"status": "%s", "duration": 60000}]}]}]}], "errors": [], "stats": {"startTime": "2026-11-05T10:00:00.000Z", "duration": 60000, "expected": %d, "unexpected": %d, "flaky": 0, "skipped": 0}}\n' \
             "$eng" "$eng" "$eng" "$st" "$res" "$p" "$f" > "$rep"
           printf 'E2E_RESULT mode=full passed=%d failed=%d flaky=0 skipped=0 didnotrun=0 exit=%d target=web\nPIPELINE_RESULT=%s\n' "$p" "$f" "$x" "$pr" >> "$log"
+        elif [ -e "$STUB/late-log" ]; then
+          # as a real container: its first line comes after docker run returned, and its log was not there before it
+          ( sleep 1; printf 'PIPELINE_START\nPIPELINE_RESULT=SUCCESS\n' >> "$log" ) >/dev/null 2>&1 &
         else
           printf 'PIPELINE_START\nE2E_RESULT mode=full passed=1 failed=0 flaky=0 skipped=0 didnotrun=0 exit=0 target=web\nPIPELINE_RESULT=SUCCESS\n' >> "$log"
         fi
         exit 0 ;;
     esac
     case "$*" in
-      *" -i "*) cat > "$STUB/cache-$eng-$(arg_after -v "$@" | cut -d: -f1)" ;;   # a cache copied in
+      *" -i "*)   # a cache copied in: it runs the CI image in that engine, which must have it (as a real engine)
+        grep -q '^datapallas-ci ' "$STUB/images-$eng" 2>/dev/null || { cat >/dev/null; echo "Unable to find image" >&2; exit 125; }
+        cat > "$STUB/cache-$eng-$(arg_after -v "$@" | cut -d: -f1)" ;;
       *"--entrypoint tar"*) echo "TAR $(arg_after -v "$@" | cut -d: -f1)" ;;      # a cache read out
       *"-c find"*) cat "$STUB/cache-host-$(arg_after -v "$@" | cut -d: -f1)" 2>/dev/null || printf '10\n1000\n' ;;   # its fingerprint
     esac ;;
@@ -254,6 +259,9 @@ check "the newest successful build log copied into the runner's log folder (dock
   test -f "$LOG_DIR/runners/1/20261105T100000Z-build-${PIN:0:8}.log"
 check "the three caches copied into runner 1 once" same "dp-ci-cache dp-ci-m2 dp-ci-npm" \
   "$(printf '%s\n' "$START_CALLS" | grep -oE '^r1 docker run --rm -i -v dp-ci-[a-z0-9]+' | awk '{ print $NF }' | sed 's/^-v //' | sort | paste -sd' ')"
+check "the CI image goes in before the first cache (16.6.3: every cache copy failed without it)" bash -c '
+  [ "$(grep -n "^host docker save datapallas-ci" <<< "$1" | head -1 | cut -d: -f1)" -lt "$(grep -n "^r1 docker run --rm -i -v dp-ci-" <<< "$1" | head -1 | cut -d: -f1)" ]' _ "$START_CALLS"
+check "no cache warning at the start" eval '! grep -q "could not be copied" <<< "$START_OUT"'
 bash "$RUNNERS" stop 1 >/dev/null 2>&1; : > "$STUB/calls"
 printf '11\n1001\n' > "$STUB/cache-host-dp-ci-npm"   # the host's npm cache changed
 OUT=$(bash "$RUNNERS" start 1 2>&1)
@@ -318,6 +326,11 @@ OUT=$(cd "$E2E_RUNNERS_HOME/1/reportburster" && DOCKER_HOST="unix://$E2E_RUNNER_
 check "dp-ci.sh: runner 1's lane on runner 2's socket: refused, exit 2" same 2 "$RC"
 OUT=$(cd "$E2E_RUNNERS_HOME/1/reportburster" && DOCKER_HOST="unix://$E2E_RUNNER_SOCKET_DIR/1/docker.sock" E2E_RUNNER=1 E2E_RUNNER_LOG_DIR="$LOG_DIR/runners/1" bash asbl/ci/dp-ci.sh build 2>&1); RC=$?
 check "dp-ci.sh: a build in a runner: refused, exit 2" same "2 1" "$RC $(printf '%s\n' "$OUT" | grep -c '^FAIL  only e2e runs in a runner')"
+touch "$STUB/late-log"
+OUT=$(bash "$RUNNERS" run 1 2>&1); RC=$?
+rm -f "$STUB/late-log"
+check "a container that writes its log late: the lane is followed to its end (16.6.3: stopped, no log to follow)" same "0 0" \
+  "$RC $(grep -c 'no log to follow' <<< "$OUT")"
 OUT=$(E2E_SPEC='/x\.spec\.ts$' bash "$RUNNERS" run 1 2>&1); RC=$?
 check "run with E2E_SPEC (a targeted run): refused, exit 2" same "2 1" "$RC $(printf '%s\n' "$OUT" | grep -c '^REFUSED runner 1: E2E_SPEC/E2E_GREP make a targeted run')"
 

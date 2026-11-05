@@ -182,9 +182,19 @@ cache_fingerprint() {
   if [ -n "${2:-}" ]; then in_runner "$2" docker run --rm -v "$1":/c:ro --entrypoint sh "$CI_IMAGE" -c "$count_cmd"
   else docker run --rm -v "$1":/c:ro --entrypoint sh "$CI_IMAGE" -c "$count_cmd"; fi 2>/dev/null | paste -sd' '
 }
+# copy_ci_image <n>: the CI image into runner n, unless the same id is there. Its own step before the caches: a cache copy
+# runs this image in the runner's engine, and IMAGES comes after CACHES (the host's lanes wait for CACHES END only).
+# Without it every cache copy failed on 16.6.3's first runner lane, which started with empty caches.
+copy_ci_image() {
+  local n="$1" host_id
+  host_id=$(docker image inspect -f '{{.Id}}' "$CI_IMAGE" 2>/dev/null) || return 1
+  [ "$(in_runner "$n" docker image inspect -f '{{.Id}}' "$CI_IMAGE" 2>/dev/null)" != "$host_id" ] || return 0
+  docker save "$CI_IMAGE" | in_runner "$n" docker load -q >/dev/null
+}
 copy_caches() {
   local n="$1" volume host_print copied_file
   mkdir -p "$(runner_log_dir "$n")/caches" || return 1
+  copy_ci_image "$n" || echo "WARN    runner $n: $CI_IMAGE could not be copied in: its caches cannot be copied either"
   for volume in $CACHE_VOLUMES; do
     copied_file="$(runner_log_dir "$n")/caches/$volume.copied"
     host_print=$(cache_fingerprint "$volume")
