@@ -19,15 +19,21 @@
 #      read means every part rebuilds and step 1 is refused;
 #   2. with a checkout given (--tree), tracked files changed in it mean the same: a dirty tree is no commit, nothing says
 #      what it was built from;
-#   3. each file placed (place_path): on the never-shipped list -> nothing; one part's own packer file -> that part only;
+#   3. the packers read at both commits (packers_check, THE PACKERS CHECK below): a packer line that names a never-shipped
+#      path, or a parent of one, and is not a known mention means the list cannot be trusted there: every part rebuilds
+#      and step 1 is refused;
+#   4. each file placed (place_path): on the never-shipped list -> nothing; one part's own packer file -> that part only;
 #      anything else the packers read (bkend/, frend/, asbl/, xtra-tools/, pom.xml) -> every part; a path outside all of
 #      them cannot be placed -> every part, named so;
-#   4. step 1 still counts when neither the e2e package nor the image with the zips rebuilds.
+#   5. step 1 still counts when neither the e2e package nor the image with the zips rebuilds.
 #
 # USE (from anywhere; the commits are read from this file's repository, RR_REPO replaces it):
 #   bash asbl/ci/reuse-or-rebuild.sh parts <from> <to> [--tree <checkout>]   the answer: one line per part, then step 1
 #   bash asbl/ci/reuse-or-rebuild.sh part <part> <from> <to> [--tree <dir>]  one part: prints reuse|rebuild, exit 0|1
 #   bash asbl/ci/reuse-or-rebuild.sh step1 <from> <to>                       prints still-counts|refused, exit 0|1
+#   bash asbl/ci/reuse-or-rebuild.sh packers <commit>                        the packers check there: each mention (KNOWN
+#                                                                            with its reason, NAMES for any other), then
+#                                                                            PASS or FAIL; exit 0|1, 2 an unreadable commit
 #   bash asbl/ci/reuse-or-rebuild.sh replay                                  the acceptance check of the rule, in seconds:
 #                                                                            exit 0 only when every answer is the expected one
 #   . asbl/ci/reuse-or-rebuild.sh; reuse_or_rebuild <from> <to> [<checkout>] for the scripts that ask (the re-run entry, the
@@ -44,13 +50,14 @@
 #   RR_WHY_E2E_PACKAGE RR_WHY_IMAGE_AND_ZIPS RR_WHY_WINDOWS_PACK   the files that made it rebuild (space-separated)
 #   RR_STEP1          still-counts | refused
 #   RR_STEP1_WHY      why: "nothing its lanes test changed" | "the product changed" | "the CI toolchain changed" |
-#                     "a path it cannot place" | "dirty tree" | "unknown commit"
+#                     "a path it cannot place" | "dirty tree" | "unknown commit" | "a packer names a never-shipped path"
 #   RR_FROM RR_TO     the two commits, 8 characters; RR_CHANGED the number of files that differ
-#   RR_NOTE           a dirty tree or an unknown commit, in words (empty otherwise)
+#   RR_NOTE           a dirty tree, an unknown commit, or the packer line that names a never-shipped path, in words
+#                     (empty otherwise)
 
 # THE NEVER-SHIPPED LIST: a path under one of these is in no part, so a change to it rebuilds nothing. Every entry was checked
 # against what the packers copy (at ac01cd76: the six assemblers, AssemblerTest, both .bat packers, the product Dockerfile
-# and .dockerignore, electron-builder.json):
+# and .dockerignore, electron-builder.json), and packers_check reads them again at both commits of every question:
 #   frend/reporting/e2e/  the Playwright suite. No assembler or .bat names it; the image's .dockerignore drops **/e2e/; the
 #                         Electron app is frend/reporting/app (electron-builder's two-package layout), not frend/reporting.
 #   asbl/ci/              the CI scripts and jobs; no packer names it. Except what decides the built bytes, kept as shipped
@@ -60,7 +67,9 @@
 #                         AssemblerTest IS the packers' entry (it says what each part assembles), and every src/test file an
 #                         assembler copies into the package: NoExeAssembler ships four sample Groovy scripts and five HTML
 #                         templates from bkend/reporting/src/test/. Those are read from the assemblers' sources at both
-#                         commits (shipped_test_files), so a new copy line is picked up without editing this list.
+#                         commits (shipped_test_files), so a new copy line is picked up without editing this list. And
+#                         every src/test inside a folder the assemblers copy whole (COPIED_WHOLE): the playgrounds'
+#                         tests in db-template/_apps ship in every zip (16.6.2's three zips hold 11 such entries).
 #   .docs/                notes, ignored by git: never in a commit.
 #   .github/              the GitHub repository's own files: its workflows, dependabot.yml and the pictures the README
 #                         shows. One workflow (update-stars.yml) commits the star counter
@@ -70,6 +79,10 @@
 # carries these files as source, never as something the product runs, and no test reads them out of it. Execution 2 packs it
 # from its own commit, so the source zip a user gets always matches its commit.
 NEVER_SHIPPED=(frend/reporting/e2e/ asbl/ci/ asbl/src/uat/ '*/src/test/' .docs/ .github/)
+# the template folders the assemblers copy whole, every tracked file (Utils.copyTrackedTemplateFiles; PackageCheck names the
+# same three): all of a folder here ships, a src/test inside it too
+COPIED_WHOLE=(asbl/src/main/external-resources/db-template/ asbl/src/main/external-resources/db-server-template/
+              bkend/reporting/src/main/external-resources/template/)
 
 # Under asbl/ci/ but shipped: they decide the built bytes of the Linux builds (the e2e package on this host, the image and the
 # zips), not the VM's. A change to how dp-ci.sh DRIVES a build stays CI: execution 2 rebuilds with it.
@@ -118,7 +131,7 @@ shipped_test_files() {
 place_path() {
   local p="$1" shipped_tests="$2" t
   if rr_matches "$p" "${TOOLCHAIN[@]}"; then printf 'e2e-package image-and-zips|toolchain\n'; return; fi
-  if rr_matches "$p" "${NEVER_SHIPPED[@]}"; then
+  if rr_matches "$p" "${NEVER_SHIPPED[@]}" && ! rr_matches "$p" "${COPIED_WHOLE[@]}"; then
     # a src/test file an assembler copies is shipped, as is the packers' own test folder
     if [ -n "$shipped_tests" ] && [ -s "$shipped_tests" ]; then
       while IFS= read -r t; do
@@ -173,7 +186,252 @@ rr_answer_for_paths() {
   fi
 }
 
-# rr_everything <why> <note>: every part rebuilds, step 1 refused (an unknown commit, a dirty tree)
+# THE PACKERS CHECK (packers_check <commit>): the never-shipped list holds only while no packer copies one of its paths.
+# packers_check reads the packers at a commit, each path from the folder its packer runs in, and finds each line that names
+# a path under a never-shipped entry, or a parent of one. Every such line must be a known mention (below, with its reason);
+# any other means every part rebuilds and step 1 is refused, whatever changed (RR_STEP1_WHY "a packer names a never-shipped
+# path", RR_NOTE the packer and its line). What it reads, per packer:
+#   Java (the assembly folder's files, AssemblerTest): the string literals ("a" + "b" read as one), each path from the
+#     repository's root ("/x" after getTopProjectFolderPath) or from asbl/ (where Maven runs them), both tried;
+#   .bat: the words of each line, from asbl/ and from the root (they pushd ..\ before Maven);
+#   Dockerfile: COPY/ADD sources from the build context (the root); --from= copies another stage's files, never a source path;
+#   .dockerignore: only its ! lines (an exclude ships nothing; ! puts files back);
+#   electron-builder.json: its strings, from frend/reporting.
+# Comments are skipped. The root alone, a packer's own folder (. and ..) and a word that names no top folder of the commit are
+# no paths. A literal with a folder named e2e, uat, .docs or .github (or asbl/ci) that resolves nowhere (its parent a
+# variable) counts too. Not seen: a path built only from variables. The src/test files an assembler copies
+# (shipped_test_files) are known by rule: they are placed as shipped. A commit's never-shipped folders are its own: each
+# entry, and each <folder>/src/test in its tree that place_path calls never-shipped.
+# The packers: <path at the commit, or a folder of .java files>|<the folder it runs in>|<how its paths are written>
+PACKERS=("$ASSEMBLY/|asbl|java"
+         "asbl/src/test/java/com/sourcekraft/documentburster/assembly/AssemblerTest.java|asbl|java"
+         "asbl/pack-datapallas.bat|asbl|bat" "asbl/pack-prepare-for-e2e.bat|asbl|bat"
+         "Dockerfile||dockerfile" ".dockerignore||dockerignore" "frend/reporting/electron-builder.json|frend/reporting|json")
+# The known mentions, three items each: the packer, its line (spaces as they come), and why it ships nothing of the list.
+# The same 13 lines at every commit from 3f5c21f0 (16.6.0) to 457cf22e (2026-11-05). A line changed or added is no longer
+# known: read it, then add it here with its reason, or fix the packer.
+KNOWN_MENTIONS=(
+  "$ASSEMBLY/DataPallasAssembler.java"
+  'new ProcessExecutor().directory(new File(Utils.getTopProjectFolderPath() + "/frend/reporting"))'
+  "runs npm in frend/reporting to build the Electron app; the pack takes only frend/reporting/release/DataPallas.exe"
+  "$ASSEMBLY/DataPallasServerSpringBootAssembler.java"
+  'new ProcessExecutor().directory(new File(Utils.getTopProjectFolderPath() + "/frend/reporting"))'
+  "runs npm in frend/reporting to build the web app; the server zip takes only frend/reporting/dist"
+  "$ASSEMBLY/NoExeAssembler.java"
+  'String reportingDir = Utils.getTopProjectFolderPath() + "/frend/reporting";'
+  "runs npm (custom:compile-and-stage-web-components) in frend/reporting; it copies nothing from there"
+  "$ASSEMBLY/DataPallasSourceAssembler.java"
+  'String[] requiredPaths = { "/frend", "/bkend", "/pom.xml", "/README.md" };'
+  "the source zip's check that git archive kept these top folders: the source zip is the commit's files as source, by design"
+  asbl/pack-datapallas.bat
+  'call mvn clean install -pl asbl -am -DskipTests -U >> asbl\pack-datapallas.log 2>&1'
+  "Maven builds the asbl module and what it needs; the packers decide what ships"
+  asbl/pack-datapallas.bat
+  'call mvn test -pl asbl -Dtest=AssemblerTest#assembleDataPallasAndDataPallasServer -X >> asbl\pack-datapallas.log 2>&1'
+  "Maven runs the packers' entry, AssemblerTest, in the asbl module"
+  asbl/pack-prepare-for-e2e.bat
+  'call mvn clean install -pl bkend/common,asbl -am -DskipTests >> asbl\pack-prepare-for-e2e.log 2>&1'
+  "Maven builds the bkend/common and asbl modules; their jars hold no test class, the packers decide what ships"
+  asbl/pack-prepare-for-e2e.bat
+  'call mvn test -pl asbl -Dtest=AssemblerTest#prepareForE2E >> asbl\pack-prepare-for-e2e.log 2>&1'
+  "Maven runs the packers' entry, AssemblerTest, in the asbl module"
+  Dockerfile 'COPY ./bkend/common/src ./bkend/common/src'
+  "the backend build stage compiles the module; the image takes only the jars (COPY --from=backend-build), no test class"
+  Dockerfile 'COPY ./bkend/update/src ./bkend/update/src'
+  "the backend build stage compiles the module; the image takes only the jars (COPY --from=backend-build), no test class"
+  Dockerfile 'COPY ./bkend/reporting/src ./bkend/reporting/src'
+  "the backend build stage compiles the module; the image takes only the jars (COPY --from=backend-build), no test class"
+  Dockerfile 'COPY ./bkend/server/src ./bkend/server/src'
+  "the backend build stage compiles the module; the image takes only the jars (COPY --from=backend-build), no test class"
+  Dockerfile 'COPY ./frend/reporting .'
+  "the frontend build stage; .dockerignore drops **/e2e/ from the build context, and the image takes only the stage's dist"
+)
+# A known mention that holds only while another packer line is there, four items each: the packer, its line, the other
+# packer, the line it needs. Without it the mention is no longer known.
+KNOWN_MENTION_NEEDS=(Dockerfile 'COPY ./frend/reporting .' .dockerignore '**/e2e/')
+
+# packers_check <commit>: THE PACKERS CHECK at that commit. Prints each mention (KNOWN <packer>:<line> <path>, <how>: <reason>,
+# or NAMES ... <the line> for any other), then "PACKERS <commit> PASS|FAIL: ...". rc 0 PASS, 1 FAIL, 2 the commit unreadable
+# or the check could not run (python3)
+packers_check() {
+  local commit tests rc=0
+  commit=$(git -C "$RR_REPO" rev-parse --verify -q "${1:-none}^{commit}" 2>/dev/null) ||
+    { echo "PACKERS ${1:-} FAIL: git cannot read the commit in $RR_REPO"; return 2; }
+  tests=$(mktemp) || return 2
+  shipped_test_files "$commit" > "$tests"
+  RR_NEVER_SHIPPED=$(printf '%s\n' "${NEVER_SHIPPED[@]}") RR_TOOLCHAIN=$(printf '%s\n' "${TOOLCHAIN[@]}") \
+  RR_COPIED_WHOLE=$(printf '%s\n' "${COPIED_WHOLE[@]}") RR_PACKERS=$(printf '%s\n' "${PACKERS[@]}") \
+  RR_KNOWN=$(printf '%s\n' "${KNOWN_MENTIONS[@]}") RR_KNOWN_NEEDS=$(printf '%s\n' "${KNOWN_MENTION_NEEDS[@]}") \
+  RR_SHIPPED_TESTS="$tests" python3 -I - "$RR_REPO" "$commit" <<'PY' || rc=$?
+import os, posixpath, re, subprocess, sys
+
+repo, commit = sys.argv[1], sys.argv[2]
+def items(name):
+    return [l for l in os.environ.get(name, '').split('\n') if l.strip()]
+def git(*args):
+    return subprocess.run(['git', '-C', repo] + list(args), capture_output=True).stdout.decode('utf-8', 'replace')
+def spaces(code):
+    return ' '.join(code.split())
+def under(path, folder):
+    return path == folder or path.startswith(folder + '/')
+
+tree = git('ls-tree', '-r', '--name-only', commit).splitlines()
+if not tree:
+    print('PACKERS %s FAIL: git cannot list its files' % commit[:8]); sys.exit(2)
+top_names = {p.split('/')[0] for p in tree} | {'.docs'}
+toolchain = set(items('RR_TOOLCHAIN'))
+copied_whole = [e.rstrip('/') for e in items('RR_COPIED_WHOLE')]
+shipped_tests = [l.rstrip('/') for l in open(os.environ['RR_SHIPPED_TESTS']).read().split('\n') if l.strip()]
+# this commit's never-shipped folders, as place_path places them
+never = []
+for entry in items('RR_NEVER_SHIPPED'):
+    if entry.startswith('*/'):
+        tail = '/' + entry[2:].rstrip('/') + '/'
+        folders = {p[:p.find(tail) + len(tail) - 1] for p in tree if tail in p}
+        never += sorted(f for f in folders if not under(f, 'asbl/src/test') and not any(under(f, c) for c in copied_whole))
+    else:
+        never.append(entry.rstrip('/'))
+NAMED_FOLDERS = {'e2e', 'uat', '.docs', '.github'}
+
+def how_it_meets(path):
+    """(how the path meets the list, shipped by rule) or (None, False)"""
+    if path in toolchain:
+        return None, False
+    for folder in never:
+        if under(path, folder):
+            return 'under ' + folder + '/', any(under(path, t) for t in shipped_tests)
+        if folder.startswith(path + '/'):
+            return 'a parent of ' + folder + '/', False
+    return None, False
+
+def paths_of(word, runs_in, from_root_too):
+    """the repository paths a word of a packer may name"""
+    w = word.replace('\\', '/').replace('%~dp0', '')
+    w = re.sub(r'(/\*\*?|\*+)$', '', w).rstrip('/')
+    if w.startswith('./'):
+        w = w[2:]
+    if not w or not re.search(r'[A-Za-z0-9]', w) or w in ('.', '..'):
+        return []   # no name, a packer's own folder, or the root: where it runs, not what it copies
+    if w.startswith('/'):
+        starts = [w[1:]]
+    else:
+        starts = [posixpath.join(runs_in, w)] if runs_in else [w]
+        if from_root_too and runs_in:
+            starts.append(w)
+    found = []
+    for s in starts:
+        n = posixpath.normpath(s) if s else '.'
+        if n not in ('.', '') and not n.startswith('..') and n.split('/')[0] in top_names:
+            found.append(n)
+    return found
+
+def words_of(kind, code):
+    """the words of one packer line that may be paths"""
+    if kind in ('java', 'json'):
+        if kind == 'java':
+            code = re.sub(r'"\s*\+\s*"', '', code)   # "a" + "b" is one path
+        literals = re.findall(r'"((?:[^"\\]|\\.)*)"', code)
+        if kind == 'java':
+            literals = [l.replace('\\\\', '\\') for l in literals]
+        return [w for l in literals for w in re.split(r'[\s,;]+', l) if w]
+    if kind == 'dockerfile':
+        words = code.split()
+        if words and words[0].upper() in ('COPY', 'ADD'):
+            if any(w.startswith('--from=') for w in words):
+                return []
+            return [w for w in words[1:] if not w.startswith('--')][:-1]   # the last one is where they go in the image
+        return re.split(r'[\s,=;"\'()\[\]]+', code)
+    if kind == 'dockerignore':
+        return [code.strip()[1:]] if code.strip().startswith('!') else []
+    return re.split(r'[\s,=;"\'()]+', code)
+
+def is_comment(kind, code):
+    s = code.strip()
+    if not s:
+        return True
+    if kind == 'java':
+        return s.startswith(('//', '*', '/*'))
+    if kind == 'bat':
+        return re.match(r'(?i)^(rem\b|::|@?echo\b)', s) is not None
+    if kind in ('dockerfile', 'dockerignore'):
+        return s.startswith('#')
+    return False
+
+sources = {}
+def source(path):
+    if path not in sources:
+        sources[path] = git('show', '%s:%s' % (commit, path)).split('\n')
+    return sources[path]
+
+k = items('RR_KNOWN')
+known = {(k[i], spaces(k[i + 1])): k[i + 2] for i in range(0, len(k) - 2, 3)}
+n = items('RR_KNOWN_NEEDS')
+for i in range(0, len(n) - 3, 4):
+    key = (n[i], spaces(n[i + 1]))
+    if key in known and spaces(n[i + 3]) not in {spaces(l) for l in source(n[i + 2])}:
+        del known[key]   # what makes it harmless is gone: it is a mention like any other
+        print('  NOTE   %s: "%s" is known only while %s has "%s"; it does not at %s' % (n[i], n[i + 1], n[i + 2], n[i + 3], commit[:8]))
+packers = []
+for spec in items('RR_PACKERS'):
+    path, runs_in, kind = spec.split('|')
+    if path.endswith('/'):
+        packers += [(p, runs_in, kind) for p in tree if p.startswith(path) and p.endswith('.java') and '/' not in p[len(path):]]
+    elif path in tree:
+        packers.append((path, runs_in, kind))
+others, known_count, known_used = [], 0, set()
+for path, runs_in, kind in packers:
+    for number, code in enumerate(source(path), 1):
+        if is_comment(kind, code):
+            continue
+        reported, line_counted = set(), False
+        for word in words_of(kind, code):
+            found = [(p,) + how_it_meets(p) for p in paths_of(word, runs_in, kind in ('java', 'bat'))]
+            found = [f for f in found if f[1]]
+            if not found and (set(word.replace('\\', '/').split('/')) & NAMED_FOLDERS or 'asbl/ci' in word.replace('\\', '/')):
+                found = [(word, 'a never-shipped folder by its name', False)]
+            for named, how, shipped in found:
+                if (named, how) in reported:
+                    continue
+                reported.add((named, how))
+                key = (path, spaces(code))
+                if shipped:
+                    known_count += 1
+                    print('  KNOWN  %s:%d  %s, %s: an assembler copies it (shipped_test_files): placed as shipped' % (path, number, named, how))
+                elif key in known:
+                    known_count += 1; known_used.add(key)
+                    print('  KNOWN  %s:%d  %s, %s: %s' % (path, number, named, how, known[key]))
+                else:
+                    if not line_counted:
+                        others.append('%s:%d: %s' % (path, number, spaces(code)[:200])); line_counted = True
+                    print('  NAMES  %s:%d  %s, %s: %s' % (path, number, named, how, spaces(code)[:200]))
+for path, code in sorted(set(known) - known_used):
+    print('  NOTE   a known mention not found at %s: %s: %s' % (commit[:8], path, code))
+if others:
+    print('PACKERS %s FAIL: %d packer line(s) name a never-shipped path, not a known mention; the first: %s'
+          % (commit[:8], len(others), others[0]))
+    sys.exit(1)
+print('PACKERS %s PASS: %d packer files read, %d known mention(s), no other' % (commit[:8], len(packers), known_count))
+PY
+  rm -f "$tests"
+  case "$rc" in 0|1) return "$rc" ;; *) echo "PACKERS ${commit:0:8} FAIL: the check could not run (exit $rc)"; return 2 ;; esac
+}
+
+# packers_verdict <commit>: packers_check's answer for that commit, once per commit in this process: sets RR_PACKERS_FIRST
+# ("at <commit>: " and its FAIL line: the first other mention, or why the check could not run) and returns its rc
+declare -gA RR_PACKERS_RC=() RR_PACKERS_NOTE=()
+packers_verdict() {
+  local out rc=0
+  if [ -z "${RR_PACKERS_RC[$1]+set}" ]; then
+    out=$(packers_check "$1") || rc=$?
+    RR_PACKERS_RC[$1]=$rc
+    RR_PACKERS_NOTE[$1]=$(printf '%s\n' "$out" | sed -n 's/^PACKERS \([^ ]*\) FAIL: /at \1: /p' | tail -1)
+  fi
+  RR_PACKERS_FIRST="${RR_PACKERS_NOTE[$1]}"
+  return "${RR_PACKERS_RC[$1]}"
+}
+
+# rr_everything <why> <note>: every part rebuilds, step 1 refused (an unknown commit, a dirty tree, a packer that names a
+# never-shipped path)
 rr_everything() {
   RR_E2E_PACKAGE=rebuild RR_IMAGE_AND_ZIPS=rebuild RR_WINDOWS_PACK=rebuild
   RR_WHY_E2E_PACKAGE="($1)" RR_WHY_IMAGE_AND_ZIPS="($1)" RR_WHY_WINDOWS_PACK="($1)"
@@ -197,6 +455,9 @@ reuse_or_rebuild() {
     if [ -n "$dirty" ]; then
       rr_everything "dirty tree" "$tree has changes to tracked files: $(printf '%s\n' "$dirty" | head -3 | tr '\n' ' ')"; return 1
     fi
+  fi
+  if ! packers_verdict "$from" || ! packers_verdict "$to"; then
+    rr_everything "a packer names a never-shipped path" "$RR_PACKERS_FIRST"; return 1
   fi
   changed=$(mktemp) && tests=$(mktemp) || return 2
   git -C "$RR_REPO" diff --no-renames --name-only "$from" "$to" > "$changed" 2>/dev/null || {
@@ -224,10 +485,11 @@ rr_step1_words() { [ "$RR_STEP1" = still-counts ] && echo "still counts" || echo
 # rr_replay: the acceptance check. The three transitions of the 16.6.0 release between its four chains must print exactly the
 # plan's table (plan-2026-10-28-faster-releases-trusted-light-set.md, "The replay"); then one case each for a test-only
 # commit, the star counter's commit, a product commit, a dirty tree, a path it cannot place, a shipped src/test file, a
-# unit test, the CI toolchain, a Windows-only packer, the server zip's packer and the Server's template files. Prints each
-# answer with PASS or FAIL; exit 0 only when all pass.
+# unit test, the CI toolchain, a Windows-only packer, the server zip's packer, the Server's template files and a test inside
+# a template folder copied whole; then the packers check at this checkout's HEAD. Prints each answer with PASS or FAIL;
+# exit 0 only when all pass.
 rr_replay() {
-  local fails=0 row got want tmp scratch none
+  local fails=0 row got want tmp scratch none rc
   echo "THE REPLAY (16.6.0): what each transition between the chains really needed"
   printf '%-10s%-10s%-13s%-14s%-14s%s\n' from to "e2e package" "image + zips" "Windows pack" "step 1, green on the earlier commit"
   while IFS='|' read -r from to want; do
@@ -289,17 +551,19 @@ ROWS
   printf 'asbl/src/main/external-resources/db-server-template/startServer.bat\n' > "$tmp"; rr_answer_for_paths "$tmp" "$none"
   rr_replay_case "the Server's template files (db-server-template/: the image and the pack's server zip)" \
     "reuse rebuild rebuild refused: the product changed"
+  printf 'asbl/src/main/external-resources/db-template/_apps/flowkraft/grails-playground/src/test/resources/application-test.yml\n' > "$tmp"
+  rr_answer_for_paths "$tmp" "$none"
+  rr_replay_case "a test inside a folder copied whole (db-template/_apps/flowkraft/grails-playground/src/test/: in every zip)" \
+    "rebuild rebuild rebuild refused: the product changed"
   rm -f "$tmp" "$none"
-  # The never-shipped list holds only while no packer names one of its folders: the packers' code (comments left out) at
-  # this checkout's HEAD, so a new copy line breaks the replay instead of being missed. src/test is not searched here: the
-  # files an assembler copies from it are read by shipped_test_files and count as shipped.
-  got=$(git -C "$RR_REPO" grep -nE 'frend/reporting/e2e|e2e/|asbl/ci|asbl/src/uat|src/uat|\.docs|\.github' HEAD -- "$ASSEMBLY/" \
-          asbl/pack-datapallas.bat asbl/pack-prepare-for-e2e.bat Dockerfile frend/reporting/electron-builder.json 2>/dev/null |
-        grep -vE '^[^:]+:[^:]+:[0-9]+:[[:space:]]*(//|\*|/\*|#|REM |@?echo )')
-  if [ -z "$got" ]; then
-    echo "  PASS  the packers name no never-shipped folder (assemblers, both .bat packers, Dockerfile, electron-builder.json)"
+  # the never-shipped list holds only while no packer names one of its paths: the packers check at this checkout's HEAD,
+  # so a new copy line breaks the replay instead of being missed (and every question about HEAD refuses step 1)
+  got=$(packers_check HEAD); rc=$?
+  if [ "$rc" = 0 ]; then
+    echo "  PASS  the packers at HEAD: $(printf '%s\n' "$got" | sed -n 's/^PACKERS [^ ]* PASS: //p')"
   else
-    echo "  FAIL  a packer names a never-shipped folder: place it in this file's lists first"; printf '        %s\n' "$got"
+    echo "  FAIL  the packers at HEAD name a never-shipped path (not a known mention):"
+    printf '%s\n' "$got" | grep -v '^  KNOWN ' | sed 's/^/      /'
     fails=$((fails + 1))
   fi
   echo
@@ -312,18 +576,20 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   set -uo pipefail
   rr_tree_arg() { [ "${1:-}" = --tree ] && [ -n "${2:-}" ] && echo "$2"; }
   case "${1:-}" in
-    parts)  [ $# -ge 3 ] || { sed -n '2,35p' "$0"; exit 2; }
+    parts)  [ $# -ge 3 ] || { sed -n '2,41p' "$0"; exit 2; }
             reuse_or_rebuild "$2" "$3" "$(rr_tree_arg "${4:-}" "${5:-}")"; rc=$?; rr_print; exit $rc ;;
-    part)   [ $# -ge 4 ] || { sed -n '2,35p' "$0"; exit 2; }
+    part)   [ $# -ge 4 ] || { sed -n '2,41p' "$0"; exit 2; }
             reuse_or_rebuild "$3" "$4" "$(rr_tree_arg "${5:-}" "${6:-}")"
             case "$2" in
               e2e-package) a=$RR_E2E_PACKAGE ;; image-and-zips) a=$RR_IMAGE_AND_ZIPS ;; windows-pack) a=$RR_WINDOWS_PACK ;;
               *) echo "FAIL  the part must be e2e-package, image-and-zips or windows-pack (got '$2')"; exit 2 ;;
             esac
             echo "$a"; [ "$a" = reuse ]; exit $? ;;
-    step1)  [ $# -ge 3 ] || { sed -n '2,35p' "$0"; exit 2; }
+    step1)  [ $# -ge 3 ] || { sed -n '2,41p' "$0"; exit 2; }
             reuse_or_rebuild "$2" "$3"; echo "$RR_STEP1 ($RR_STEP1_WHY)"; [ "$RR_STEP1" = still-counts ]; exit $? ;;
+    packers) [ $# -ge 2 ] || { sed -n '2,41p' "$0"; exit 2; }
+            packers_check "$2"; exit $? ;;
     replay) rr_replay; exit $? ;;
-    *)      sed -n '2,35p' "$0"; exit 2 ;;
+    *)      sed -n '2,41p' "$0"; exit 2 ;;
   esac
 fi

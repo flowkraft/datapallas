@@ -666,7 +666,8 @@ case "$cmd" in
     # The guards at the end of steps 2 and 3 (release-docker.sh DOCKER RELEASE STEP 6/6, dp-ci.sh win_release before its
     # upload): origin/main moved since the step started. By never-shipped files only (a test or CI fix: every part reuses,
     # asbl/ci/reuse-or-rebuild.sh), what the start commit built and proved still stands; by anything that ships, or a main
-    # that no longer contains the start commit, the step is refused, as before.
+    # that no longer contains the start commit, the step is refused, as before. So is any move where a packer names a
+    # never-shipped path (the rule's packers check): the list itself cannot be trusted there.
     s=$(git rev-parse --verify -q "${1:-}^{commit}" 2>/dev/null); m=$(git rev-parse --verify -q "${2:-}^{commit}" 2>/dev/null)
     [ -n "$s" ] && [ -n "$m" ] || { echo "MOVED_MAIN refused: cannot read the commits ('${1:-}', '${2:-}')"; exit 1; }
     # An execution pinned by the orchestrator (RELEASE_PIN): every part builds, packs and tests that one commit whatever main
@@ -686,6 +687,10 @@ case "$cmd" in
     if [ "$RR_E2E_PACKAGE/$RR_IMAGE_AND_ZIPS/$RR_WINDOWS_PACK" = reuse/reuse/reuse ]; then
       echo "MOVED_MAIN ok: origin/main moved ${s:0:8} -> ${m:0:8} by never-shipped files only ($RR_CHANGED files; asbl/ci/reuse-or-rebuild.sh): what ${s:0:8} built and proved still stands"
       exit 0
+    fi
+    if [ "$RR_STEP1_WHY" = "a packer names a never-shipped path" ]; then
+      echo "MOVED_MAIN refused: origin/main moved ${s:0:8} -> ${m:0:8}, and a packer names a never-shipped path, so no file counts as never-shipped: $RR_NOTE"
+      exit 1
     fi
     echo "MOVED_MAIN refused: origin/main moved ${s:0:8} -> ${m:0:8} by what ships: $(printf '%s\n' $RR_WHY_E2E_PACKAGE $RR_WHY_IMAGE_AND_ZIPS $RR_WHY_WINDOWS_PACK | sort -u | head -5 | paste -sd' ')${RR_NOTE:+ ($RR_NOTE)}"
     exit 1
