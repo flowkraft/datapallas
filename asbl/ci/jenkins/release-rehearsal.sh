@@ -30,6 +30,14 @@
 #              NOT WAITING FOR REVIEW, the status line, the state's exit code
 #   reports    the report files of each ended run of the round, as its result.txt lists them:  REPORT <run n> <part> <path>
 #              a line (the result, summary, flaky tests and failure reports under the part "run"). The job pulls them
+#   estimate   the 16 Advanced (Parallelization) choices estimated from the last release runs' marks (asbl/ci/release-
+#              estimate.py, through release-machines.sh) and written as JSON to RELEASE_ESTIMATES_FILE, where the job's
+#              form reads them (its block under the two choices, asbl/ci/jenkins/release-estimate-block.groovy); one line
+#              per choice printed. A round does it after each real run; by hand after a change to the settings file. Exit 0
+#   estimate <N> <M>   the block the form draws for that choice, in a terminal: what the press refuses, the memory it
+#              needs against the host's available memory now (RELEASE_MEMINFO [/proc/meminfo]), the Gantt chart of the
+#              round's parts, the total and the gain against 1 and 1. Estimated afresh; RELEASE_ESTIMATES_FROM=<a JSON
+#              estimate wrote> draws from that one instead (what the form shows). The job's build prints it first. Exit 0
 #   help       this header
 #
 # THE PARAMETERS, in the groups the job's form shows:
@@ -59,6 +67,7 @@
 #                                                             Docker engine runs one DataPallas e2e set at a time)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs, each running the
 #                                                             lanes of the layout for that many VMs
+#     What a choice gives, before the press: the job's block under the two choices, or estimate <N> <M> (above).
 #     Checked before anything starts (asbl/ci/release-machines.sh check <N> <M>): the machines file's rules, enough VMs
 #     named, the layout's rules; a real round also what the host must have now (check <N> <M> --press): each added VM's
 #     settings file, each VM in libvirt, the memory rule with the host's available memory, /var's free disk. Refused: exit 2,
@@ -108,8 +117,9 @@
 #   ROUND_STARTED_BY=<name> DRY_RUN=yes ON_FAILURES=report-only bash asbl/ci/jenkins/release-rehearsal.sh start
 #
 # Callers: the Jenkins job dp-ci-release-steps-0-3-rehearsal; a person or an AI coordinator, from a shell on this host.
-# For the tests (asbl/ci/tests/test-release-rehearsal.sh): ROUND_ORCHESTRATOR, ROUND_RELEASE_STATE, ROUND_RELEASE_PUBLISH and
-# ROUND_SCHEDULED_E2E replace the commands it calls; ROUND_POLL [30] is the seconds between two looks of a waiting round.
+# For the tests (asbl/ci/tests/test-release-rehearsal.sh): ROUND_ORCHESTRATOR, ROUND_RELEASE_STATE, ROUND_RELEASE_PUBLISH,
+# ROUND_SCHEDULED_E2E and ROUND_ESTIMATE replace the commands it calls; ROUND_POLL [30] is the seconds between two looks of a
+# waiting round.
 set -uo pipefail
 cd "$(dirname "$0")/../../.." || exit 2
 
@@ -121,6 +131,7 @@ ROUND_ORCHESTRATOR="${ROUND_ORCHESTRATOR:-bash asbl/ci/jenkins/release-orchestra
 ROUND_RELEASE_STATE="${ROUND_RELEASE_STATE:-bash asbl/ci/release-state.sh}"
 ROUND_RELEASE_PUBLISH="${ROUND_RELEASE_PUBLISH:-bash asbl/ci/release-publish.sh}"
 ROUND_SCHEDULED_E2E="${ROUND_SCHEDULED_E2E:-bash asbl/ci/jenkins/scheduled-e2e.sh}"
+ROUND_ESTIMATE="${ROUND_ESTIMATE:-bash asbl/ci/jenkins/release-rehearsal.sh estimate}"
 SCHEDULED_E2E_PID="$LOG_DIR/scheduled-e2e.pid"   # the scheduled job's run, while it lasts (asbl/ci/jenkins/scheduled-e2e.sh)
 ROUND_POLL="${ROUND_POLL:-30}"
 FULL_SET_JOBS="${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-1}"   # Advanced (Parallelization), see THE PARAMETERS
@@ -326,12 +337,17 @@ wait_for_review() {
 }
 # the round itself, in its own detached process (start launches it): runs, fix rounds, reviews, until green, red or stopped
 drive_round() {
-  local dir="$1" n=0 fix=0 automatic=0
+  local dir="$1" n=0 fix=0 automatic=0 out
   exec >> "$dir/round.log" 2>&1
   state_set "$dir" driver_pid=$$
   while :; do
     n=$((n + 1))
     run_once "$dir" "$n"
+    # its marks for the form's estimates (a dry run leaves none): never in the way of the round
+    if [ "$ROUND_DRY_RUN" = no ]; then
+      if out=$($ROUND_ESTIMATE 2>&1); then say "ESTIMATES refreshed from run $n's marks: $(printf '%s\n' "$out" | head -1)"
+      else say "ESTIMATES not refreshed (the round goes on): $(printf '%s\n' "$out" | tail -1)"; fi
+    fi
     if [ "$RUN_RESULT" = green ]; then ready_to_upload "$dir"; return $?; fi
     if [ "$ON_FAILURES" = report-only ] || [ -z "$RELEASE_FIXER" ]; then
       state_set "$dir" state=red why="$( [ "$ON_FAILURES" = report-only ] && echo "red, ON_FAILURES=report-only" || echo "red; ON_FAILURES=$ON_FAILURES but no fixer is set (RELEASE_FIXER in $RELEASE_REHEARSAL_CONF): report only")"
@@ -354,6 +370,35 @@ drive_round() {
 }
 
 # ---- the subcommands ----
+# estimate_cmd [<N> <M>]: the 16 choices to RELEASE_ESTIMATES_FILE, or one choice's block (estimate, in SUBCOMMANDS)
+estimate_cmd() {
+  local file tmp src n m
+  machines_load || exit 2
+  if [ "$#" = 0 ]; then
+    file="$RELEASE_ESTIMATES_FILE"
+    mkdir -p "$(dirname "$file")" && tmp=$(mktemp "$file.XXXXXX") || { echo "FAIL  cannot write next to $file"; exit 2; }
+    if ! machines_estimates > "$tmp" 2> "$tmp.err"; then
+      echo "FAIL  the estimates could not be computed: $(tail -1 "$tmp.err")"; rm -f "$tmp" "$tmp.err"; exit 1
+    fi
+    rm -f "$tmp.err"; chmod 644 "$tmp" && mv -f "$tmp" "$file" || { rm -f "$tmp"; echo "FAIL  cannot write $file"; exit 2; }
+    echo "ESTIMATES the 16 choices written to $file (the job's form reads it)"
+    python3 -I -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+for p in d["pairs"]:
+    print("ESTIMATE  N=%d M=%d  %s; needs %d GB%s" % (p["jobs"], p["vms"], p["total_line"][8:], p["need_gb"],
+          "; REFUSED at the press (estimate %d %d says why)" % (p["jobs"], p["vms"]) if p["refused"] else ""))' "$file"
+    exit 0
+  fi
+  n="$1" m="${2:-}"
+  case "$n:$m" in [1-4]:[1-4]) ;; *) echo "usage: $0 estimate [<N> <M>]   (N and M from 1 to 4)"; exit 2 ;; esac
+  src="${RELEASE_ESTIMATES_FROM:-}"
+  if [ -z "$src" ]; then
+    src=$(mktemp) || exit 2
+    trap 'rm -f "$src"' EXIT
+    machines_estimates > "$src" || { echo "FAIL  the estimates could not be computed"; exit 1; }
+  fi
+  python3 -I asbl/ci/release-estimate.py block --estimates "$src" --jobs "$n" --vms "$m" --meminfo "${RELEASE_MEMINFO:-/proc/meminfo}"
+}
 refuse() { echo "REFUSED: $*. Nothing started"; status_line "$(newest_round)"; exit 2; }
 start_round() {
   local who version dir out pid
@@ -640,7 +685,8 @@ case "${1:-help}" in
   label)   round_label; exit 0 ;;
   review)  review_round ;;
   reports) round_reports ;;
+  estimate) shift; estimate_cmd "$@" ;;
   help|-h|--help) sed -n '2,/^set -uo pipefail/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
   __drive) read_settings >/dev/null; drive_round "$2"; exit $? ;;   # internal: the round's own process, launched by start
-  *) echo "usage: $0 start|status|follow|proceed|stop|busy|label|review|reports|help (see: $0 help)"; exit 2 ;;
+  *) echo "usage: $0 start|status|follow|proceed|stop|busy|label|review|reports|estimate [<N> <M>]|help (see: $0 help)"; exit 2 ;;
 esac

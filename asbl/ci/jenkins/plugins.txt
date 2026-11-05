@@ -12,3 +12,6 @@ warnings-ng:latest
 robot:latest
 # Added by the one-job release plan (16.6.2): the separator lines with a header between the groups of the release round's form
 parameter-separator:latest
+# Added by the 16.6.3 release plan: the live estimate under the Advanced (Parallelization) choices of the release round's form
+# (a reactive reference parameter; seed.groovy leaves it out without this plugin)
+uno-choice:latest

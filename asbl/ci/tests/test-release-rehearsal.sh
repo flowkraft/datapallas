@@ -8,7 +8,8 @@
 #   review, proceed, then green; red three times with fix-prove-then-rerun-automatically; a BLOCKED fix round; stop in
 #   each state; status's one line in each state; help; what a start passes the orchestrator (a press does the same); what
 #   the Jenkins job shows: label, review and reports; the machines file's check at a start (asbl/ci/release-machines.sh:
-#   too many VMs, too little memory, refused; the Advanced values passed on).
+#   too many VMs, too little memory, refused; the Advanced values passed on); the form's estimates refreshed after each
+#   real run (release-rehearsal.sh estimate, a stub here), never after a dry one, and a failing refresh stops nothing.
 # Every folder is a scratch one: no live folder is touched, nothing real is started. Takes about 70 seconds.
 # Callers: a person or an agent, from the shell, after changing the round.
 #   bash asbl/ci/tests/test-release-rehearsal.sh
@@ -98,6 +99,13 @@ cat > "$STUB/scheduled-e2e" <<'EOF'
 echo "$*" >> "$STUB/scheduled-calls"
 kill "$(cat "$LOG_DIR/scheduled-e2e.pid")" 2>/dev/null
 EOF
+cat > "$STUB/estimate" <<'EOF'
+#!/bin/bash
+# stub release-rehearsal.sh estimate: records the call; fails when $STUB/estimate-fails exists
+echo "estimate $*" >> "$STUB/estimate-calls"
+[ ! -e "$STUB/estimate-fails" ] || { echo "FAIL  the estimates could not be computed: the stub says so"; exit 1; }
+echo "ESTIMATES the 16 choices written to $STUB/release-estimates.json (the job's form reads it)"
+EOF
 cat > "$STUB/bin/git" <<'EOF'
 #!/bin/bash
 # stub git: fetch does nothing (review fetches origin main: no network in a test); the rest is the real git
@@ -110,6 +118,7 @@ export LOG_DIR="$SCRATCH/logs"; mkdir -p "$LOG_DIR"
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
 export ROUND_ORCHESTRATOR="bash $STUB/orchestrator" ROUND_RELEASE_STATE="bash $STUB/release-state"
 export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E="bash $STUB/scheduled-e2e" ROUND_POLL=1
+export ROUND_ESTIMATE="bash $STUB/estimate"   # never the real one: it would write the Jenkins home's estimates file
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL E2E_APPROVAL_USER
 unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
 # the machines check of a start (asbl/ci/release-machines.sh) on stand-ins: VM a's settings file, the host's memory
@@ -126,7 +135,7 @@ settings() {  # settings <fixer|none> [<DRY_RUN_RED>]: the settings file, root-o
 fresh() {  # fresh <results...>: no round, no call recorded, 16.6.1 public, the fixer set, each run's result in order
   bash "$ROUND_SCRIPT" stop >/dev/null 2>&1
   rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/*-calls "$STUB"/orchestrator-cmdlines "$STUB"/run-count "$STUB"/missing \
-    "$STUB"/fix-status "$STUB"/orchestrator-sleep "$STUB"/dp-ci-container
+    "$STUB"/fix-status "$STUB"/orchestrator-sleep "$STUB"/dp-ci-container "$STUB"/estimate-fails
   echo "16.6.1 16.6.1" > "$STUB/released"
   printf '%s\n' "$@" > "$STUB/results"
   settings fixer
@@ -161,7 +170,7 @@ one_status_line() {  # one_status_line <state> <run>: status prints one line wit
 # ---- help, and no round yet ----
 out=$(round help); rc=$?
 check "help prints the header (subcommands, parameters, states, exit codes, examples), exit 0" \
-  bash -c '[ "$1" = 0 ] && for w in SUBCOMMANDS "THE PARAMETERS" "THE STATES" EXAMPLES "Rarely: leave them as they are"; do grep -qF "$w" <<< "$2" || exit 1; done' _ "$rc" "$out"
+  bash -c '[ "$1" = 0 ] && for w in SUBCOMMANDS "THE PARAMETERS" "THE STATES" EXAMPLES "Rarely: leave them as they are" "Advanced (Parallelization)" "estimate <N> <M>"; do grep -qF "$w" <<< "$2" || exit 1; done' _ "$rc" "$out"
 fresh
 out=$(round status); rc=$?
 check "status with no round yet: state=none, exit 2" same "ROUND state=none version= run=0 pin= result= exit=2" "$out exit=$rc"
@@ -181,6 +190,8 @@ check "a shell start passes the orchestrator what a press does (execution 1, the
   same "run=1 EXECUTION=1 RELEASE_VERSION=16.6.2 RELEASE_PIN= MODE=rehearsal UPLOAD=no DRY_RUN=no DRY_RUN_RED= approval=none" \
   "$(sed 's/ started_by=.*//' "$STUB/orchestrator-calls")"
 check "the orchestrator learns who started the round" has "started by tester" "$STUB/orchestrator-calls"
+check "green: the form's estimates refreshed once, after the run" \
+  bash -c '[ "$(cat "$1")" = "estimate " ] && grep -q "ESTIMATES refreshed from run 1.s marks: ESTIMATES the 16 choices written" "$2"' _ "$STUB/estimate-calls" "$SCRATCH/follow.out"
 check "preflights: UPLOAD=no docker at the start; UPLOAD=yes docker public and files public when green" \
   same "UPLOAD=no DRY_RUN=no preflight docker|UPLOAD=yes DRY_RUN=no preflight docker public|UPLOAD=yes DRY_RUN=no preflight files public" \
   "$(paste -sd'|' "$STUB/publish-calls")"
@@ -197,6 +208,12 @@ start > /dev/null; follow > "$SCRATCH/follow.out"; rc=$?
 check "green with one MISSING: not ready to upload, the missing name said, exit 6" \
   bash -c '[ "$1" = 6 ] && grep -q "GREEN, NOT READY TO UPLOAD: RCLONE_CONFIG: the remote of the bucket" "$2"' _ "$rc" "$SCRATCH/follow.out"
 check "green, not ready: status one line" one_status_line green-not-ready 1
+
+# ---- a refresh of the estimates that fails stops nothing ----
+fresh green; : > "$STUB/estimate-fails"
+start > /dev/null; follow > "$SCRATCH/follow.out"; rc=$?
+check "the estimates' refresh fails: the round goes on to green, saying so" \
+  bash -c '[ "$1" = 0 ] && grep -q "ESTIMATES not refreshed (the round goes on): FAIL  the estimates could not be computed" "$2" && grep -q "READY TO UPLOAD 16.6.2" "$2"' _ "$rc" "$SCRATCH/follow.out"
 
 # ---- busy, and a version already public: refused, nothing started ----
 refused_nothing_started() {  # refused_nothing_started <why expected> <output> <exit code>
@@ -249,6 +266,7 @@ check "20 GB available: the memory rule's numbers said" \
 fresh green
 out=$(export DRY_RUN=yes; start); rc=$?; follow > /dev/null
 check "20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"
+check "a dry round refreshes no estimate (a dry run leaves no marks)" bash -c '[ ! -e "$1" ]' _ "$STUB/estimate-calls"
 available_memory_gb 64
 fresh green; : > "$STUB/win-ci-b.env"
 out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2 RELEASE_WINDOWS_VMS="a b" WIN_VM_CONF_DIR="$STUB"; start); rc=$?; follow > /dev/null

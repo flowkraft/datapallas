@@ -287,6 +287,27 @@ machines_schedule() {
     --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vms-off "${off# }"
 }
 
+# machines_estimates [<full target>]: the 16 Advanced choices, N and M from 1 to 4, as JSON on stdout (asbl/ci/release-
+# estimate.py estimates; release-rehearsal.sh estimate writes it where the job's form reads it): the layout of each VM
+# count the named VMs allow, and each choice's REFUSED lines of machines_check (its rules, not the host's state now:
+# the form reads the memory itself, and the press checks it all again)
+machines_estimates() {
+  local target="${1:-}" n m v why args=()
+  for m in 1 2 3 4; do
+    [ "$m" -le "$(wc -w <<< "$RELEASE_WINDOWS_VMS")" ] || continue
+    for v in $(machines_vms_for "$m"); do args+=(--layout "$m:$v=$(machines_lanes_of "$m" "$v")"); done
+  done
+  for n in 1 2 3 4; do
+    for m in 1 2 3 4; do
+      while IFS= read -r why; do [ -z "$why" ] || args+=(--refused "$n:$m=$why"); done < <(machines_check "$n" "$m" | sed -n 's/^REFUSED //p')
+    done
+  done
+  [ -n "$target" ] || target=$(machines_full_target)
+  python3 -I asbl/ci/release-estimate.py estimates --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
+    --target "$target" --vms-named "$RELEASE_WINDOWS_VMS" "${args[@]}" --steps "$RELEASE_STEPS" --server-gb "$RELEASE_SERVER_GB" \
+    --vm-gb "$WIN_VM_MEMORY_GB" --min-free-gb "$RELEASE_MIN_FREE_GB"
+}
+
 machines_show() {
   local m v key
   for key in $MACHINES_KEYS; do printf '%s=%s\n' "$key" "${!key}"; done

@@ -159,6 +159,7 @@ def jobs = [
         'the version not public on both channels already; this host\'s Docker engine and the Windows VM (asbl/ci/release-publish.sh preflight docker, UPLOAD=no);',
         'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER); without it, ON_FAILURES acts as report-only and the round says so;',
         'for "ready to upload" only, not to start: the upload credentials, checked by name (asbl/ci/release-publish.sh preflight docker public, preflight files public).',
+        'for the Advanced values: the machines file\'s rules (asbl/ci/release-machines.sh check <N> <M>): the VMs exist, and the host test servers and the VMs to start leave RELEASE_MIN_FREE_GB (16) of the host\'s memory free.',
       ],
       TIME: 'a run: about a day (16.6.1\'s execution 1 took about 19 h: step 1\'s lanes, then steps 2 and 3); a fix round: hours, at most 48 h (its own cap); the build follows the round in polls of under a minute.',
       EXAMPLES: [
@@ -181,6 +182,10 @@ def jobs = [
       RELEASE_PIN: [default: '', text: 'Rarely: leave it empty. A commit (its hash) to rehearse that commit in run 1 instead of step 0\'s (or origin/main\'s). A run after fixes is always on origin/main, which holds the fixes.'],
       DRY_RUN: [choices: ['no', 'yes'], text: 'Rarely: leave no. yes = shows what the round would run, and runs nothing: each run is the orchestrator\'s dry run, and the fixer and the preflights get DRY_RUN=yes (nothing builds, records, starts an agent or uploads).\nUse it to check the job after a CI change.'],
       E2E_APPROVAL: [text: 'Rarely: leave it empty. Passed to every run of the round. ' + e2eApproval],
+      SEPARATOR_ADVANCED: [separator: 'Advanced (Parallelization)'],
+      SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS: [choices: ['1', '2', '3', '4'], text: 'Advanced: leave 1 for now. Step 1\'s full e2e set split into this many subsets, by file, balanced by the last run\'s time per file, each on its own host test server at once. Each one costs a host test server, about RELEASE_SERVER_GB (5 GB) of the host\'s memory for the round. The block below estimates the round\'s time and memory for the two values.\n1 (default) = the full set runs whole.\n2 to 4 = refused at the press for now (exit 2, nothing started): this host\'s one Docker engine runs one DataPallas e2e set at a time.'],
+      USE_N_NUMBER_OF_WINDOWS_VMS: [choices: ['1', '2', '3', '4'], text: 'Advanced. The Windows lanes (the pack, the Windows Docker proof, the light sets, Robot) spread over this many VMs, each running its lanes of the machines file (/root/release-rehearsal.conf) at once with the others. The round starts each VM after the first and shuts it down after its last lane; each one costs WIN_VM_MEMORY_GB (12 GB) of the host\'s memory while it runs. The block below estimates the round\'s time and memory for the two values.\n1 (default) = VM a runs every Windows lane in a row.\nThe press refuses (exit 2, nothing started) more VMs than exist, or a choice that would leave less than RELEASE_MIN_FREE_GB (16) of the host\'s memory free.'],
+      ESTIMATED_TIME_AND_MEMORY: [estimate: ['SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS', 'USE_N_NUMBER_OF_WINDOWS_VMS'], text: 'Redrawn when either choice above changes, nothing to fill in: the round\'s parts per machine, the total and the gain against 1 and 1, from the last release runs\' marks, and the memory the two values need against the host\'s available memory now. The same in a terminal: bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>; the build\'s first lines print it too.'],
     ],
   ],
   'dp-ci-dev-e2e-one-spec': [
@@ -472,6 +477,24 @@ try {
 }
 println "Parameter separators: ${separatorsAvailable ? 'shown' : 'left out (the parameter-separator plugin is not active)'}"
 
+// The Active Choices plugin (uno-choice, plugins.txt) draws the live estimate under the Advanced choices: a reactive
+// reference parameter (its Job DSL name: activeChoiceReactiveReferenceParam) whose Groovy script is its own file, read
+// from the seed's workspace (a script-console apply: a copy of it in that workspace). A seed without the plugin, or
+// without the file, leaves the block out, so it never fails; the build's first lines print the estimate anyway
+def estimateBlockScript = null
+try {
+  if (jenkins.model.Jenkins.instance.pluginManager.getPlugin('uno-choice')?.isActive()) {
+    estimateBlockScript = readFileFromWorkspace('asbl/ci/jenkins/release-estimate-block.groovy')
+  } else {
+    println 'The estimate block: left out (the uno-choice plugin is not active)'
+  }
+} catch (e) {
+  println "The estimate block: left out (asbl/ci/jenkins/release-estimate-block.groovy was not read: ${e})"
+}
+if (estimateBlockScript) {
+  println 'The estimate block: shown'
+}
+
 jobs.each { jobName, job ->
   pipelineJob("datapallas/${jobName}") {
     description(job.about)
@@ -484,6 +507,21 @@ jobs.each { jobName, job ->
               separatorStyle('')
               sectionHeader(p.separator)
               sectionHeaderStyle('')
+            }
+          }
+        } else if (p.estimate) {
+          if (estimateBlockScript) {
+            activeChoiceReactiveReferenceParam(pname) {
+              description(p.text)
+              omitValueField(true)
+              choiceType('FORMATTED_HTML')
+              groovyScript {
+                script(estimateBlockScript)
+                fallbackScript("return '<pre>The estimate could not be drawn here: bash asbl/ci/jenkins/release-rehearsal.sh estimate N M on the host</pre>'")
+              }
+              for (String referenced : p.estimate) {
+                referencedParameter(referenced)
+              }
             }
           }
         } else if (p.choices) {

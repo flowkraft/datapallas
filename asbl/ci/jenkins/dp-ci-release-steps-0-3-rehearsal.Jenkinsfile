@@ -3,7 +3,7 @@
 // from the start, until green. The upload stays a separate press. Its full description is in asbl/ci/jenkins/seed.groovy,
 // which makes the job; the guide is asbl/ci/jenkins/jenkins.md, section dp-ci-release-steps-0-3-rehearsal.
 // A LIGHT WRAPPER: the round is asbl/ci/jenkins/release-rehearsal.sh on the host (a person or an AI coordinator runs the same
-// from a shell, the five parameters being its environment). This file starts it, follows its console in polls of under a
+// from a shell, the seven parameters being its environment). This file starts it, follows its console in polls of under a
 // minute, pauses with Proceed while the round waits for a review, and shows each run's reports. The round runs detached on
 // the host, so:
 //   - no executor is held while it runs: `agent none`, and only the short SSH calls (roundCall) take one;
@@ -224,9 +224,15 @@ pipeline {
       steps {
         script {
           env.ROUND_STARTED_BY = whoStartedThisBuild()
-          env.ROUND_SETTINGS = "RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}\nON_FAILURES=${params.ON_FAILURES}\nRELEASE_PIN=${params.RELEASE_PIN ?: ''}\nDRY_RUN=${params.DRY_RUN}\nE2E_APPROVAL=${params.E2E_APPROVAL ? 'given (its text is never written down by the round)' : 'none'}\nstarted by: ${env.ROUND_STARTED_BY}\n"
+          // the Advanced (Parallelization) values: 1 when the job has no such parameter yet (a seed not applied)
+          env.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS = params.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS ?: '1'
+          env.USE_N_NUMBER_OF_WINDOWS_VMS = params.USE_N_NUMBER_OF_WINDOWS_VMS ?: '1'
+          env.ROUND_SETTINGS = "RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}\nON_FAILURES=${params.ON_FAILURES}\nRELEASE_PIN=${params.RELEASE_PIN ?: ''}\nDRY_RUN=${params.DRY_RUN}\nE2E_APPROVAL=${params.E2E_APPROVAL ? 'given (its text is never written down by the round)' : 'none'}\nSPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=${env.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS}\nUSE_N_NUMBER_OF_WINDOWS_VMS=${env.USE_N_NUMBER_OF_WINDOWS_VMS}\nstarted by: ${env.ROUND_STARTED_BY}\n"
           echo "The settings of this round:\n${env.ROUND_SETTINGS}"
-          Map start = roundCall('E2E_APPROVAL=\\$(cat) RELEASE_VERSION=$(q "$RELEASE_VERSION") ON_FAILURES=$(q "$ON_FAILURES") RELEASE_PIN=$(q "$RELEASE_PIN") DRY_RUN=$(q "$DRY_RUN") ROUND_STARTED_BY=$(q "$ROUND_STARTED_BY") bash asbl/ci/jenkins/release-rehearsal.sh start', true, 'E2E_APPROVAL', false)
+          // the estimate of the two Advanced values first, as the form's block draws it (also without the uno-choice
+          // plugin); it never stops the build
+          roundCall('bash asbl/ci/jenkins/release-rehearsal.sh estimate $(q "$SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS") $(q "$USE_N_NUMBER_OF_WINDOWS_VMS")', false, '', false)
+          Map start = roundCall('E2E_APPROVAL=\\$(cat) RELEASE_VERSION=$(q "$RELEASE_VERSION") ON_FAILURES=$(q "$ON_FAILURES") RELEASE_PIN=$(q "$RELEASE_PIN") DRY_RUN=$(q "$DRY_RUN") SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$(q "$SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS") USE_N_NUMBER_OF_WINDOWS_VMS=$(q "$USE_N_NUMBER_OF_WINDOWS_VMS") ROUND_STARTED_BY=$(q "$ROUND_STARTED_BY") bash asbl/ci/jenkins/release-rehearsal.sh start', true, 'E2E_APPROVAL', false)
           if (start.rc == 2) {
             String refused = firstLineStartingWith(start.text, 'REFUSED') ?: 'REFUSED: see the log'
             currentBuild.description = refused

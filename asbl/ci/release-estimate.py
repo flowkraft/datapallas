@@ -15,6 +15,17 @@ Playwright JSON reports, and writes nothing.
   release-estimate.py schedule --runs <RUN_RECORD_DIR> --target <t> --jobs N --vms "<names>" --layout <name>="<lanes>"...
                                [--steps together|in-order] [--server-gb G] [--vm-gb G] [--vms-off "<names>"]
       the round's parts per machine with their expected start, end and minutes, the total and the memory it needs
+  release-estimate.py estimates --runs <RUN_RECORD_DIR> --target <t> --vms-named "<names>" --layout <M>:<name>="<lanes>"...
+                               [--steps together|in-order] [--server-gb G] [--vm-gb G] [--min-free-gb G]
+                               [--refused <N>:<M>="<why>"]...
+      the 16 Advanced (Parallelization) choices, N and M from 1 to 4, as JSON on stdout (release-rehearsal.sh estimate
+      writes it to RELEASE_ESTIMATES_FILE, which the job's form reads): for each, the parts with their times, the Gantt
+      chart's lines, the total and the gain against 1 and 1, the memory it needs, and why the press refuses it (the
+      rules of release-machines.sh check, given by --refused)
+  release-estimate.py block    --estimates <that JSON> --jobs N --vms M [--meminfo /proc/meminfo]
+      the block the job's form draws under the two choices: what the press refuses, the memory line (the host's
+      available memory now), the Gantt chart, the total and the gain. asbl/ci/jenkins/release-estimate-block.groovy
+      draws the same text from the same JSON in the form (keep the two in step: asbl/ci/tests/test-estimate.sh)
 
 Where the times come from: the real (not dry-run) orchestrator run folders under --runs (<UTC>-release-orchestrator-*),
 newest first; each lane takes its time from the newest run in which it passed (its exit code 0), as the PART lines of
@@ -25,6 +36,7 @@ the lane's log names (E2E_JSON_REPORT=), so subsets can be estimated (and balanc
 import argparse
 import glob
 import json
+import math
 import os
 import re
 import sys
@@ -306,10 +318,155 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
     return rows
 
 
+CHART_COLUMNS = 48   # the widest bar area of the chart, in characters
+MINUTES_PER_COLUMN = (5, 10, 15, 20, 30, 45, 60, 90, 120)
+CHART_LEAD = 31   # "VM a   server-light" and its padding: the machine (6), a space, the part (24)
+
+
+def duration(minutes):
+    minutes = int(round(minutes))
+    return "%d min" % minutes if minutes < 60 else "%d h %02d" % (minutes // 60, minutes % 60)
+
+
+def chart(rows):
+    """the Gantt chart of a round's parts: an hour axis, then one line per part with its bar from its start to its end
+    ('#'), after the dots of its wait on its machine for its inputs ('.'). Returns (lines, minutes per column)"""
+    span = max([end for _, _, _, end, _ in rows] + [1.0])
+    mpc = next((c for c in MINUTES_PER_COLUMN if math.ceil(span / c) <= CHART_COLUMNS), MINUTES_PER_COLUMN[-1])
+    width = int(math.ceil(span / mpc))
+    step = next(k for k in (1, 2, 3, 4, 6, 12, 24) if k * 60 / mpc >= 6)
+    labels, ticks = [" "] * (width + 8), ["-"] * (width + 1)
+    hour = 0
+    while hour * 60 <= span:
+        col = int(round(hour * 60 / mpc))
+        text = "%dh" % hour
+        labels[col:col + len(text)] = list(text)
+        ticks[col] = "|"
+        hour += step
+    lines = [" " * CHART_LEAD + "".join(labels).rstrip(), " " * CHART_LEAD + "".join(ticks)]
+    machine_end = {}
+    for machine, part, start, end, note in rows:
+        c0, c1 = int(round(start / mpc)), int(round(end / mpc))
+        if end > start and c1 <= c0:
+            c1 = c0 + 1   # a short part still shows
+        w0 = int(round(machine_end.get(machine, start) / mpc))
+        bar = [" "] * max(width, c1)
+        for c in range(min(w0, c0), c0):
+            bar[c] = "."
+        for c in range(c0, c1):
+            bar[c] = "#"
+        machine_end[machine] = max(machine_end.get(machine, 0.0), end)
+        lines.append("%-6s %-24s%s  %s%s" % (machine, part, "".join(bar).ljust(width), duration(end - start),
+                                             "  (" + note + ")" if note else ""))
+    lines.append(" " * CHART_LEAD + "# runs   . waits on its machine for its inputs (the build, the pack)   one column: %d min" % mpc)
+    return lines, mpc
+
+
+def estimates(args):
+    """the 16 choices as one JSON document (release-estimate.py estimates, above)"""
+    lanes = lane_minutes(args.runs)
+    full = full_set_files(args.runs, args.target)
+    full_info = {"files": full[0], "setup": full[1], "ratio": full[2], "from": full[3]} if full is not None else None
+    named = args.vms_named.split()
+    layouts, refused = {}, {}
+    for item in args.layout:
+        key, _, lanes_text = item.partition("=")
+        m_text, _, name = key.partition(":")
+        layouts.setdefault(int(m_text), {})[name] = lanes_text.split()
+    for item in args.refused:
+        key, _, why = item.partition("=")
+        n_text, _, m_text = key.partition(":")
+        refused.setdefault((int(n_text), int(m_text)), []).append(why)
+    server_gb, vm_gb = int(args.server_gb), int(args.vm_gb)
+    pairs, base = [], None
+    for n in range(1, 5):
+        for m in range(1, 5):
+            vms = named[:m]
+            missing = m - len(vms)
+            servers = n + 1   # the memory rule counts N + 1 host test servers, as release-machines.sh's check does
+            started = vms[1:]   # the VMs a round starts: every VM but the first, which runs for the dev gates
+            if m == 1:
+                vm_text = "no VM to start (VM a only)"
+            elif missing:
+                vm_text = "%d VM%s at %d GB (%s not created yet)" % (m - 1, "" if m == 2 else "s", vm_gb,
+                                                                     "%d of them" % missing if m > 2 else "it is")
+            else:
+                vm_text = "VM%s %s at %d GB" % ("" if m == 2 else "s", ", ".join(started), vm_gb)
+            entry = {
+                "jobs": n, "vms": m, "refused": refused.get((n, m), []),
+                "need_gb": servers * server_gb + (m - 1) * vm_gb,
+                "need_text": "%d host test servers x %d GB; %s" % (servers, server_gb, vm_text),
+            }
+            why_not = ""
+            if missing or any(v not in layouts.get(m, {}) for v in vms):
+                why_not = "the layout for %d VMs needs %d VMs named in RELEASE_WINDOWS_VMS (%s)" % (m, m, " ".join(named))
+            elif args.steps == "in-order" and (n, m) != (1, 1):
+                why_not = "RELEASE_STEPS=in-order runs 16.6.2's order with nothing split: only 1 and 1"
+            if why_not:
+                entry.update(rows=[], chart=[], minutes_per_column=0, total_min=None,
+                             total_line="Total   not estimated: " + why_not)
+            else:
+                rows = plan_round(lanes, full_info, args.target, n, vms, layouts[m], args.steps)
+                total = max(end for _, _, _, end, _ in rows)
+                lines, mpc = chart(rows)
+                if base is None:
+                    base = total   # 1 and 1 comes first
+                gain = base - total
+                if (n, m) == (1, 1):
+                    gain_text = "(the defaults)"
+                elif abs(gain) < 5:
+                    gain_text = "(the same as with 1 and 1)"
+                elif gain > 0:
+                    gain_text = "(with 1 and 1: about %s; you gain about %s)" % (about(base), about(gain))
+                else:
+                    gain_text = "(with 1 and 1: about %s; about %s longer)" % (about(base), about(-gain))
+                entry.update(rows=[[machine, part, round(start, 1), round(end, 1), note]
+                                   for machine, part, start, end, note in rows],
+                             chart=lines, minutes_per_column=mpc, total_min=round(total, 1),
+                             total_line="Total   about %s   %s" % (about(total), gain_text))
+            pairs.append(entry)
+    where = sorted({src for _, src in lanes.values()})
+    written = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {
+        "written": written, "steps": args.steps, "target": args.target, "server_gb": server_gb, "vm_gb": vm_gb,
+        "min_free_gb": int(args.min_free_gb), "vms_named": named, "pairs": pairs,
+        "from_line": "From    the estimate of %s (release-rehearsal.sh estimate): the lane times of %s; the time per "
+                     "file of %s" % (written, ", ".join(where), full_info["from"] if full_info else "none"),
+    }
+
+
+def available_gb(meminfo):
+    """the host's available memory now, whole GB (as release-machines.sh's memory rule reads it), or None"""
+    m = re.search(r"^MemAvailable:\s+(\d+)", read_text(meminfo), re.M)
+    return int(m.group(1)) // 1048576 if m else None
+
+
+def block(data, n, m, meminfo):
+    """the block of one choice, as the job's form draws it (asbl/ci/jenkins/release-estimate-block.groovy)"""
+    lines = []
+    pair = next((p for p in data["pairs"] if p["jobs"] == n and p["vms"] == m), None)
+    if pair is None:
+        lines.append("No estimate for N=%d M=%d: run bash asbl/ci/jenkins/release-rehearsal.sh estimate on the host" % (n, m))
+    else:
+        lines += ["REFUSED at the press: " + why for why in pair["refused"]]
+        lines.append("Memory  needs +%d GB: %s" % (pair["need_gb"], pair["need_text"]))
+        available = available_gb(meminfo)
+        if available is None:
+            lines.append("        available now: unknown (%s could not be read)" % meminfo)
+        else:
+            left = available - pair["need_gb"]
+            warn = "    WARNING: under the %d GB rule (the press refuses it)" % data["min_free_gb"] if left < data["min_free_gb"] else ""
+            lines.append("        available now %d GB -> %d GB would stay free%s" % (available, left, warn))
+        lines += pair["chart"]
+        lines.append(pair["total_line"])
+    lines.append(data["from_line"])
+    return "\n".join(lines)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("what", choices=("lanes", "files", "schedule"))
-    ap.add_argument("--runs", required=True)
+    ap.add_argument("what", choices=("lanes", "files", "schedule", "estimates", "block"))
+    ap.add_argument("--runs", help="every subcommand but block: the run folders whose marks give the times")
     ap.add_argument("--target", default="docker-server", choices=("web", "docker-server"))
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--vms", default="a")
@@ -318,7 +475,27 @@ def main():
     ap.add_argument("--server-gb", type=float, default=5)
     ap.add_argument("--vm-gb", type=float, default=12)
     ap.add_argument("--vms-off", default=None, help="the VMs the round would start (default: every VM but the first)")
+    ap.add_argument("--vms-named", default="a", help="estimates: the VMs that exist (RELEASE_WINDOWS_VMS)")
+    ap.add_argument("--min-free-gb", type=float, default=16)
+    ap.add_argument("--refused", action="append", default=[], help='estimates: <N>:<M>="<why the press refuses it>"')
+    ap.add_argument("--estimates", help="block: the JSON estimates wrote")
+    ap.add_argument("--meminfo", default="/proc/meminfo")
     args = ap.parse_args()
+    if args.what == "block":
+        try:
+            with open(args.estimates, "rb") as f:
+                data = json.loads(f.read().decode("utf-8"))
+        except (OSError, ValueError) as e:
+            print("The estimate could not be read from %s: %s (bash asbl/ci/jenkins/release-rehearsal.sh estimate writes "
+                  "it, after each round)" % (args.estimates, e))
+            return 1
+        print(block(data, args.jobs, int(args.vms), args.meminfo))
+        return 0
+    if not args.runs:
+        ap.error("--runs is required")
+    if args.what == "estimates":
+        print(json.dumps(estimates(args), indent=1, sort_keys=True))
+        return 0
     lanes = lane_minutes(args.runs)
     if args.what == "lanes":
         for lane in DEFAULT_MINUTES:

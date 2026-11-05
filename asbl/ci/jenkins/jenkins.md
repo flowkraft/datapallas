@@ -231,9 +231,9 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
 
 ### dp-ci-release-steps-0-3-rehearsal
 
-- **What:** the release round, one press: `asbl/ci/jenkins/release-rehearsal.sh`, which the job only starts, follows and answers (a light wrapper; a person or an AI coordinator runs the same from a shell, the five parameters being its environment). Run 1: step 0, then steps 1, 2 and 3 together on one commit (`release-orchestrator.sh`; the order below), as a rehearsal: built, proven and kept, nothing uploaded. A red run: a fix round (`ON_FAILURES`), then the round runs again from the start (step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning). Green: both `UPLOAD=yes` preflights checked by name, then "ready to upload" with the next presses; the upload stays a separate press.
+- **What:** the release round, one press: `asbl/ci/jenkins/release-rehearsal.sh`, which the job only starts, follows and answers (a light wrapper; a person or an AI coordinator runs the same from a shell, the seven parameters being its environment). Run 1: step 0, then steps 1, 2 and 3 together on one commit (`release-orchestrator.sh`; the order below), as a rehearsal: built, proven and kept, nothing uploaded. A red run: a fix round (`ON_FAILURES`), then the round runs again from the start (step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning). Green: both `UPLOAD=yes` preflights checked by name, then "ready to upload" with the next presses; the upload stays a separate press.
 - **When:** a release, the day before the release day. After it is green: steps 2 and 3 with `MODE=upload UPLOAD=yes`, then `MODE=public` on each, then step 4.
-- **The form**, three groups, each under a separator line with its name (the `parameter-separator` plugin; without it the seed leaves the lines out):
+- **The form**, four groups, each under a separator line with its name (the `parameter-separator` plugin; without it the seed leaves the lines out):
 
   ```
   ── Always ──────────────────────────────────────────────
@@ -244,17 +244,44 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   RELEASE_PIN      [                                   ]
   DRY_RUN          [no  v]
   E2E_APPROVAL     [                                   ]
+  ── Advanced (Parallelization) ──────────────────────────
+  SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS  [4 v]   1 (default), 2, 3, 4
+  USE_N_NUMBER_OF_WINDOWS_VMS                        [4 v]   1 (default), 2, 3, 4
+  ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from 16.6.2's marks)
+    REFUSED at the press: SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so the full set runs whole: N must be 1
+    Memory  needs +61 GB: 5 host test servers x 5 GB; VMs b, c, d at 12 GB
+            available now 59 GB -> -2 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+                                   0h    2h    4h    6h    8h    10h   12h
+                                   |-----|-----|-----|-----|-----|-----|----
+    host   build                   ##                                        34 min  (the Linux build, once for every part)
+    host   Linux proof               ##                                      55 min  (step 2)
+    host   auth                        #                                     20 min  (step 1)
+    host   e2e full 1/4                 #########                            2 h 49  (step 1, 13 spec files, one subset at a time)
+    host   e2e full 2/4                          ########                    2 h 49  (step 1, 14 spec files, one subset at a time)
+    host   e2e full 3/4                                  #########           2 h 49  (step 1, 13 spec files, one subset at a time)
+    host   e2e full 4/4                                           ########   2 h 49  (step 1, 13 spec files, one subset at a time)
+    VM a   pack                    ####                                      1 h 17
+    VM a   robot                       ##                                    41 min
+    VM b   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
+    VM b   server-light               .######                                1 h 59  (waits for the pack's datapallas-server.zip)
+    VM c   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
+    VM c   electron-light             ####                                   1 h 23
+    VM d   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
+    VM d   docker-proof               ###########                            3 h 50
+                                   # runs   . waits on its machine for its inputs (the build, the pack)   one column: 20 min
+    Total   about 13 h 05   (with 1 and 1: about 12 h 30; about 0 h 35 longer)
   ```
 
   - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.
   - `ON_FAILURES`: `fix-prove-then-wait-for-review` (default: the build pauses with Proceed, showing the fix plan, its report and the commits; Proceed = run again from scratch, step 1 included), `fix-prove-then-rerun-automatically` (it runs again by itself; after 2 such re-runs it waits), `report-only` (it ends red with the failure report, no agent). A fix round that ends BLOCKED always waits.
   - `RELEASE_PIN` (empty: run 1 on step 0's commit or origin/main), `DRY_RUN` (`no`; `yes` = each run is the orchestrator's dry run, nothing runs, builds, records or uploads: to check the job after a CI change), `E2E_APPROVAL` (the shared text of steps 2 and 3; passed to every run of the round, sent to the host on stdin, never on a command line, and never written in a file by the round).
+  - **Advanced (Parallelization)**, 1 to 4 each, default 1 (`1` and `1` turn every split off): `SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS` (step 1's full set in that many subsets, each on its own host test server; refused at the press for now, exit 2: this host's one Docker engine runs one DataPallas e2e set at a time) and `USE_N_NUMBER_OF_WINDOWS_VMS` (the Windows lanes over that many VMs, each running its lanes of the machines file `/root/release-rehearsal.conf` at once with the others; the round starts each VM after the first and shuts it down after its last lane). Under them, `ESTIMATED_TIME_AND_MEMORY` draws the chosen pair's estimate, before the press: what the press refuses, the memory it needs ((N + 1) host test servers at `RELEASE_SERVER_GB`, each VM to start at `WIN_VM_MEMORY_GB`) against the host's available memory now, with a warning under `RELEASE_MIN_FREE_GB`, the Gantt chart of the round's parts per machine, the total and the gain against 1 and 1. It is an Active Choices reactive reference parameter (the `uno-choice` plugin, formatted HTML): its Groovy script, `release-estimate-block.groovy`, only reads the JSON `release-rehearsal.sh estimate` wrote (`RELEASE_ESTIMATES_FILE`, default `datapallas/release-estimates.json` in the Jenkins home, not served) and `/proc/meminfo`. It runs outside the sandbox: approve its text once in Manage Jenkins -> In-process Script Approval after each seed that changes it. The round writes the JSON again after each real run; by hand after a change to the machines file: `bash asbl/ci/jenkins/release-rehearsal.sh estimate`. Without the plugin the seed leaves the block out; the build's first lines print the same estimate either way, and `bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>` prints it in a terminal.
   - Not parameters: who started it (the build's cause), `MODE` and `UPLOAD` (always a rehearsal, no upload), the retries (always 1), the test switches.
 - **The build:** `agent none`; only short SSH calls take an executor. It follows the round's console (`release-rehearsal.sh follow --from <byte> --for 45`) in polls of under a minute, so a Jenkins restart only resumes the polling. A round waiting for a review: the pause shows `release-rehearsal.sh review` (why, the fix plan with its status line, its report, the red run, the commits since the run's pin), outside any node; Proceed calls `proceed`. An Abort pressed by a person, the build's or the pause's, calls `stop` (at the pause, only while the round still waits there); a restart never does, and the job has no timeout on purpose.
 - **The build page:** the label in the build list (`release-rehearsal.sh label`: `16.6.2 run 1 going`, `16.6.2 waiting for review after run 1`, `16.6.2 green, 1 run, ready to upload`, `16.6.2 red after run 2`); each ended run's reports as its `result.txt` lists them (`release-rehearsal.sh reports`), in the artifacts `reports/run-<n>/`: `result.txt`, the summary, the failure reports, the flaky tests, the Playwright JSON and JUnit XML (shown in Test Result), the Robot results (shown by the Robot plugin), and `report-paths.txt`, which names every report on the host. The Playwright HTML folders are not copied (one full run's is up to 18 GB): open them on the host, or pull one with `pull-reports.sh`. The settings it ran with: `round-settings.txt`.
 - **States and exit codes** (`release-rehearsal.sh`, every subcommand): 0 green, ready to upload (then released); 1 red; 2 refused, nothing started; 3 waiting for review; 4 stopped; 5 running or fixing; 6 green, not ready to upload. The build ends green for 0, unstable for 6, red otherwise.
-- **From a shell** (on this host): `ROUND_STARTED_BY=<name> RELEASE_VERSION=16.6.2 bash asbl/ci/jenkins/release-rehearsal.sh start`, then `status`, `follow`, `PROCEED_BY=<name> ... proceed`, `stop`, `busy`, `help`.
-- **Needs:** checked first, within seconds (`REFUSED: <why>. Nothing started`): the CI free (a scheduled run is stopped first: a release goes before it), the version not public on both channels already, this host's Docker engine and the Windows VM (`release-publish.sh preflight docker`, `UPLOAD=no`). For a fix round: the fixer in the root-only `/root/release-rehearsal.conf` on this host (`RELEASE_FIXER`); without it, `fix-*` acts as `report-only` and says so. **Time:** a run about a day (16.6.1's execution 1 took about 19 h); a fix round hours, at most 48 h. **Log:** `^ROUND` (STARTED, RUN n START and END, FIX ROUND n START and END, WAITING FOR REVIEW, GREEN, READY TO UPLOAD, RED, STOPPED), then each run's orchestrator console.
+- **From a shell** (on this host): `ROUND_STARTED_BY=<name> RELEASE_VERSION=16.6.2 bash asbl/ci/jenkins/release-rehearsal.sh start`, then `status`, `follow`, `PROCEED_BY=<name> ... proceed`, `stop`, `busy`, `estimate [<N> <M>]`, `help`; the Advanced values as the environment (`SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=1 USE_N_NUMBER_OF_WINDOWS_VMS=2 ...`).
+- **Needs:** checked first, within seconds (`REFUSED: <why>. Nothing started`): the CI free (a scheduled run is stopped first: a release goes before it), the version not public on both channels already, this host's Docker engine and the Windows VM (`release-publish.sh preflight docker`, `UPLOAD=no`), the Advanced values within the machines file's rules (`release-machines.sh check <N> <M>`: the VMs exist, and the memory keeps `RELEASE_MIN_FREE_GB` free). For a fix round: the fixer in the root-only `/root/release-rehearsal.conf` on this host (`RELEASE_FIXER`); without it, `fix-*` acts as `report-only` and says so. **Time:** a run about a day (16.6.1's execution 1 took about 19 h); a fix round hours, at most 48 h. **Log:** `^ROUND` (STARTED, RUN n START and END, FIX ROUND n START and END, WAITING FOR REVIEW, GREEN, READY TO UPLOAD, RED, STOPPED), then each run's orchestrator console.
 
 ## The release, in order
 
@@ -487,7 +514,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `release-label.sh` | on the host: the label of a step 0, 2 or 3 build in the build list, read from the run's output (`release-run.out` in the job's workspace), set by the Jenkinsfile's `post { always }` |
 | `release-demos.sh` | on the host: job `dp-ci-release-step4-demo-public` (`DEMO=demo.datapallas.com`: `asbl/ci/demo-public/install-release.sh`), masked |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
-| `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`), and `parameter-separator` (the group lines of the release round's form) |
+| `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`), `parameter-separator` (the group lines of the release round's form) and `uno-choice` (Active Choices: the live estimate under the form's Advanced choices) |
 | `pull-reports.sh` | on the host: streams the report files of a run as a tar.gz, which the `Reports` stage of a Jenkinsfile unpacks into the build's workspace (see "Reports") |
 
 Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
@@ -506,7 +533,7 @@ A Jenkins build only has its own workspace, so every job that has reports ends w
 3. The publisher steps of the tools (`junit`, Coverage, Warnings Next Generation, HTML Publisher, Robot Framework) read from `reports/`.
    They are added one tool at a time by the quality-tools work. Every tool is non-gating: it shows a report, it never fails a build.
 
-The plugins are listed in `plugins.txt`. `pull-reports.sh` is read from the host checkout like `dp-ci.sh`, so a change to it needs no Jenkins step; a change to `seed.groovy` needs `seed`.
+The plugins are listed in `plugins.txt`. `pull-reports.sh` is read from the host checkout like `dp-ci.sh`, so a change to it needs no Jenkins step; a change to `seed.groovy` or to `release-estimate-block.groovy` (which the seed reads) needs `seed`.
 
 ### Robot UAT reports (Windows lane)
 
@@ -565,7 +592,7 @@ The quality plan only writes files in the repository. These steps change the run
 at a moment when no build is running or queued:
 
 1. **Install the plugins** listed at the end of `plugins.txt`: Manage Jenkins -> Plugins -> Available -> `htmlpublisher` (HTML Publisher), `coverage` (Coverage),
-   `warnings-ng` (Warnings Next Generation), `robot` (Robot Framework), `parameter-separator` (Parameter Separator). (By command line instead:
+   `warnings-ng` (Warnings Next Generation), `robot` (Robot Framework), `parameter-separator` (Parameter Separator), `uno-choice` (Active Choices). (By command line instead:
    `docker cp asbl/ci/jenkins/plugins.txt ints-jenkins:/tmp/plugins.txt && docker exec ints-jenkins jenkins-plugin-cli --plugin-file /tmp/plugins.txt --plugin-download-directory /var/jenkins_home/plugins`.)
 2. **Let Jenkins show JavaScript in published HTML reports.** By default Jenkins serves workspace and published HTML with a strict Content-Security-Policy that blocks scripts, which breaks
    the Playwright report, the Javadoc and Compodoc sites and Swagger UI. Decision (an agent's design, the owner may change it): relax the policy for the whole Jenkins, because it sits behind Authelia and
