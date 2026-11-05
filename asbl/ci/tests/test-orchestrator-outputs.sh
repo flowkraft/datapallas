@@ -4,7 +4,9 @@
 #   2. flaky.txt's reader on fixtures/playwright-flaky.json, a real Playwright report (a Windows Docker light set of
 #      2026-11-01) trimmed to its suites, titles and each try's status: Playwright counts two flaky tests there, one passed
 #      on its retry (listed) and one whose retry was skipped (a failure, not listed);
-#   3. memory.log's sampler, with stub docker and ssh commands.
+#   3. memory.log's sampler, with stub docker and ssh commands;
+#   4. what 16.6.2's release showed (2026-11-03): no "command not found" in a run's console (start_memory_sampler was
+#      called before its definition), and a part log with bytes that are not UTF-8 read with no awk warning.
 # The dry runs are in 16.6.2's order (RELEASE_STEPS=in-order), whose parts the cases name; the steps together, the
 # default, leave the same files: asbl/ci/tests/test-step-independence.sh checks their parts and verdicts.
 # Every folder is a scratch one, and docker, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call: nothing is started,
@@ -106,6 +108,8 @@ GREEN=$(dry_run green)
 check "green dry run: a run folder with result.txt and started.txt" test -s "$GREEN/result.txt" -a -s "$GREEN/started.txt"
 FULL=$(full_lane "$GREEN")
 check "green dry run: exit 0" same 0 "$(cat "$SCRATCH/green/rc")"
+check "green dry run: no \"command not found\" in its console (the memory sampler is defined before the run calls it)" \
+  bash -c '! grep -a "command not found" "$1"' _ "$SCRATCH/green/console.log"
 check "green dry run: result=green dry_run=yes execution=1 step1=green" \
   same "green yes 1 green" "$(key "$GREEN" result) $(key "$GREEN" dry_run) $(key "$GREEN" execution) $(key "$GREEN" step1)"
 check "green dry run: the pin is origin/main, the version the tree's at the pin, nothing kept" \
@@ -167,6 +171,13 @@ check "sampler: ssh ran PowerShell on the VM" eval 'grep -q "^ssh .* ci@vm.inval
 STUB_SSH_DOWN=1 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
 check "sampler: a VM that does not answer is said, and the sample goes on" same \
   "2 1" "$(grep -c 'free -m' "$SAMPLE/memory.log") $(grep -cP '\twindows-vm\tmemory\tnot answering' "$SAMPLE/memory.log")"
+
+# 4. a part log with bytes that are not UTF-8 (a Windows console's), read by mark_verdict under a UTF-8 locale: its
+# verdict, and no awk "Invalid multibyte data" warning (16.6.2's docker-windows.log and windows-after-pack.log gave them)
+NOT_UTF8="$SCRATCH/not-utf8.log"
+printf '######## WINDOWS DOCKER START  2026-11-04T20:00:00Z\ncaf\351 \377\376 \223quoted\224\n######## WINDOWS DOCKER END rc=0  2026-11-04T20:01:00Z\n' > "$NOT_UTF8"
+check "mark_verdict: a part log that is not UTF-8 gives PASS and no awk warning (en_US.UTF-8)" same "PASS|" \
+  "$(LC_ALL=en_US.UTF-8 bash -c "$(sed -n '/^mark_verdict() {/,/^}/p' "$ORCHESTRATOR")"'; mark_verdict "$1" "WINDOWS DOCKER"' _ "$NOT_UTF8" 2>&1)"
 
 echo
 [ "$FAILED_CASES" = 0 ] && { echo "ALL PASS  test-orchestrator-outputs"; exit 0; }

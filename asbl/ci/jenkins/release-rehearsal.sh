@@ -97,8 +97,15 @@
 #   <fixer> status <name>                      prints FIX_STATUS=RUNNING|DONE|BLOCKED|STOPPED <the plan's status line>
 #   <fixer> stop <name>
 #   Each gets DRY_RUN (yes in a dry round: it starts no agent).
+#   Smaller values for the run after fixes, only when the fix round cannot fix a speedup's root cause within the round
+#   (it says so in its report): it writes <the red run's folder>/smaller-values, lines
+#   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=<n>, USE_N_NUMBER_OF_WINDOWS_VMS=<m>, RELEASE_STEPS=in-order (the
+#   off switch: both values 1) and WHY=<one line>, any of them. Before its next run the round takes only values smaller
+#   than its own (a larger or unknown one is said and left out), says so in round.log (SMALLER VALUES) and round.state
+#   (jobs, vms), and keeps them for its later runs.
 # THE ROUND FOLDER  <LOG_DIR>/release-rounds/<UTC>-release-<version or "current">/
-#   round.state  key=value: state, why, version, on_failures, jobs, vms (the Advanced values), pin, run, run_<n> (each
+#   round.state  key=value: state, why, version, on_failures, jobs, vms (the Advanced values: THE FIXER's smaller values
+#                once a fix round chose them), pin, run, run_<n> (each
 #                run's folder), result, fix_round,
 #                fix_run, fix_plan, automatic_reruns, dry_run, approval (given|none), started_by, started, updated, driver_pid
 #   round.log    the console: the round's lines (ROUND ...) and each run's orchestrator console
@@ -335,6 +342,31 @@ wait_for_review() {
   say "PROCEED by $(cat "$dir/proceed" 2>/dev/null): the round runs again from scratch, step 1 included"
   rm -f "$dir/proceed"
 }
+# smaller_values <round folder> <the red run's folder> <the next run's n>: before a run after fixes, the values its fix
+# round chose for it (THE FIXER, smaller values), from <the red run's folder>/smaller-values; only smaller ones are taken
+smaller_values() {
+  local dir="$1" file="$2/smaller-values" n m steps why took=""
+  [ -n "$2" ] && [ -f "$file" ] || return 0
+  n=$(sed -n 's/^SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=//p' "$file" | tail -1 | tr -d '\r')
+  m=$(sed -n 's/^USE_N_NUMBER_OF_WINDOWS_VMS=//p' "$file" | tail -1 | tr -d '\r')
+  steps=$(sed -n 's/^RELEASE_STEPS=//p' "$file" | tail -1 | tr -d '\r')
+  why=$(sed -n 's/^WHY=//p' "$file" | tail -1 | tr -d '\r')
+  case "$steps" in
+    "") ;;
+    in-order) n=1; m=1; export RELEASE_STEPS=in-order; took="RELEASE_STEPS=in-order " ;;   # the orchestrator's machines file gives way to it
+    *) say "SMALLER VALUES: RELEASE_STEPS=$steps left out (only in-order, the off switch, can be chosen)" ;;
+  esac
+  if [ -n "$n" ]; then
+    if [[ "$n" =~ ^[1-4]$ ]] && [ "$n" -le "$FULL_SET_JOBS" ]; then FULL_SET_JOBS="$n"
+    else say "SMALLER VALUES: SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n left out (1 to the round's $FULL_SET_JOBS)"; fi
+  fi
+  if [ -n "$m" ]; then
+    if [[ "$m" =~ ^[1-4]$ ]] && [ "$m" -le "$WINDOWS_VMS_USED" ]; then WINDOWS_VMS_USED="$m"
+    else say "SMALLER VALUES: USE_N_NUMBER_OF_WINDOWS_VMS=$m left out (1 to the round's $WINDOWS_VMS_USED)"; fi
+  fi
+  state_set "$dir" jobs="$FULL_SET_JOBS" vms="$WINDOWS_VMS_USED"
+  say "SMALLER VALUES for run $3: ${took}N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED, from $file${why:+ (why: $why)}"
+}
 # the round itself, in its own detached process (start launches it): runs, fix rounds, reviews, until green, red or stopped
 drive_round() {
   local dir="$1" n=0 fix=0 automatic=0 out
@@ -342,6 +374,7 @@ drive_round() {
   state_set "$dir" driver_pid=$$
   while :; do
     n=$((n + 1))
+    [ "$n" = 1 ] || smaller_values "$dir" "$RUN_FOLDER" "$n"
     run_once "$dir" "$n"
     # its marks for the form's estimates (a dry run leaves none): never in the way of the round
     if [ "$ROUND_DRY_RUN" = no ]; then

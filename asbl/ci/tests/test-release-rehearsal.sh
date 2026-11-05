@@ -9,8 +9,10 @@
 #   each state; status's one line in each state; help; what a start passes the orchestrator (a press does the same); what
 #   the Jenkins job shows: label, review and reports; the machines file's check at a start (asbl/ci/release-machines.sh:
 #   too many VMs, too little memory, refused; the Advanced values passed on); the form's estimates refreshed after each
-#   real run (release-rehearsal.sh estimate, a stub here), never after a dry one, and a failing refresh stops nothing.
-# Every folder is a scratch one: no live folder is touched, nothing real is started. Takes about 70 seconds.
+#   real run (release-rehearsal.sh estimate, a stub here), never after a dry one, and a failing refresh stops nothing;
+#   a fix round's smaller values for the run after fixes (THE FIXER): a smaller M taken, a larger one and an unknown
+#   RELEASE_STEPS left out, RELEASE_STEPS=in-order with both values 1.
+# Every folder is a scratch one: no live folder is touched, nothing real is started. Takes about 85 seconds.
 # Callers: a person or an agent, from the shell, after changing the round.
 #   bash asbl/ci/tests/test-release-rehearsal.sh
 # Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
@@ -57,6 +59,7 @@ approval=none; [ -n "${E2E_APPROVAL:-}" ] && approval="given:${E2E_APPROVAL_USER
 echo "run=$n EXECUTION=${EXECUTION:-} RELEASE_VERSION=${RELEASE_VERSION:-} RELEASE_PIN=${RELEASE_PIN:-} MODE=${MODE:-} UPLOAD=${UPLOAD:-} DRY_RUN=${DRY_RUN:-} DRY_RUN_RED=${DRY_RUN_RED:-} approval=$approval started_by=${ORCH_STARTED_BY:-}" >> "$STUB/orchestrator-calls"
 tr '\0' ' ' < /proc/$$/cmdline >> "$STUB/orchestrator-cmdlines"; echo >> "$STUB/orchestrator-cmdlines"
 echo "N=${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-} M=${USE_N_NUMBER_OF_WINDOWS_VMS:-}" >> "$STUB/advanced-calls"
+echo "RELEASE_STEPS=${RELEASE_STEPS:-}" >> "$STUB/steps-calls"
 folder="$STUB/runs/run-$n"; mkdir -p "$folder"
 echo "PARTS   one log per part in $folder"
 sleep "$(cat "$STUB/orchestrator-sleep" 2>/dev/null || echo 0)"
@@ -69,10 +72,12 @@ echo "SUMMARY (stub) $result"
 EOF
 cat > "$STUB/fixer" <<'EOF'
 #!/bin/bash
-# stub fixer: start prints its run and plan; status prints $STUB/fix-status; each call is recorded
+# stub fixer: start prints its run and plan (and copies $STUB/smaller-values into the red run's folder, as a fix round
+# that chose smaller values writes it); status prints $STUB/fix-status; each call is recorded
 echo "$* DRY_RUN=${DRY_RUN:-}" >> "$STUB/fixer-calls"
 case "$1" in
-  start)  echo "FIX_RUN=fix-$3"; echo "FIX_PLAN=$STUB/plans/release-16.6.2-fix-round-$3.md" ;;
+  start)  echo "FIX_RUN=fix-$3"; echo "FIX_PLAN=$STUB/plans/release-16.6.2-fix-round-$3.md"
+          [ ! -f "$STUB/smaller-values" ] || cp "$STUB/smaller-values" "$2/smaller-values" ;;
   status) echo "FIX_STATUS=$(cat "$STUB/fix-status" 2>/dev/null || echo DONE) > **KRAFT-KEEP-WORKING STATUS** (stub)" ;;
   stop)   echo "stopped $2" ;;
 esac
@@ -135,7 +140,7 @@ settings() {  # settings <fixer|none> [<DRY_RUN_RED>]: the settings file, root-o
 fresh() {  # fresh <results...>: no round, no call recorded, 16.6.1 public, the fixer set, each run's result in order
   bash "$ROUND_SCRIPT" stop >/dev/null 2>&1
   rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/*-calls "$STUB"/orchestrator-cmdlines "$STUB"/run-count "$STUB"/missing \
-    "$STUB"/fix-status "$STUB"/orchestrator-sleep "$STUB"/dp-ci-container "$STUB"/estimate-fails
+    "$STUB"/fix-status "$STUB"/orchestrator-sleep "$STUB"/dp-ci-container "$STUB"/estimate-fails "$STUB"/smaller-values
   echo "16.6.1 16.6.1" > "$STUB/released"
   printf '%s\n' "$@" > "$STUB/results"
   settings fixer
@@ -320,12 +325,40 @@ check "red 3 times, rerun automatically: two re-runs, then it waits (exit 3)" \
   bash -c '[ "$1" = 3 ] && [ "$(wc -l < "$2")" = 3 ] && [ "$(grep -c "^start " "$3")" = 3 ] && grep -q "after 2 automatic re-runs" "$4"' \
   _ "$rc" "$STUB/orchestrator-calls" "$STUB/fixer-calls" "$SCRATCH/follow.out"
 check "waiting after 3 runs: status one line, run=3" one_status_line waiting-for-review 3
+check "no smaller-values file: no SMALLER VALUES line, the runs keep the round's values" \
+  bash -c '! grep -q "SMALLER VALUES" "$1" && [ "$(sort -u "$2")" = "N=1 M=1" ]' _ "$SCRATCH/follow.out" "$STUB/advanced-calls"
 
 # ---- a BLOCKED fix round waits ----
 fresh red green; echo BLOCKED > "$STUB/fix-status"
 ON_FAILURES=fix-prove-then-rerun-automatically start > /dev/null; follow > "$SCRATCH/follow.out"; rc=$?
 check "a BLOCKED fix round: waiting for review even with rerun automatically (exit 3), one run only" \
   bash -c '[ "$1" = 3 ] && [ "$(wc -l < "$2")" = 1 ] && grep -q "FIX ROUND 1 END: BLOCKED" "$3"' _ "$rc" "$STUB/orchestrator-calls" "$SCRATCH/follow.out"
+
+# ---- a fix round's smaller values for its run after fixes (THE FIXER): only smaller ones are taken ----
+two_vms_round() {  # two_vms_round: a round with M=2 (VMs a and b) that reruns by itself after a DONE fix round, to its end
+  : > "$STUB/win-ci-b.env"
+  (export ON_FAILURES=fix-prove-then-rerun-automatically USE_N_NUMBER_OF_WINDOWS_VMS=2 RELEASE_WINDOWS_VMS="a b" WIN_VM_CONF_DIR="$STUB"
+   start > /dev/null)
+  follow > "$SCRATCH/follow.out"
+}
+fresh red green; printf 'USE_N_NUMBER_OF_WINDOWS_VMS=1\nWHY=the VM lanes ran out of memory at 12 GB\n' > "$STUB/smaller-values"
+two_vms_round; rc=$?
+check "smaller values: the run after fixes gets M=1, the round started with M=2 (then green, exit 0)" \
+  bash -c '[ "$1" = 0 ] && [ "$(paste -sd" " "$2")" = "N=1 M=2 N=1 M=1" ]' _ "$rc" "$STUB/advanced-calls"
+check "smaller values: round.log says what was taken and why, round.state keeps it" \
+  bash -c 'grep -q "SMALLER VALUES for run 2: N=1 M=1, from .*/run-1/smaller-values (why: the VM lanes ran out of memory at 12 GB)" "$1" &&
+    [ "$(grep "^vms=" "$2" | tail -1)" = vms=1 ]' _ "$SCRATCH/follow.out" "$LOG_DIR"/release-rounds/*/round.state
+fresh red green; printf 'USE_N_NUMBER_OF_WINDOWS_VMS=3\nRELEASE_STEPS=backwards\n' > "$STUB/smaller-values"
+two_vms_round; rc=$?
+check "smaller values: a larger M and an unknown RELEASE_STEPS are said and left out; the run after fixes keeps M=2" \
+  bash -c '[ "$1" = 0 ] && [ "$(paste -sd" " "$2")" = "N=1 M=2 N=1 M=2" ] && [ "$(sort -u "$3")" = "RELEASE_STEPS=" ] &&
+    grep -q "SMALLER VALUES: USE_N_NUMBER_OF_WINDOWS_VMS=3 left out (1 to the round.s 2)" "$4" &&
+    grep -q "SMALLER VALUES: RELEASE_STEPS=backwards left out" "$4"' _ "$rc" "$STUB/advanced-calls" "$STUB/steps-calls" "$SCRATCH/follow.out"
+fresh red green; printf 'RELEASE_STEPS=in-order\nWHY=the steps together cannot be fixed in this round\n' > "$STUB/smaller-values"
+two_vms_round; rc=$?
+check "smaller values: RELEASE_STEPS=in-order gives the run after fixes 16.6.2's order with both values 1" \
+  bash -c '[ "$1" = 0 ] && [ "$(paste -sd" " "$2")" = "N=1 M=2 N=1 M=1" ] && [ "$(paste -sd" " "$3")" = "RELEASE_STEPS= RELEASE_STEPS=in-order" ] &&
+    grep -q "SMALLER VALUES for run 2: RELEASE_STEPS=in-order N=1 M=1" "$4"' _ "$rc" "$STUB/advanced-calls" "$STUB/steps-calls" "$SCRATCH/follow.out"
 
 # ---- stop in each state ----
 stopped_with_exit_4() {  # stopped_with_exit_4 <output> <exit code>: exit 4, state stopped, the round's process gone, CI free

@@ -441,14 +441,23 @@ def force_remove_untracked_java():
         subprocess.call(f'msiexec /x {code} /qn /norestart', shell=True)
 
 
+def _end_running_java():
+    """A running java.exe locks its own directory; we're removing Java, so end it.
+    Before the uninstall too: a JDK file still in use is not removed but queued for
+    deletion at the next boot (Windows Installer 1038, "requires a system restart";
+    Restart Manager 10010 names the java.exe), and that boot then deletes the file of
+    the Java installed since: lib\\modules gone, "Failed setting boot class path"
+    (the CI VM after 16.6.2's suites, 2026-11-04)."""
+    subprocess.call('taskkill /f /im java.exe', shell=True,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def _force_remove_java_dirs():
     """Force-delete any leftover JDK directory on disk — the half-removed dir whose
     launcher remains but whose runtime was deleted (the broken-boot footgun)."""
     dirs = _java_install_dirs()
     if dirs:
-        # A running java.exe locks its own directory; we're removing Java, so end it.
-        subprocess.call('taskkill /f /im java.exe', shell=True,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _end_running_java()
     for d in dirs:
         print(f"Force-removing leftover JDK directory: {d}")
         subprocess.call(['cmd', '/c', 'rmdir', '/s', '/q', d])
@@ -467,6 +476,7 @@ def ensure_java_is_not_installed():
             print(f"Java is not installed (verified, attempt {attempt}).")
             return
         print(f"[ensure_java_is_not_installed] attempt {attempt}: Java still present -> removing")
+        _end_running_java()              # first: an uninstall cannot remove the files it holds
         if shutil.which('choco'):
             _choco_uninstall_java_packages()
         force_remove_untracked_java()   # untracked Adoptium/Temurin/JDK MSIs

@@ -279,6 +279,23 @@ sample_memory_once() {
   } >> "$dir/memory.log"
 }
 
+# the memory sampler: memory.log every MEMORY_EVERY seconds while this run lasts (a real run only)
+MEMORY_SAMPLER_PID=""
+start_memory_sampler() {
+  [ "$DRY" = no ] || return 0
+  (
+    exec 9>&-   # the run's lock stays with the run, not with its sampler
+    pause=""
+    trap '[ -z "$pause" ] || kill "$pause" 2>/dev/null; exit 0' TERM
+    while kill -0 "$$" 2>/dev/null; do
+      sample_memory_once "$PARTS"
+      sleep "$MEMORY_EVERY" & pause=$!
+      wait "$pause"
+    done
+  ) > /dev/null 2>&1 &
+  MEMORY_SAMPLER_PID=$!
+}
+stop_memory_sampler() { [ -z "$MEMORY_SAMPLER_PID" ] || kill "$MEMORY_SAMPLER_PID" 2>/dev/null; MEMORY_SAMPLER_PID=""; }
 if [ "${1:-}" = replay ]; then shift; replay "$@"; exit $?; fi
 if [ "${1:-}" = flaky ]; then
   shift; { [ "$#" -ge 2 ] && [ $(($# % 2)) = 0 ]; } || { echo "usage: $0 flaky <part> <report.json> [<part> <report.json>]..."; exit 2; }
@@ -472,8 +489,8 @@ mark_verdict() {
     why=$(grep -a -m1 -E '^(not run: |FAILED|REFUSED|MISSING|FAIL  |DOCKER_RELEASE_RESULT nothing)' "$log")
     echo "NOT RUN|${why#not run: }"; return
   fi
-  section=$(awk -v s="######## $label START" -v e="######## $label END rc=" 'index($0, s) == 1 { on = 1 } on { print } on && index($0, e) == 1 { exit }' "$log")
-  end=$(printf '%s\n' "$section" | awk -v e="######## $label END rc=" 'index($0, e) == 1 { r = substr($0, length(e) + 1); sub(/[^0-9].*/, "", r) } END { print r }')
+  section=$(LC_ALL=C awk -v s="######## $label START" -v e="######## $label END rc=" 'index($0, s) == 1 { on = 1 } on { print } on && index($0, e) == 1 { exit }' "$log")
+  end=$(printf '%s\n' "$section" | LC_ALL=C awk -v e="######## $label END rc=" 'index($0, e) == 1 { r = substr($0, length(e) + 1); sub(/[^0-9].*/, "", r) } END { print r }')
   why=$(printf '%s\n' "$section" | grep -a -m1 '^not run: ')
   if [ -n "$why" ]; then echo "NOT RUN|${why#not run: }"
   elif [ "$end" = 0 ]; then echo "PASS|"
@@ -574,23 +591,6 @@ write_run_files() {
     printf '%s\n' "$parts"
   } > "$PARTS/result.txt"
 }
-# the memory sampler: memory.log every MEMORY_EVERY seconds while this run lasts (a real run only)
-MEMORY_SAMPLER_PID=""
-start_memory_sampler() {
-  [ "$DRY" = no ] || return 0
-  (
-    exec 9>&-   # the run's lock stays with the run, not with its sampler
-    pause=""
-    trap '[ -z "$pause" ] || kill "$pause" 2>/dev/null; exit 0' TERM
-    while kill -0 "$$" 2>/dev/null; do
-      sample_memory_once "$PARTS"
-      sleep "$MEMORY_EVERY" & pause=$!
-      wait "$pause"
-    done
-  ) > /dev/null 2>&1 &
-  MEMORY_SAMPLER_PID=$!
-}
-stop_memory_sampler() { [ -z "$MEMORY_SAMPLER_PID" ] || kill "$MEMORY_SAMPLER_PID" 2>/dev/null; MEMORY_SAMPLER_PID=""; }
 finish() {  # finish <rc>: the summary with the flaky tests, result.txt and flaky.txt, the history line, the exit
   local s parts flaky_count
   stop_memory_sampler
