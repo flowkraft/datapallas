@@ -1110,19 +1110,29 @@ PS
   echo "WIN_E2E_PACKAGE=built ($vm)"
 }
 
-# win_package_inputs_check <the pack's commit>: the PowerShell lines that check the pack's NoExe package is the e2e package
-# of that commit, as pack-prepare-for-e2e.bat would make it: the package there, the checkout still on that commit with no
-# tracked file changed, and frend\rb-webcomponents' modules installed from that commit's lock (the hash win_prepare_package
-# records at its npm ci). A check not met ends the script with a 'NO <why>' line. Shared by win_stamp_package_after_pack
-# (the pack's own VM) and win_package_ready (a copy for the round's other VMs), which end the script with 'YES'.
+# win_package_inputs_check <the pack's commit> [stable]: the PowerShell lines that check the pack's NoExe package is the e2e
+# package of that commit, as pack-prepare-for-e2e.bat would make it: the package there, the checkout still on that commit
+# with no tracked file changed, and frend\rb-webcomponents' modules installed from that commit's lock (the hash
+# win_prepare_package records at its npm ci). A check not met ends the script with a 'NO <why>' line. Shared by
+# win_stamp_package_after_pack (the pack's own VM) and win_package_ready (a copy for the round's other VMs), which end the
+# script with 'YES'. stable: only the checks a pack cannot change while it goes (the commit, the modules' lock), which
+# win_package_ready asks at every look, so a copy that can never be made is known at once, not when the pack's line comes.
 win_package_inputs_check() {
-  local pkg="$WIN_REPO\\asbl\\target\\package"
+  local pkg="$WIN_REPO\\asbl\\target\\package" stable="${2:-}"
   cat <<PS
 \$repo = '$WIN_REPO'
 \$wc = Join-Path \$repo 'frend\\rb-webcomponents'
+PS
+  [ "$stable" = stable ] || cat <<PS
 if (-not (Test-Path '$pkg\\verified-db-noexe\\DataPallas')) { 'NO the pack left no verified-db-noexe in asbl\\target\\package'; exit 0 }
+PS
+  cat <<PS
 if ((& git -C \$repo rev-parse HEAD) -ne '$1') { 'NO the checkout is no longer on the commit the pack packed'; exit 0 }
+PS
+  [ "$stable" = stable ] || cat <<PS
 if (& git -C \$repo status --porcelain --untracked-files=no) { 'NO the pack left tracked files changed'; exit 0 }
+PS
+  cat <<PS
 \$rec = Join-Path \$wc 'node_modules\\.npm-ci-lock.sha256'
 if (-not (Test-Path \$rec)) { 'NO no record of the npm ci that installed the rb-webcomponents modules'; exit 0 }
 if ((Get-Content -Raw \$rec).Trim() -ne (Get-FileHash -Algorithm SHA256 (Join-Path \$wc 'package-lock.json')).Hash.ToLower()) {
@@ -1162,13 +1172,14 @@ WIN_PACKAGE_LINE='FINISHED Assembler:NoExeAssembler'   # AssemblerTest#assembleD
 
 # win_package_ready <the pin> <the pack's start on the VM's clock, in ticks>: one look at the pack's VM (WIN_VM): 'YES'
 # (this pack's NoExeAssembler finished and win_package_inputs_check holds), 'WAIT <why>' (not yet) or 'NO <why>' (no copy
-# can be made). This pack's log is the one written after the pack started, on the VM's own clock (WIN_PACK_LOG_SINCE=,
-# which win_release prints before pack-datapallas.bat): an earlier pack's log, which holds the line too, is never read as
-# this one's. The VM's clock, not this host's: a VM may start hours off until its time service corrects it.
+# can be made: the checks a pack cannot change are asked first, at every look). This pack's log is the one written after
+# the pack started, on the VM's own clock (WIN_PACK_LOG_SINCE=, which win_release prints before pack-datapallas.bat): an
+# earlier pack's log, which holds the line too, is never read as this one's. The VM's clock, not this host's: a VM may
+# start hours off until its time service corrects it.
 win_package_ready() {
   local out
   case "${2:-}" in ''|*[!0-9]*) echo "NO the pack's start on the VM's clock is unknown (no WIN_PACK_LOG_SINCE= number)"; return 0 ;; esac
-  out=$({ cat <<PS
+  out=$({ win_package_inputs_check "$1" stable; cat <<PS
 \$log = '$WIN_REPO\\asbl\\pack-datapallas.log'
 if (-not (Test-Path \$log)) { 'WAIT this pack has written no asbl\\pack-datapallas.log yet'; exit 0 }
 if ((Get-Item \$log).LastWriteTimeUtc.Ticks -lt [long]'$2') { 'WAIT asbl\\pack-datapallas.log is an earlier pack''s (written before this pack started)'; exit 0 }

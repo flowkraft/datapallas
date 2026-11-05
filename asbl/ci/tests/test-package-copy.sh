@@ -2,11 +2,13 @@
 # One e2e package per pin, from the pack (asbl/ci/dp-ci.sh: win_package_ready, win_package_pull, win_package_put,
 # win_package_from_pack, win_package_archive_by_hand), against two stub VMs. The cases:
 #   1. package-ready: no log, an earlier pack's log (written before this pack's start on the VM's clock, the line in it),
-#      this pack's log before the line: WAIT; the line and every check: YES; a check not met: NO; no start time: NO;
+#      this pack's log before the line: WAIT; the line and every check: YES; a check not met: NO; a check a pack cannot
+#      change (the commit, the modules' lock) not met: NO at once, before the line; no start time: NO;
 #   2. package-pull on VM a: waits for the line (it comes after a few looks), then the archive here with its record (the
 #      VM's sha256, its file count, the pin) and nothing left on the VM; an earlier pack's log and the pack's part ended:
-#      no copy, <archive>.none says the pack ended before its NoExeAssembler finished; a check not met; a copy red (the
-#      archive brought here is not the VM's): no copy, no archive left here;
+#      no copy, <archive>.none says the pack ended before its NoExeAssembler finished; no record of the modules' npm ci:
+#      no copy, said at the first look; a copy red (the archive brought here is not the VM's): no copy, no archive left
+#      here;
 #   3. package on VM b: its stamp the pin's already: nothing copied; the record there: the old package and stamp removed
 #      first, the archive put and unpacked (the same files), the stamp written last; <archive>.none, the pull ended with no
 #      record, a copy red on the VM (sha256): the VM prepares its own (pack-prepare-for-e2e.bat), no stamp of the copy;
@@ -71,29 +73,32 @@ elif "-File" in words:
 if script is not None:
     if "UtcNow.Ticks" in script:
         print(rd("now_ticks", "5000")); sys.exit(0)
-    if "LastWriteTimeUtc" in script:   # win_package_ready
+    if "LastWriteTimeUtc" in script:   # win_package_ready: its checks answered in the script's order, as PowerShell runs it
         looks = int(rd("looks", "0")) + 1
         open(os.path.join(V, "looks"), "w").write(str(looks))
         since = int(re.search(r"\[long\]'(\d+)'", script).group(1))
+        pin = re.search(r"rev-parse HEAD\) -ne '([0-9a-f]+)'", script).group(1)
         after = rd("line_after", "none")
-        if not rd("packlog_ticks"):
-            print("WAIT this pack has written no asbl\\pack-datapallas.log yet"); sys.exit(0)
-        if int(rd("packlog_ticks")) < since:
-            print("WAIT asbl\\pack-datapallas.log is an earlier pack's (written before this pack started)"); sys.exit(0)
-        if after == "none" or looks < int(after):
-            print("WAIT this pack's NoExeAssembler has not finished yet"); sys.exit(0)
-        if "FINISHED Assembler:NoExeAssembler" not in script:
-            print("WAIT the stub was not asked for the line"); sys.exit(0)
-        if not os.path.isdir(os.path.join(PKG, "verified-db-noexe", "DataPallas")):
-            print("NO the pack left no verified-db-noexe in asbl\\target\\package"); sys.exit(0)
-        if rd("head") != re.search(r"rev-parse HEAD\) -ne '([0-9a-f]+)'", script).group(1):
-            print("NO the checkout is no longer on the commit the pack packed"); sys.exit(0)
-        if rd("dirty"):
-            print("NO the pack left tracked files changed"); sys.exit(0)
-        if rd("lockrec", "ok") == "missing":
-            print("NO no record of the npm ci that installed the rb-webcomponents modules"); sys.exit(0)
-        if rd("lockrec", "ok") == "other":
-            print("NO the rb-webcomponents modules come from another package-lock.json"); sys.exit(0)
+        answers = {
+            "head": lambda: rd("head") != pin and "NO the checkout is no longer on the commit the pack packed",
+            "lock": lambda: {"missing": "NO no record of the npm ci that installed the rb-webcomponents modules",
+                             "other": "NO the rb-webcomponents modules come from another package-lock.json"}.get(rd("lockrec", "ok")),
+            "dirty": lambda: rd("dirty") and "NO the pack left tracked files changed",
+            "package": lambda: not os.path.isdir(os.path.join(PKG, "verified-db-noexe", "DataPallas")) and
+                               "NO the pack left no verified-db-noexe in asbl\\target\\package",
+            "log": lambda: not rd("packlog_ticks") and "WAIT this pack has written no asbl\\pack-datapallas.log yet",
+            "old": lambda: int(rd("packlog_ticks")) < since and
+                           "WAIT asbl\\pack-datapallas.log is an earlier pack's (written before this pack started)",
+            "line": lambda: (after == "none" or looks < int(after) or "FINISHED Assembler:NoExeAssembler" not in script) and
+                            "WAIT this pack's NoExeAssembler has not finished yet",
+        }
+        markers = (("rev-parse HEAD) -ne", "head"), ("npm-ci-lock.sha256", "lock"), ("status --porcelain", "dirty"),
+                   ("verified-db-noexe\\DataPallas')", "package"), ("Test-Path $log", "log"),
+                   ("LastWriteTimeUtc", "old"), ("Select-String", "line"))
+        for _, kind in sorted((m.start(), kind) for marker, kind in markers for m in re.finditer(re.escape(marker), script)):
+            answer = answers[kind]()
+            if answer:
+                print(answer); sys.exit(0)
         print("YES"); sys.exit(0)
     if "tar.exe -cf" in script:   # win_package_archive
         name = re.split(r"[\\/]", re.search(r"\$tar = '([^']+)'", script).group(1))[-1]
@@ -236,7 +241,13 @@ check "the rb-webcomponents modules from another lock: NO" has "NO the rb-webcom
   "$(WIN_VM=a dp package-ready "$PIN" 5000)"
 vm_state a lockrec=ok dirty="M asbl/pom.xml"
 check "a tracked file changed: NO" has "NO the pack left tracked files changed" "$(WIN_VM=a dp package-ready "$PIN" 5000)"
-vm_state a dirty=
+vm_state a dirty= lockrec=missing line_after=none
+check "no record of the modules' npm ci, the pack still going (no line yet): NO at once" \
+  has "NO no record of the npm ci that installed the rb-webcomponents modules" "$(WIN_VM=a dp package-ready "$PIN" 5000)"
+vm_state a lockrec=ok head="$OLD"
+check "the checkout on another commit, the pack still going: NO at once" \
+  has "NO the checkout is no longer on the commit the pack packed" "$(WIN_VM=a dp package-ready "$PIN" 5000)"
+vm_state a head="$PIN" line_after=1
 looks=$(cat "$STUB/vm-a/looks"); out=$(WIN_VM=a dp package-ready "$PIN" "")
 check "no start time of the pack on the VM's clock: NO" has "NO the pack's start on the VM's clock is unknown" "$out"
 check "  without a look at the VM" same "$looks" "$(cat "$STUB/vm-a/looks")"
@@ -266,10 +277,11 @@ check "  nothing archived on VM a" same "" "$(calls)"
 rm -f "$SCRATCH/pack.rc"
 
 fresh pull-check
-vm_state a lockrec=missing
+vm_state a lockrec=missing line_after=none
 out=$(WIN_VM=a dp package-pull "$ARCHIVE" "$PIN" 5000); rc=$?
-check "a check not met (no record of the npm ci): exit 1, .none says which, nothing archived" bash -c \
-  '[ "$1" = 1 ] && [ ! -e "$2" ] && grep -q "^a check not met: no record of the npm ci" "$2.none" && [ -z "$3" ]' _ "$rc" "$ARCHIVE" "$(calls)"
+check "no record of the npm ci, the pack still going: exit 1 at the first look, .none says which, nothing archived" bash -c \
+  '[ "$1" = 1 ] && [ ! -e "$2" ] && grep -q "^a check not met: no record of the npm ci" "$2.none" && [ -z "$3" ] && [ "$4" = 1 ]' \
+  _ "$rc" "$ARCHIVE" "$(calls)" "$(cat "$STUB/vm-a/looks")"
 
 fresh pull-red
 touch "$STUB/corrupt-pull"
