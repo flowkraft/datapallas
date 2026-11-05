@@ -473,7 +473,9 @@ run_part() {
     simulate "$id" > "$PARTS/$id.log"; rc=$?
     sleep 2   # a dry part lasts two seconds, so the log shows which parts overlap
   else
-    env RELEASE_PIN="$PIN" "$@" > "$PARTS/$id.log" 2>&1 < /dev/null; rc=$?
+    # 9>&-: the run's lock stays with the run. A part's detached watcher (the firewall's, which waits for dp-ci) would keep
+    # it after the run died, and the CI would look held by another run: stop would leave what the round started.
+    env RELEASE_PIN="$PIN" "$@" > "$PARTS/$id.log" 2>&1 < /dev/null 9>&-; rc=$?
   fi
   echo "$rc" > "$PARTS/$id.rc"
   echo "PART    $id END rc=$rc $(date -u +%Y-%m-%dT%H:%M:%SZ) (log $PARTS/$id.log)"

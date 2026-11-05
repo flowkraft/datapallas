@@ -7,6 +7,8 @@
 #   1. stop while it runs: docker stop for the run's container and compose container only; the driver's process ended,
 #      the older pid file's left; the VM's steps of that command stopped (dp-ci.sh win stop, over a stub ssh that names
 #      the step it was sent); the orchestrator ended; everything else left;
+#   1b. the call that runs stop is cut (its output closed after one line, as a forced end of the Jenkins step does): it
+#      finishes all the same; and a part does not keep the orchestrator's lock (read);
 #   2. stop again: nothing more is stopped;
 #   3. the round's process gone (a reboot) and another run holding the CI now: nothing is touched;
 #   4. the round's process gone and the CI free: what the run started is stopped;
@@ -214,6 +216,14 @@ check "the VM's steps of dp-ci.sh win docker-e2e stopped, in order" same "npmwc 
 check "the orchestrator (the round's process group) ended" bash -c '! kill -0 "$(cat "$1")" 2>/dev/null' _ "$STUB/orchestrator.pid"
 check "stop says what it left and why" bash -c 'grep -q "^LEFT    container dp-ci-one-command: created before" <<< "$1" && grep -q "^LEFT    process .*older.pid: the file is older" <<< "$1"' _ "$out"
 check "stop names each step it stopped on the VM" bash -c '[ "$(grep -c "^STOPPED the VM.s step" <<< "$1")" = 3 ]' _ "$out"
+
+# ---- 1b. the call that runs stop is cut ----
+round_going
+round stop 2>/dev/null | head -1 > /dev/null
+check "stop cut after one line of output: the VM's steps all stopped, in order" same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
+check "stop cut after one line of output: the round stopped" bash -c 'grep -q "^ROUND state=stopped " <<< "$1"' _ "$(round status)"
+check "a part does not keep the orchestrator's lock (9>&- on its call)" \
+  grep -q '^    env RELEASE_PIN="$PIN" "$@" > "$PARTS/$id.log" 2>&1 < /dev/null 9>&-; rc=$?$' asbl/ci/jenkins/release-orchestrator.sh
 
 # ---- 2. stop again ----
 : > "$STUB/stopped"; : > "$STUB/vm-stopped"

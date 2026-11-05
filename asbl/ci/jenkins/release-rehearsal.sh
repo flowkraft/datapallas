@@ -731,6 +731,9 @@ stop_what_the_runs_started() {
 }
 stop_round() {
   local dir state recorded_state pid fix_run was_alive=no other_run
+  # once begun it finishes: the SSH call that runs it can end first (Jenkins forcibly terminated 16.6.3's Abort 10 s in,
+  # during the VM's steps), and a stop cut there leaves the round's parts running with nothing left to stop them
+  trap '' HUP PIPE
   dir=$(newest_round)
   [ -n "$dir" ] || { echo "NOTHING TO STOP: no round yet"; status_line ""; exit 4; }
   state=$(round_state "$dir"); recorded_state=$(state_get "$dir" state)
