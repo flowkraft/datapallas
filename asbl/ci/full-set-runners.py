@@ -428,6 +428,9 @@ def cmd_merge(args):
     start = min((r["start"] for r in ran if r["start"]), default=utc_now())
     lines.append("PIPELINE_START %s  task=e2e  commit=%s  version=%s" % (start, first.get("commit") or "unknown",
                                                                          first.get("version") or "unknown"))
+    if first.get("commit"):
+        # the lane's commit, as a lane run whole prints it (release-state.sh record-step1 reads it)
+        lines.append("E2E_COMMIT=%s" % first["commit"])
     lines.append("E2E_RUNNERS=%d  merged at %s by asbl/ci/full-set-runners.py: the full set in %d runners, each its own "
                  "Playwright run; their own logs:" % (jobs, utc_now(), jobs))
     for r in runners:

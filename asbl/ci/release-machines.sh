@@ -21,9 +21,9 @@
 #   bash asbl/ci/release-machines.sh lanes              the time of each lane, and the run it comes from
 #   N = SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS (step 1's full set in N subsets), M =
 #   USE_N_NUMBER_OF_WINDOWS_VMS (the Windows lanes over M VMs); 1 to 4 each, 1 = nothing split (the job's defaults).
-#   N above 1 is refused for now: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose
-#   files fix the container names, the ports and the network), so the host's parts run one after another, the full set
-#   whole (the 16.6.3 plan, TODO 4).
+#   Step 1's full set runs in N runners, each a Docker engine of its own (asbl/ci/e2e-runners.sh): this host's one engine
+#   runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network).
+#   With RELEASE_RUNNERS=no the full set runs whole on this host's engine, so N must be 1.
 #
 # THE SETTINGS FILE: RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf], root's, mode 600 or 400, read as shell (the
 # file release-rehearsal.sh reads RELEASE_FIXER from). Its keys, each with the default it takes when missing (a key set
@@ -31,7 +31,12 @@
 #   RELEASE_STEPS [together]    together: after step 0, steps 1, 2 and 3 start at once (the host's parts one after
 #                               another, the VM's beside them); in-order: 16.6.2's order (step 1, then steps 2 and 3),
 #                               the off switch of every speedup (with N = M = 1 only)
-#   RELEASE_SERVER_GB [5]       one host test server's memory (its server, its database containers, the browser)
+#   RELEASE_SERVER_GB [5]       one host test server's memory (its server, its database containers, the browser); a
+#                               runner counts as one
+#   RELEASE_RUNNERS [yes]       yes: with the steps together, step 1's full set runs in runners (N of them, 1 the
+#                               default), each a Docker engine of its own; no: on this host's engine, as before the
+#                               runners (the fallback when a runner fails for its own reason; N must be 1)
+#   RELEASE_RUNNER_LIMIT_GB [10]   each runner's hard memory limit: a runner that needs more fails its own job
 #   RELEASE_WINDOWS_VMS [a]     the Windows VMs that exist, in order: a = win10-dev (win-ci.env); each other VM's
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
 #   WIN_VM_MEMORY_GB [12]       one memory for every Windows VM, set on each before a round (virsh --config)
@@ -60,7 +65,7 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
 MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
 # The default layouts, by a VM's place in RELEASE_WINDOWS_VMS (plan 16.6.3, "The machines file"): one VM runs every lane in
@@ -96,6 +101,8 @@ machines_load() {
   fi
   RELEASE_STEPS="${RELEASE_STEPS:-together}"
   RELEASE_SERVER_GB="${RELEASE_SERVER_GB:-5}"
+  RELEASE_RUNNERS="${RELEASE_RUNNERS:-yes}"
+  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-10}"
   RELEASE_WINDOWS_VMS="${RELEASE_WINDOWS_VMS:-a}"
   WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
@@ -208,9 +215,13 @@ machines_check() {
       refuse_rule "RELEASE_STEPS=in-order runs 16.6.2's order with nothing split: N and M must be 1 (got N=$n, M=$m)" ;;
     *) refuse_rule "RELEASE_STEPS=$RELEASE_STEPS: it must be together or in-order" ;;
   esac
-  [ "$n" = 1 ] || [ "$RELEASE_STEPS" != together ] ||
-    refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so the full set runs whole: N must be 1"
-  for key in RELEASE_SERVER_GB WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB; do
+  case "$RELEASE_RUNNERS" in
+    yes) ;;
+    no) [ "$n" = 1 ] || [ "$RELEASE_STEPS" != together ] ||
+          refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
+    *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
+  esac
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done
   for v in $RELEASE_WINDOWS_VMS; do [[ "$v" =~ ^[a-z0-9]+$ ]] || refuse_rule "RELEASE_WINDOWS_VMS names '$v': a VM's name is lowercase letters and digits"; done

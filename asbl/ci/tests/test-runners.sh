@@ -17,7 +17,12 @@
 #   5. the round's rotation date and the full lane's retries and timeouts reach every runner; a runner's share stays the
 #      full mode, inside the full set's two exclusions;
 #   6. stop: each runner's CI container stopped in its engine, the runners removed, their volumes kept;
-#   7. with 1 job: runner 1 alone, with the whole full set.
+#   7. with 1 job: runner 1 alone, with the whole full set;
+#   8. full-set <N> (step 1's full set as one lane): each runner started, run with its own share (full-set-runners.py
+#      pattern) and stopped; the merged log in LOG_DIR under the e2e name with the lane's commit, runners/full-set-latest.log
+#      naming it; green only when each runner is; a red runner and engines that never answer: the lane red, the runners
+#      named, their files NOT_RUN; 1 runner: its own log and report under the e2e name; refused: 5 runners, E2E_SPEC, a
+#      runner there already.
 # Every folder is a scratch one: a scratch git repository with a copy of asbl/ci and made-up compose files; docker, ufw,
 # ssh and virsh are stubs first on PATH that record each call with its DOCKER_HOST: nothing is started, no image or cache
 # is copied, no live folder is touched. Takes about 30 seconds.
@@ -93,7 +98,18 @@ case "${1:-}" in
       host:dp-ci-runner-*) touch "$STUB/running-${name##*-}" "$STUB/volume-$name-docker"; exit 0 ;;
       r*:dp-ci)  # dp-ci.sh's CI container: its log gets a green end at once (follow-ci.sh then ends)
         for a in "$@"; do case "$a" in LOG=*) log=${a#LOG=} ;; esac; done
-        printf 'PIPELINE_START\nE2E_RESULT mode=full passed=1 failed=0 flaky=0 skipped=0 didnotrun=0 exit=0 target=web\nPIPELINE_RESULT=SUCCESS\n' >> "$log"
+        if [ -e "$STUB/full-report" ]; then
+          # the full-set cases: a lane's summary lines and a one-test report beside its log (full-set-runners.py merge reads
+          # them); red with $STUB/red-<n>
+          c=$(cat "$STUB/commit"); rep="${log%.log}-playwright.json"; st=expected; res=passed; p=1; f=0; x=0; pr=SUCCESS
+          [ ! -e "$STUB/red-${eng#r}" ] || { st=unexpected; res=failed; p=0; f=1; x=1; pr=FAILED_AT_STEP_4; }
+          printf 'PIPELINE_START 2026-11-05T10:00:00Z  task=e2e  commit=%s  version=16.6.3\nE2E_COMMIT=%s\nE2E_RETRIES=1 E2E_TIMEOUT_SECS=36000 E2E_JSON_REPORT=%s\nE2E_TARGET=web\n' "$c" "$c" "$rep" >> "$log"
+          printf '{"config": {}, "suites": [{"title": "%s.spec.ts", "file": "specs/%s.spec.ts", "specs": [{"title": "t", "file": "specs/%s.spec.ts", "line": 1, "tests": [{"status": "%s", "projectName": "chromium", "results": [{"status": "%s", "duration": 60000}]}]}]}], "errors": [], "stats": {"startTime": "2026-11-05T10:00:00.000Z", "duration": 60000, "expected": %d, "unexpected": %d, "flaky": 0, "skipped": 0}}\n' \
+            "$eng" "$eng" "$eng" "$st" "$res" "$p" "$f" > "$rep"
+          printf 'E2E_RESULT mode=full passed=%d failed=%d flaky=0 skipped=0 didnotrun=0 exit=%d target=web\nPIPELINE_RESULT=%s\n' "$p" "$f" "$x" "$pr" >> "$log"
+        else
+          printf 'PIPELINE_START\nE2E_RESULT mode=full passed=1 failed=0 flaky=0 skipped=0 didnotrun=0 exit=0 target=web\nPIPELINE_RESULT=SUCCESS\n' >> "$log"
+        fi
         exit 0 ;;
     esac
     case "$*" in
@@ -389,6 +405,62 @@ check "stop: the four runners stopped and removed" same "1 2 3 4" \
 check "stop: no runner left, every volume kept (no volume removed)" same "0 0" \
   "$(ls "$STUB"/running-* 2>/dev/null | wc -l) $(grep -cE 'docker (volume rm|rm -f? ?-v|rm -v)' "$STUB/calls")"
 check "status: four runners not running, each with its volume kept" same 4 "$(bash "$RUNNERS" status | grep -c '^RUNNER [1-4] running=no .* volume=kept ')"
+
+echo "---- 8. full-set: the full set in N runners as one lane ----"
+# the full set's spec files in the scratch repository (the lists and the merge read them), committed: the lane's commit
+( cd "$REPO_ROOT" && find frend/reporting/e2e -name '*.spec.ts' -not -path '*/node_modules/*' ) |
+  while read -r f; do mkdir -p "$R/$(dirname "$f")" && cp "$REPO_ROOT/$f" "$R/$f"; done
+git -C "$R" add -A && git -C "$R" -c user.name=t -c user.email=t@t.invalid commit -qm specs || exit 2
+SPECS_PIN=$(git -C "$R" rev-parse HEAD); git -C "$R" rev-parse --short HEAD > "$STUB/commit"
+printf 'PIPELINE_START\nIMAGE_TAG=16.6.3-%s\nPIPELINE_RESULT=SUCCESS\n' "${SPECS_PIN:0:8}" > "$LOG_DIR/20261105T110000Z-build-${SPECS_PIN:0:8}.log"
+touch "$STUB/full-report"; rm -f "$STUB"/ci-*
+unset RELEASE_PIN E2E_RUNNER_FILES E2E_ROTATION_DATE E2E_SPEC E2E_GREP
+full_set() { (cd "$R" && E2E_ROTATION_DATE=2026-11-09 bash "$RUNNERS" full-set "$@" 2>&1); }   # full_set <N>: its output
+merged_of() { sed -n 's/^E2E_MERGED_LOG=//p' <<< "$1" | tail -1; }
+: > "$STUB/calls"
+OUT=$(full_set 2); RC=$?; M=$(merged_of "$OUT")
+check "full-set 2, both green: exit 0, the merged log in LOG_DIR under the e2e name, green, with the lane's commit" bash -c '
+  [ "$1" = 0 ] && [[ "$2" == "$3"/*-e2e-"$4".log ]] && grep -q "^PIPELINE_RESULT=SUCCESS" "$2" && grep -qx "E2E_COMMIT=$4" "$2" &&
+  [ -f "${2%.log}-playwright.json" ]' _ "$RC" "$M" "$LOG_DIR" "$(cat "$STUB/commit")"
+check "  runners/full-set-latest.log names it (the record reads that, not latest.log)" same "$M" "$(readlink "$LOG_DIR/runners/full-set-latest.log")"
+check "  runners 1 and 2 started (one docker run each), none other" same "1 1 0 0" \
+  "$(for n in 1 2 3 4; do docker_runs_of "$n" | grep -c .; done | paste -sd' ')"
+share_ok() {  # share_ok <N> <n>: runner n's CI container got E2E_RUNNER_FILES = its pattern (full-set-runners.py)
+  local want; want=$(cd "$R" && python3 -I asbl/ci/full-set-runners.py pattern "$1" "$2")
+  grep "^r$2 docker run -d --rm --name dp-ci " "$STUB/calls" | grep -qF -- "-e E2E_RUNNER_FILES=$want " ||
+    { echo "      runner $2: no E2E_RUNNER_FILES=$want"; return 1; }
+}
+check "  each runner's CI container got its own share (full-set-runners.py pattern 2 <n>)" bash -c "R='$R' STUB='$STUB'; $(declare -f share_ok); share_ok 2 1 && share_ok 2 2"
+check "  and the round's rotation date, one for both" same 2 "$(grep -c '^r[12] docker run -d --rm --name dp-ci .*-e E2E_ROTATION_DATE=2026-11-09 ' "$STUB/calls")"
+check "  the runners stopped at the end (none running)" same 0 "$(ls "$STUB"/running-* 2>/dev/null | wc -l)"
+check "  each runner's start marked in the lane's output (the orchestrator waits on CACHES END)" same 2 \
+  "$(grep -cE '^######## RUNNER [12] CACHES END rc=0' <<< "$OUT")"
+touch "$STUB/red-2"; sleep 1
+OUT=$(full_set 2); RC=$?; M=$(merged_of "$OUT"); rm -f "$STUB/red-2"
+check "full-set 2, runner 2 red: exit 1, the lane red, runner 2 named" bash -c '
+  [ "$1" = 1 ] && grep -q "^PIPELINE_RESULT=FAILED_IN_RUNNERS" "$2" && grep -q "^E2E_RUNNERS_RED 2 " "$2" &&
+  [[ "$3" == *"FAILED: the full set in 2 runner(s) is red: runner(s) 2 "* ]]' _ "$RC" "$M" "$OUT"
+touch "$STUB/silent"; sleep 1
+OUT=$(full_set 2); RC=$?; rm -f "$STUB/silent"
+M=$(readlink "$LOG_DIR/runners/full-set-latest.log")
+check "full-set 2, engines that never answer: exit 1, each \"did not start\", their files NOT_RUN in the merged log" bash -c '
+  [ "$1" = 1 ] && [ "$(grep -c "^FAILED: runner [12] did not start (above): its files NOT_RUN" <<< "$2")" = 2 ] &&
+  [ "$(grep -c "^E2E_RUNNER [12] log=none result=NOT_RUN" "$3")" = 2 ] && grep -q "^PIPELINE_RESULT=FAILED_IN_RUNNERS" "$3"' _ "$RC" "$OUT" "$M"
+check "  no runner left running" same 0 "$(ls "$STUB"/running-* 2>/dev/null | wc -l)"
+sleep 1; : > "$STUB/calls"
+OUT=$(full_set 1); RC=$?; M=$(merged_of "$OUT")
+check "full-set 1: runner 1 alone, the whole full set (E2E_RUNNER_FILES empty), its log and report under the e2e name" bash -c '
+  [ "$1" = 0 ] && [[ "$2" == "$3"/*-e2e-*.log ]] && [ -f "${2%.log}-playwright.json" ] && grep -q "^PIPELINE_RESULT=SUCCESS" "$2" &&
+  grep -q "^r1 docker run -d --rm --name dp-ci .*-e E2E_RUNNER_FILES= " "$4" && ! grep -q "^host docker run -d --rm --privileged --name dp-ci-runner-[2-4] " "$4"' \
+  _ "$RC" "$M" "$LOG_DIR" "$STUB/calls"
+check "  runners/full-set-latest.log names it" same "$M" "$(readlink "$LOG_DIR/runners/full-set-latest.log")"
+OUT=$(full_set 5); RC=$?
+check "full-set 5: refused, exit 2" same "2 1" "$RC $(grep -c '^usage: .* full-set <N> (1 to 4 runners)' <<< "$OUT")"
+OUT=$(cd "$R" && E2E_SPEC=reporting bash "$RUNNERS" full-set 2 2>&1); RC=$?
+check "full-set with E2E_SPEC: refused, exit 2, nothing started" same "2 1" "$RC $(grep -c '^REFUSED full-set: E2E_SPEC/E2E_GREP make a targeted run' <<< "$OUT")"
+touch "$STUB/running-2"
+OUT=$(full_set 2); RC=$?; rm -f "$STUB/running-2"
+check "full-set 2 with runner 2 there already: refused, exit 2" same "2 1" "$RC $(grep -c '^REFUSED runner 2: dp-ci-runner-2 is there already' <<< "$OUT")"
 
 echo
 [ "$FAILED_CASES" = 0 ] && { echo "ALL PASS  test-runners"; exit 0; }

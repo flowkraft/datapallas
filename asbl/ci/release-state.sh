@@ -7,7 +7,10 @@
 #
 #   bash asbl/ci/release-state.sh record <name> PASS|FAIL [key=value ...]       write one verdict
 #   bash asbl/ci/release-state.sh record-step1 <e2e target> <rc>                 the verdict of one step-1 lane (its job calls it;
-#                                                                                RELEASE_STEP_START = when the lane started, epoch s)
+#                                                                                RELEASE_STEP_START = when the lane started, epoch s;
+#                                                                                RELEASE_STEP1_LOG = the lane's log or its link
+#                                                                                [the target's latest.log]: a full set run in
+#                                                                                runners, <LOG_DIR>/runners/full-set-latest.log)
 #   bash asbl/ci/release-state.sh require <name|step1>...                        exit 1 unless every one is PASS (a rehearsal:
 #                                                                                with each of its parts PASS, below)
 #   bash asbl/ci/release-state.sh parts rehearsal.docker|rehearsal.windows       that rehearsal's parts as recorded on the
@@ -542,6 +545,9 @@ case "$cmd" in
       mode=targeted
     fi
     case "$target" in windows-vm-*) link="$LOG_DIR/win-e2e-latest.log"; key=WIN_E2E_COMMIT ;; *) link="$LOG_DIR/latest.log"; key=E2E_COMMIT ;; esac
+    # a full set run in runners (asbl/ci/e2e-runners.sh full-set) names its merged log: this host's latest.log is the
+    # host's own lanes' (the auth file, the Linux proof run meanwhile)
+    link="${RELEASE_STEP1_LOG:-$link}"
     log=$(readlink -f "$link" 2>/dev/null)
     [ -n "$log" ] && [ "$(stat -c %Y "$log" 2>/dev/null || echo 0)" -lt "${RELEASE_STEP_START:-0}" ] && log=""
     c=$(grep -aoP "^$key=\K\S+" "$log" 2>/dev/null | tail -1)

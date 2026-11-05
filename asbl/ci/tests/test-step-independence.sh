@@ -1,7 +1,8 @@
 #!/bin/bash
 # The release steps started together (asbl/ci/jenkins/release-orchestrator.sh with RELEASE_STEPS=together, the machines
 # file's default; release 16.6.3): steps 1, 2 and 3 start at once, each part runs to its end, and step 1 is checked at the
-# run's sign-off and at every upload. The cases:
+# run's sign-off and at every upload. With RELEASE_RUNNERS=no: step 1's full set on this host's engine (the runners'
+# order, the default: asbl/ci/tests/test-step1-runners.sh). The cases:
 #   1. a dry run with no release record: every part of the three steps runs start to end and gives its verdict; steps 2
 #      and 3 start before step 1 ends; this host runs one part at a time, the VM one part at a time; only the parts of
 #      steps 2 and 3 get the switch RELEASE_STEP1_AT_SIGNOFF=yes; the sign-off refuses (result=red) when any one part is
@@ -9,7 +10,8 @@
 #   2. the step 1 guard of steps 2 and 3 (release-state.sh step1-guard): skipped only with the switch inside an
 #      orchestrator run (its lock held), pinned, with no upload; refused as always otherwise; `require step1` (every
 #      upload's check) never reads the switch; step 2 pressed alone (release-docker.sh, a dry run) still checks step 1 at
-#      its start, and skips it only inside an orchestrator run;
+#      its start, and skips it only inside an orchestrator run; there, its build part (DOCKER_RELEASE_PART=build) ends
+#      after the build, and its linux-proof part runs the Linux proof on that build, building nothing;
 #   3. release-publish.sh upload-kept (DRY_RUN=yes) refuses either channel without step 1 green, the switch set and the
 #      orchestrator's lock held;
 #   4. a run after fixes (EXECUTION=2) lists every lane, step 1's included, its lanes green on the pin already;
@@ -92,6 +94,7 @@ export RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env" RELEASE_REHEARSAL_C
 export LOG_DIR="$SCRATCH/logs"; mkdir -p "$LOG_DIR"
 unset E2E_APPROVAL E2E_APPROVAL_USER RELEASE_PIN RELEASE_STEPS RELEASE_STEP1_AT_SIGNOFF UPLOAD MODE \
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
+export RELEASE_RUNNERS=no   # the full set on this host's engine, one part at a time
 C=$(git rev-parse HEAD)
 STATE="bash $REPO_ROOT/asbl/ci/release-state.sh"
 LOCK="$LOG_DIR/release-orchestrator.lock"
@@ -213,7 +216,7 @@ git init -q --bare "$SCRATCH/origin.git"
 echo "$(cd "$(git rev-parse --git-common-dir)" && pwd)/objects" > "$SCRATCH/origin.git/objects/info/alternates"
 git -C "$SCRATCH/origin.git" update-ref refs/heads/main "$C"
 git clone -q --shared --no-checkout "$SCRATCH/origin.git" "$SANDBOX"
-git -C "$SANDBOX" sparse-checkout set --no-cone /asbl/ci/ /pom.xml /bkend/server/pom.xml /frend/reporting/package.json \
+git -C "$SANDBOX" sparse-checkout set --no-cone /asbl/ci/ /frend/reporting/e2e/ /pom.xml /bkend/server/pom.xml /frend/reporting/package.json \
   /frend/reporting/package-lock.json /frend/reporting/app/package.json /frend/reporting/app/package-lock.json \
   /bkend/reporting/src/main/external-resources/template/config/burst/settings.xml
 git -C "$SANDBOX" checkout -q main
@@ -241,6 +244,16 @@ hold_the_lock
 out=$(RELEASE_STEP1_AT_SIGNOFF=yes RELEASE_PIN="$SC" docker_step)
 check "  inside an orchestrator run (the switch, pinned, the lock held): past the guard, to its build" bash -c \
   '[[ "$1" == *"SKIPPED: the step 1 guard"* ]] && [[ "$1" != *"REFUSED: step 1 is not green"* ]] && [[ "$1" == *"DOCKER RELEASE STEP 2/6"* ]]' _ "$out"
+docker_part() { ( cd "$SANDBOX" && RELEASE_STEP1_AT_SIGNOFF=yes RELEASE_PIN="$SC" MODE=rehearsal UPLOAD=no DRY_RUN=yes DOCKER_RELEASE_PART="$1" bash asbl/ci/jenkins/release-docker.sh 2>&1 ); }
+out=$(docker_part build)
+check "  its build part (the runners' round): the build (2/6), then it ends: no Linux proof, green" bash -c \
+  'grep -q "^######## DOCKER RELEASE STEP 2/6 END rc=0" <<< "$1" && grep -q "^dry run: DOCKER_RELEASE_PART=build ends here" <<< "$1" &&
+   ! grep -q "STEP 3/6" <<< "$1" && grep -q "^DOCKER_RELEASE=SUCCESS" <<< "$1"' _ "$out"
+out=$(docker_part linux-proof)
+check "  its linux-proof part: on the build the build part made (nothing built), the Linux proof (3/6), green" bash -c \
+  'grep -q "^######## DOCKER RELEASE STEP 2/6 START .* the build the linux or build part made of .* nothing is built here" <<< "$1" &&
+   grep -q "^######## DOCKER RELEASE STEP 3/6 END rc=0" <<< "$1" && grep -q "^dry run: DOCKER_RELEASE_PART=linux-proof ends here" <<< "$1" &&
+   grep -q "^DOCKER_RELEASE=SUCCESS" <<< "$1"' _ "$out"
 free_the_lock
 
 echo "---- 3. upload-kept still refuses either channel without step 1 green ----"

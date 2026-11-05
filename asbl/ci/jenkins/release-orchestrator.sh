@@ -8,9 +8,20 @@
 # TOGETHER, the default (release 16.6.3): 0., 2. and 5. as below; then steps 1, 2 and 3 start at once, on two tracks, every
 #   part to its end whatever the others say:
 #     host  one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time: the shipped compose
-#           files fix the container names, the ports and the network): step 2's linux part (the build, then the Linux
-#           proof), step 1's lanes 2 and 1 (a lane that needs the build NOT RUN when the build is red), then step 2's keep
-#           part once the Windows Docker proof ended
+#           files fix the container names, the ports and the network). With the runners (RELEASE_RUNNERS=yes, the
+#           machines file's default): step 2's build (DOCKER_RELEASE_PART=build), step 1's lane 2 (the auth file) once
+#           each runner has this checkout and the caches copied in (its RUNNER <n> CACHES mark ended: this host's lanes
+#           write both), then step 2's Linux proof (DOCKER_RELEASE_PART=linux-proof; it runs whatever the auth file
+#           says), then step 2's keep part once the Windows Docker proof ended. With RELEASE_RUNNERS=no: step 2's linux
+#           part (the build, then the Linux proof), step 1's lanes 2 and 1, then the keep part. A lane or part that needs
+#           the build is NOT RUN when the build is red
+#     runners  with the runners: from the build's end mark (DOCKER RELEASE STEP 2/6 END, never the build part's end),
+#           step 1's lane 1, the full set in SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS runners at once (1, the
+#           default: the whole full set in one runner), each a Docker engine of its own with its list of
+#           asbl/ci/full-set-runners.txt (release-step1.sh E2E_RUNNERS=<N>: asbl/ci/e2e-runners.sh full-set), then the
+#           merge into the lane's one log and one report, and step 1's record as for the lane run whole. A red runner, or
+#           one that did not start (its files NOT_RUN), makes lane 1 red. The runner lists are checked before anything
+#           starts (asbl/ci/full-set-runners.py check: refused = exit 2, nothing done)
 #     VM    as in 4. below: the pack, the Windows Docker proof once the build ended, the server light set, Electron, Robot
 #     VMs   with USE_N_NUMBER_OF_WINDOWS_VMS=M above 1, one track per VM instead: each VM runs its lanes of the layout for M
 #           VMs (VM_LANES_<M>_<name>, asbl/ci/release-machines.sh), in order, each when its inputs exist: the Windows Docker
@@ -56,7 +67,8 @@
 # THE RUN FOLDER (<RUN_RECORD_DIR>/<UTC>-release-orchestrator-.../), what a person, release-rehearsal.sh and the Jenkins job
 # read there:
 #   run.log            this console
-#   <id>.log, <id>.rc  one per part started (step0, step1-build, lane*, docker-linux, docker-windows, docker-keep,
+#   <id>.log, <id>.rc  one per part started (step0, step1-build, lane*, docker-linux (with the runners the build only),
+#                      docker-linux-proof (with the runners), docker-windows, docker-keep,
 #                      windows-pack, windows-after-pack; with more VMs windows-prepare-<vm>, windows-server-light,
 #                      windows-electron-light, windows-robot, windows-verdict): its output and its exit code ("-" = not run)
 #   result.txt         written at every end: key=value lines, then one tab-separated line per part of the summary
@@ -71,7 +83,8 @@
 #                      counts as flaky but that never passed (its retry skipped or cut off) is a failure, not listed here
 #   started.txt        what each part starts, one tab-separated line each, added BEFORE the part starts (so a stop in
 #                      between finds it): <UTC> <TAB> <part> <TAB> <kind> <TAB> <name> <TAB> real|dry-run <TAB> <what>
-#                        container <name>     a container of this host's Docker (dp-ci: dp-ci.sh's run container)
+#                        container <name>     a container of this host's Docker (dp-ci: dp-ci.sh's run container;
+#                                             dp-ci-runner-<n>: a runner, whole, its engine and all it runs)
 #                        compose <folder>     the docker-server bundle a Linux e2e brings up there (docker compose)
 #                        pidfile <path>       a process that outlives this one (win-e2e.sh's Windows driver)
 #                        vm <name>            the Windows VM's scheduled tasks of that lane (dp-ci.sh win stop <step>);
@@ -102,10 +115,11 @@
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [300]     seconds between two samples of memory.log
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
-#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many subsets
+#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
 #   THE MACHINES: RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf], the machines file (asbl/ci/release-machines.sh,
-#   with asbl/ci/release-layout.example.conf): RELEASE_STEPS, the memory per host test server and per VM, the VMs and the
+#   with asbl/ci/release-layout.example.conf): RELEASE_STEPS, RELEASE_RUNNERS (no: step 1's full set on this host's engine,
+#   N = 1), the memory per host test server and per VM, the VMs and the
 #   lanes each runs. Checked before anything starts (exit 2 with a REFUSED line per broken rule); every run prints the
 #   SCHEDULE it expects, each part's time from the last release runs' marks.
 #   THE VMS (release-machines.sh, A ROUND'S VMS): before anything starts, each VM the parts use gets WIN_VM_MEMORY_GB
@@ -117,7 +131,8 @@
 #   DRY_RUN_RED=vm-<name> makes an off VM not start.
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
 #   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict;
-#   with more VMs also prepare-<name>, a VM's e2e package.
+#   with more VMs also prepare-<name>, a VM's e2e package; with the runners also runner-<n> (its share red) and
+#   runner-<n>-start (it did not start: its engine gave no answer, its files NOT_RUN).
 #
 # USE:
 #   ORCH_STARTED_BY=<name> DRY_RUN=yes bash asbl/ci/jenkins/release-orchestrator.sh
@@ -178,7 +193,7 @@ MEMORY_EVERY="${MEMORY_EVERY:-300}"
 # what_part_starts <part>: the things that part starts and that outlive a stop of this script, one "<kind> TAB <name> TAB
 # <what>" line each (the kinds of started.txt); a part that starts nothing outside this script's processes prints nothing
 what_part_starts() {
-  local run_container bundle windows_driver vm=a
+  local run_container bundle windows_driver vm=a n
   run_container=$(printf 'container\tdp-ci\tthe run container of dp-ci.sh')
   bundle=$(printf 'compose\t%s\tthe docker-server bundle under test' "$DOCKER_SERVER_BUNDLE")
   windows_driver=$(printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh' "$WIN_PID")
@@ -186,10 +201,17 @@ what_part_starts() {
     vm=$(vm_of_part "$1")
     windows_driver=$(printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh' "$(win_vm_pidfile "$vm")") ;;
   esac
+  case "$RUNNERS:$1" in
+    yes:lane1-*)   # the full set in the runners: each runner whole (its CI container and bundle are inside it)
+      for n in $(seq 1 "$FULL_SET_JOBS"); do
+        printf 'container\tdp-ci-runner-%s\trunner %s (Docker in Docker): its engine and everything it runs\n' "$n" "$n"
+      done; return ;;
+    yes:docker-linux) echo "$run_container"; return ;;   # the build only
+  esac
   case "$1" in
     step1-build|lane1-web-full) echo "$run_container" ;;
     lane1-docker-server-full|lane2-docker-server-auth) printf '%s\n' "$run_container" "$bundle" ;;
-    docker-linux) printf '%s\n' "$run_container" "$bundle" \
+    docker-linux|docker-linux-proof) printf '%s\n' "$run_container" "$bundle" \
       "$(printf 'container\tdp-ci-one-command\tthe image alone, run as the self-host page says (dp-ci.sh docker_one_command)')" ;;
     docker-windows) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win docker-e2e' "$(win_vm_suffix "$vm")")" ;;
     windows-pack|windows-after-pack|windows-server-light|windows-electron-light|windows-robot|windows-verdict)
@@ -342,6 +364,13 @@ machines_answer=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS
   { printf '%s\n' "$machines_answer"; echo "REFUSED: the machines file (${RELEASE_REHEARSAL_CONF:-/root/release-rehearsal.conf}) does not allow N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED (above). Nothing done"; exit 2; }
 machines_load
 STEPS="$RELEASE_STEPS"   # together or in-order (HOW, above)
+# step 1's full set in runners (HOW, runners): with the steps together, unless the machines file says RELEASE_RUNNERS=no
+RUNNERS=$([ "$STEPS" = together ] && [ "$RELEASE_RUNNERS" = yes ] && echo yes || echo no)
+if [ "$RUNNERS" = yes ]; then
+  lists_answer=$(python3 -I asbl/ci/full-set-runners.py check 2>&1) ||
+    { printf '%s\n' "$lists_answer" | grep -E '^(REFUSED|WARN)'; echo "REFUSED: the runner lists (asbl/ci/full-set-runners.txt, above) for step 1's full set in runners. Nothing done"; exit 2; }
+fi
+ROUND_ROTATION_DATE=$(date -u +%F)   # the round's one rotation date, for every runner
 # the switch only this run gives its step 2 and step 3 parts: their step 1 guard skipped, step 1 asked at the sign-off
 STEP1_SWITCH=$([ "$STEPS" = together ] && echo RELEASE_STEP1_AT_SIGNOFF=yes)
 if [ "$DRY" = no ]; then
@@ -440,10 +469,17 @@ simulate() {
   case "$1" in
     step0)  simulated_mark "STEP 0" step0 ;;
     step1-build) simulated_mark "BUILD IF NEEDED" step1-build ;;
+    lane1-*) if [ "$RUNNERS" = yes ]; then simulate_runners "$1"; else simulated_mark "JOB STEP 2/2" "$1"; fi ;;
     lane*)  simulated_mark "JOB STEP 2/2" "$1" ;;
     docker-linux)
       echo "######## DOCKER RELEASE STEP 1/6 START  (dry run)"
       simulated_mark "DOCKER RELEASE STEP 2/6" build || return 1
+      [ "$RUNNERS" = no ] || return 0   # the build part only: the Linux proof is a part of its own
+      simulated_mark "DOCKER RELEASE STEP 3/6" linux-proof ;;
+    docker-linux-proof)
+      echo "######## DOCKER RELEASE STEP 1/6 START  (dry run)"
+      echo "######## DOCKER RELEASE STEP 2/6 START  (dry run): the build the build part made"
+      echo "######## DOCKER RELEASE STEP 2/6 END rc=0  (dry run)"
       simulated_mark "DOCKER RELEASE STEP 3/6" linux-proof ;;
     windows-pack)
       echo "RELEASE_ARTIFACTS=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/${VERSION:-<version>}-${PIN:0:8} (dry run: the folder this half would begin)"
@@ -496,6 +532,29 @@ simulate() {
       [ "$any" = 0 ] && echo "DOCKER_RELEASE_RESULT dry run: rehearsal=PASS" && return 0
       echo "DOCKER_RELEASE_RESULT dry run: rehearsal=FAIL"; return 1 ;;
   esac
+}
+# simulate_runners <lane 1's id>: the lines lane 1 leaves in the runners (asbl/ci/e2e-runners.sh full-set), red when
+# DRY_RUN_RED names a runner (runner-<n>: its share red; runner-<n>-start: it did not start, its files NOT_RUN) or the lane
+simulate_runners() {
+  local n m any=0
+  echo "######## JOB STEP 2/2 START  (dry run)"
+  echo "FULL SET in $FULL_SET_JOBS runner(s) at once, on ${PIN:0:8} (dry run: bash asbl/ci/e2e-runners.sh full-set $FULL_SET_JOBS)"
+  for n in $(seq 1 "$FULL_SET_JOBS"); do
+    echo "######## RUNNER $n ENGINE START  (dry run)"
+    if red_in_dry_run "runner-$n-start"; then
+      echo "FAIL  runner $n did not answer: its engine gave no answer (DRY_RUN_RED)"
+      echo "######## RUNNER $n ENGINE END rc=1  (dry run)"
+      echo "FAILED: runner $n did not start (above): its files NOT_RUN"; any=1; continue
+    fi
+    echo "######## RUNNER $n ENGINE END rc=0  (dry run)"
+    for m in CHECKOUT CACHES IMAGES; do echo "######## RUNNER $n $m START  (dry run)"; echo "######## RUNNER $n $m END rc=0  (dry run)"; done
+    echo "RUNNER  $n: its lane (dry run): $(python3 -I asbl/ci/full-set-runners.py files "$FULL_SET_JOBS" "$n" 2>/dev/null | wc -l) spec files"
+    if red_in_dry_run "runner-$n"; then echo "FAILED: runner $n red (DRY_RUN_RED)"; any=1; fi
+  done
+  red_in_dry_run "$1" && { echo "FAILED: $1 red (DRY_RUN_RED)"; any=1; }
+  echo "dry run: then the merge, the lane's one log and one report in ${LOG_DIR}/<UTC>-e2e-${PIN:0:8}.log (full-set-runners.py merge)"
+  echo "######## JOB STEP 2/2 END rc=$any  (dry run)"
+  return "$any"
 }
 # mark_verdict <log> <mark label>: "PASS|", "FAIL|<why>" or "NOT RUN|<why>" for one mark of a part's log: its END rc=0,
 # another rc or a START with no END (the part died), or no START at all; a "not run:" line inside the mark makes it NOT RUN
@@ -681,7 +740,9 @@ if [ "$EXECUTION" = 2 ]; then
 fi
 
 # ---- 3. step 1 ----
-if [ "$STEPS" = together ]; then
+if [ "$RUNNERS" = yes ]; then
+  mark_start "STEPS 1, 2 AND 3" "together on ${PIN:0:8}: host = step 2's build, step 1's lane 2, step 2's Linux proof and keep, one at a time; runners = step 1's lane 1 in $FULL_SET_JOBS runner(s), from the build's end; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
+elif [ "$STEPS" = together ]; then
   mark_start "STEPS 1, 2 AND 3" "together on ${PIN:0:8}: host = step 2's build and Linux proof, step 1's lanes 2 and 1, step 2's keep, one at a time; VM = pack, Windows Docker proof, server light set, Electron light set, Robot"
 else
   mark_start "STEP 1" "the lanes a release needs, not green on ${PIN:0:8} yet: lanes 2 and 1, on this host"
@@ -710,11 +771,13 @@ lane_part() {
   esac
 }
 run_lane() {  # run_lane <lane>
-  local id envs
+  local id envs runners="" rotation=""
   read -r id envs <<< "$(lane_part "$1")"
+  # with the runners, lane 1 runs the full set in N of them (HOW, runners), all on the round's one rotation date
+  case "$RUNNERS:$1" in yes:*-full) runners="E2E_RUNNERS=$FULL_SET_JOBS"; rotation="$ROUND_ROTATION_DATE" ;; esac
   # Retries 1 on every lane (owner, 2026-10-30): a release's step 1 gives a flaky test one more try, like the light sets
   # of steps 2 and 3. Left empty, each lane would take its own default: 2 for a Linux full run, 0 for the auth lane.
-  run_part "$id" "step 1 ${1#step1.} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE= \
+  run_part "$id" "step 1 ${1#step1.}${runners:+ in $FULL_SET_JOBS runner(s)} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE=$rotation $runners \
     STEP1_STARTED_BY="release orchestrator, started by $WHO" \
     bash asbl/ci/jenkins/release-step1.sh
 }
@@ -729,7 +792,60 @@ step1_lanes() {
     case " $needed " in *" $lane "*) run_lane "$lane" ;; esac
   done
 }
-if [ "$STEPS" = together ]; then
+# runners_plan: each runner's files and expected time: its setup plus Playwright's ratio times its files' test minutes,
+# from this target's newest passed full set in the run records (asbl/ci/release-estimate.py files; a file with no time
+# there takes the mean of those with one)
+runners_plan() {
+  local times="$PARTS/.full-set-file-times" n from
+  python3 -I asbl/ci/release-estimate.py files --runs "${RUN_RECORD_DIR:-$LOG_DIR/runs}" --target "$full" > "$times" 2>/dev/null
+  from=$(sed -n 's/^FROM //p' "$times")
+  echo "RUNNERS step 1's full set ($(lane_part "step1.$full-full" | cut -d' ' -f1)) in $FULL_SET_JOBS runner(s) at once, each a Docker engine"
+  echo "        of its own (asbl/ci/e2e-runners.sh full-set), started at the build's end mark; each its list of"
+  echo "        asbl/ci/full-set-runners.txt; its time: its files' test minutes in ${from:-no passed full set on $full (no time yet)}"
+  for n in $(seq 1 "$FULL_SET_JOBS"); do
+    python3 -I asbl/ci/full-set-runners.py files "$FULL_SET_JOBS" "$n" 2>/dev/null |
+      awk -v n="$n" -v jobs="$FULL_SET_JOBS" '
+        FNR == NR {
+          if ($1 == "SETUP") setup = $2; else if ($1 == "RATIO") ratio = $2
+          else if ($1 ~ /^[0-9.]+$/ && NF == 2) { t[$2] = $1; sum += $1; known++ }
+          next }
+        { files[++count] = $1; if ($1 in t) minutes += t[$1]; else unknown++ }
+        END {
+          if (known) {
+            m = setup + ratio * (minutes + unknown * sum / known); m = int(m / 5 + 0.5) * 5
+            time = sprintf("about %d h %02d (%.0f test minutes%s, x %.2f + %.0f min setup)", m / 60, m % 60, minutes,
+                           unknown ? sprintf(" + %d file(s) at the mean", unknown) : "", ratio, setup)
+          } else time = "no time yet"
+          printf "        runner %d of %d: %d spec files, %s:\n", n, jobs, count, time
+          line = "           "
+          for (i = 1; i <= count; i++) {
+            f = files[i]; sub(/^specs\//, "", f); sub(/\.spec\.ts$/, "", f)
+            word = f (i < count ? "," : "")
+            if (length(line) + 1 + length(word) > 118) { print line; line = "           " }
+            line = line " " word }
+          print line }' "$times" -
+  done
+}
+if [ "$RUNNERS" = yes ]; then
+echo "ORDER   steps 1, 2 and 3 together (RELEASE_STEPS=together), on three tracks:"
+echo "        host's engine, one part at a time (it runs one DataPallas e2e set at a time):"
+echo "                   docker-linux (step 2's build, DOCKER_RELEASE_PART=build), then step 1's$(for l in $needed; do [ "$l" = "step1.$full-full" ] || printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done | sed 's/,$//') once each runner's"
+echo "                   checkout and caches are copied in, then docker-linux-proof (step 2's Linux proof, DOCKER_RELEASE_PART=linux-proof),"
+echo "                   then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
+echo "        runners, from the build's end mark (DOCKER RELEASE STEP 2/6 END): step 1's $(lane_part "step1.$full-full" | cut -d' ' -f1) in $FULL_SET_JOBS runner(s)"
+echo "                   (release-step1.sh E2E_RUNNERS=$FULL_SET_JOBS), then the merge and step 1's record"
+if [ "$WINDOWS_VMS_USED" = 1 ]; then
+echo "        VM, meanwhile: pack (step 3, WIN_RELEASE_HALF=pack), windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows),"
+echo "                   then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict"
+echo "                   (WIN_RELEASE_HALF=after-pack); never two VM parts at once"
+else
+echo "        VMs, meanwhile, one track each, its lanes of the layout for $WINDOWS_VMS_USED VMs in order (one part at a time per VM):"
+for vm in $RUN_VMS; do echo "                   VM $vm: $(vm_order "$vm")"; done
+echo "                   then windows-verdict on VM $PACK_VM once every lane ended (WIN_RELEASE_HALF=verdict)"
+fi
+echo "        step 1 at the sign-off, after every part: steps 2 and 3 do not wait for it ($STEP1_SWITCH)"
+runners_plan
+elif [ "$STEPS" = together ]; then
 echo "ORDER   steps 1, 2 and 3 together (RELEASE_STEPS=together), on two tracks:"
 echo "        host, one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time):"
 echo "                   docker-linux (step 2's build, then its Linux proof, DOCKER_RELEASE_PART=linux), then step 1's$(for l in $needed; do printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done)"
@@ -828,11 +944,27 @@ DOCKER="bash asbl/ci/jenkins/release-docker.sh"
 WINDOWS="bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh release"
 # build_verdict: the build's verdict from the linux part's log, once its mark ended or the part did
 build_verdict() { mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 2/6"; }
-# step1_lanes_after_the_build: together, step 1's lanes on the host track, after step 2's linux part; a lane on the
-# docker-server target installs the build's zip and image, so it does not run when the build is red
+# runner_copies_in: with the runners, waits until each runner of lane 1 has this checkout and the caches copied in (its
+# RUNNER <n> CACHES mark ended), or did not start, or lane 1 ended (NOT RUN too): this host's lanes write both
+runner_copies_in() {
+  local id log n
+  case " $needed " in *" step1.$full-full "*) ;; *) return 0 ;; esac
+  read -r id _ <<< "$(lane_part "step1.$full-full")"
+  log="$PARTS/$id.log"
+  echo "WAIT    this host's next lane once each runner of $id has this checkout and the caches copied in"
+  for n in $(seq 1 "$FULL_SET_JOBS"); do
+    until [ -f "$PARTS/$id.rc" ] || grep -aqE "^######## RUNNER $n (CACHES END|(ENGINE|CHECKOUT) END rc=[1-9])" "$log" 2>/dev/null; do
+      sleep "$POLL"
+    done
+  done
+}
+# step1_lanes_after_the_build: together, step 1's lanes on the host track, after step 2's linux part (with the runners:
+# after the build part, lane 2 only, once the runners' copies are in); a lane on the docker-server target installs the
+# build's zip and image, so it does not run when the build is red
 step1_lanes_after_the_build() {
   local lane id envs
   for lane in $needed; do
+    [ "$RUNNERS" = no ] || [ "$lane" != "step1.$full-full" ] || continue   # lane 1: track_runners
     read -r id envs <<< "$(lane_part "$lane")"
     case " $envs " in
       *" E2E_TARGET=docker-server "*)
@@ -840,16 +972,43 @@ step1_lanes_after_the_build() {
           not_run "$id" "no build of ${PIN:0:8} to test (the build is not green)"; continue
         fi ;;
     esac
+    [ "$RUNNERS" = no ] || runner_copies_in
     run_lane "$lane"
   done
 }
 track_host() {
-  run_part docker-linux "step 2's build, then its Linux proof (DOCKER_RELEASE_PART=linux)" env $STEP1_SWITCH DOCKER_RELEASE_PART=linux $DOCKER
-  [ "$STEPS" = in-order ] || step1_lanes_after_the_build
+  if [ "$RUNNERS" = yes ]; then
+    # the build, step 1's auth file, then the Linux proof, each to its end: a red auth file leaves the Linux proof to run
+    run_part docker-linux "step 2's build (DOCKER_RELEASE_PART=build)" env $STEP1_SWITCH DOCKER_RELEASE_PART=build $DOCKER
+    step1_lanes_after_the_build
+    if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
+      run_part docker-linux-proof "step 2's Linux proof, on the build the build part made (DOCKER_RELEASE_PART=linux-proof)" \
+        env $STEP1_SWITCH DOCKER_RELEASE_PART=linux-proof $DOCKER
+    else not_run docker-linux-proof "no build of ${PIN:0:8} to prove (the build is not green)"; fi
+  else
+    run_part docker-linux "step 2's build, then its Linux proof (DOCKER_RELEASE_PART=linux)" env $STEP1_SWITCH DOCKER_RELEASE_PART=linux $DOCKER
+    [ "$STEPS" = in-order ] || step1_lanes_after_the_build
+  fi
   until [ -e "$PARTS/.docker-windows-done" ]; do sleep "$POLL"; done
   if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
     run_part docker-keep "step 2's keep, guard and verdict (DOCKER_RELEASE_PART=keep)" env $STEP1_SWITCH DOCKER_RELEASE_PART=keep $DOCKER
   else not_run docker-keep "no build of ${PIN:0:8} to keep (the build is not green)"; fi
+}
+# track_runners: with the runners, step 1's lane 1 in them, from the build's end mark (not the build part's end: it still
+# saves the image as a file); on the docker-server target NOT RUN when the build is red (it installs the build's zip and
+# image)
+track_runners() {
+  local lane="step1.$full-full" id envs
+  case " $needed " in *" $lane "*) ;; *) return 0 ;; esac
+  read -r id envs <<< "$(lane_part "$lane")"
+  until grep -aq '^######## DOCKER RELEASE STEP 2/6 END' "$PARTS/docker-linux.log" 2>/dev/null || [ -f "$PARTS/docker-linux.rc" ]; do sleep "$POLL"; done
+  case " $envs " in
+    *" E2E_TARGET=docker-server "*)
+      if [ "$(build_verdict | cut -d'|' -f1)" != PASS ]; then
+        not_run "$id" "no build of ${PIN:0:8} to test (the build is not green)"; return 0
+      fi ;;
+  esac
+  run_lane "$lane"
 }
 track_vm() {
   if ! vm_up a; then
@@ -923,7 +1082,8 @@ track_vms() {
 }
 track_host & host_pid=$!
 if [ "$WINDOWS_VMS_USED" = 1 ]; then track_vm & vm_pid=$!; else track_vms & vm_pid=$!; fi
-wait "$host_pid"; wait "$vm_pid"
+runners_pid=""; [ "$RUNNERS" = no ] || { track_runners & runners_pid=$!; }
+wait "$host_pid"; wait "$vm_pid"; [ -z "$runners_pid" ] || wait "$runners_pid"
 for vm in $RUN_VMS; do vm_down "$vm"; done   # a VM this run started whose track ended early
 if [ "$DRY" = yes ]; then
   # what the guards of steps 2 and 3 will ask before their verdicts (release-docker.sh 6/6, win_release 5/5), on the main
@@ -946,7 +1106,8 @@ if [ "$STEPS" = together ]; then
   [ "$guard_ok" = 1 ] || { ALL_GREEN=0; echo "SIGN-OFF: step 1 is not green on ${PIN:0:8} (above): the run is red, whatever steps 2 and 3 say"; }
 fi
 summarize build "$(build_verdict)" "$PARTS/docker-linux.log"
-summarize linux-proof "$(mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 3/6")" "$PARTS/docker-linux.log"
+LINUX_PROOF_LOG="$PARTS/$([ "$RUNNERS" = yes ] && echo docker-linux-proof || echo docker-linux).log"   # with the runners, a part of its own
+summarize linux-proof "$(mark_verdict "$LINUX_PROOF_LOG" "DOCKER RELEASE STEP 3/6")" "$LINUX_PROOF_LOG"
 summarize pack "$(mark_verdict "$PARTS/windows-pack.log" "$(mark_of_part pack)")" "$PARTS/windows-pack.log"
 summarize windows-docker-proof "$(mark_verdict "$PARTS/docker-windows.log" "$(mark_of_part windows-docker-proof)")" "$PARTS/docker-windows.log"
 # the Windows lanes' logs: one VM, the after-pack half's; more VMs, each lane's own, and the verdict's

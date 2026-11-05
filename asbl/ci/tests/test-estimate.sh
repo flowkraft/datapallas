@@ -7,7 +7,7 @@
 #   2. for each of the 16: the block draws (what the press refuses, the memory line, the chart, the total, where from);
 #      each part's times are the schedule's (release-machines.sh's machines_schedule) and its bar starts and ends there,
 #      to half a column; the total is the last end; the gain is against 1 and 1; the memory is N + 1 host test servers
-#      and M - 1 VMs; N above 1 is REFUSED at the press (one Docker engine), N = 1 is not;
+#      and M - 1 VMs; none is REFUSED at the press with 100 GB (N above 1 runs in runners, RELEASE_RUNNERS=yes);
 #   3. 1 and 1, and 4 and 4, match a count by hand from the lane times (release-machines.sh lanes) and the time per
 #      file (release-estimate.py files) within 5 minutes;
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
@@ -63,7 +63,7 @@ print(p[sys.argv[-1]])' "$@"; }   # json_field <file> [<N> <M>] <field>
 
 [ -d "$RUNS" ] || { echo "FAIL  no run folders in $RUNS (TEST_ESTIMATE_RUNS)"; exit 1; }
 cp asbl/ci/release-layout.example.conf "$SCRATCH/conf" && chmod 600 "$SCRATCH/conf" || exit 2
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
 export RELEASE_REHEARSAL_CONF="$SCRATCH/conf" RUN_RECORD_DIR="$RUNS" RELEASE_MEMINFO="$SCRATCH/meminfo"
 export RELEASE_ESTIMATES_FILE="$SCRATCH/estimates/release-estimates.json"
 JSON="$RELEASE_ESTIMATES_FILE"
@@ -74,8 +74,8 @@ out=$(bash "$ROUND" estimate); rc=$?
 check "estimate: exit 0, the file written, one ESTIMATE line per choice (16)" \
   bash -c '[ "$1" = 0 ] && [ -s "$2" ] && [ "$(grep -c "^ESTIMATE  N=[1-4] M=[1-4]  " <<< "$3")" = 16 ]' _ "$rc" "$JSON" "$out"
 check "estimate: the file is one the form may read (644)" same 644 "$(stat -c %a "$JSON" 2>/dev/null)"
-check "estimate: N above 1 said to be refused at the press, N = 1 not" \
-  bash -c '[ "$(grep -c "^ESTIMATE  N=[234] .*REFUSED at the press" <<< "$1")" = 12 ] && ! grep -q "^ESTIMATE  N=1 .*REFUSED" <<< "$1"' _ "$out"
+check "estimate: no choice said to be refused at the press (N above 1 runs in runners)" \
+  bash -c '! grep -q "^ESTIMATE  .*REFUSED" <<< "$1"' _ "$out"
 
 # ---- what the checks compare with: the schedule of each choice, the lane times, the time per file, each block ----
 target=$(json_field "$JSON" target)
@@ -183,8 +183,8 @@ for (n, m), p in sorted(pairs.items()):
     need = (n + 1) * data["server_gb"] + (m - 1) * data["vm_gb"]
     if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB; " % (n + 1, data["server_gb"])):
         bad["memory"].append("%s: needs %s (%s), expected %d" % (tag, p["need_gb"], p["need_text"], need))
-    # refused at the press: N above 1 only
-    if (n > 1) != bool(p["refused"]) or (n > 1 and not all("not possible yet" in r for r in p["refused"])):
+    # refused at the press: none (N above 1 runs in runners)
+    if p["refused"]:
         bad["refused"].append("%s: %s" % (tag, p["refused"]))
     # the block, line by line
     block = open(os.path.join(S, "block-%d-%d.txt" % (n, m))).read().rstrip("\n").split("\n")
@@ -205,7 +205,7 @@ check("each bar starts and ends at its part's times, to half a column, for the 1
 check("the total is the last end (also the chart's last column), for the 16", bad["total"])
 check("the gain is against 1 and 1 (about %s), for the 16" % about(base), bad["gain"])
 check("the memory: N + 1 host test servers x %d GB and M - 1 VMs x %d GB, for the 16" % (data["server_gb"], data["vm_gb"]), bad["memory"])
-check("N above 1 REFUSED at the press (one Docker engine), N = 1 not", bad["refused"])
+check("none REFUSED at the press (N above 1 runs in runners)", bad["refused"])
 check("each block: the refusals, the memory against 100 GB, the chart, the total, where from", bad["block"])
 
 # by hand: the lane times (release-machines.sh lanes) and the time per file (release-estimate.py files)

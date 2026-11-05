@@ -46,6 +46,19 @@
 #                   start: a round passes one date to all its runners]
 #   images          the runner's image list, one per line: every image the compose files of the checkout name (the apps,
 #                   the DB starter packs, the tools, the shipped bundle), the CI image and the newest build's server image
+#   full-set <N>    step 1's full set in N runners (1 to 4) as one lane (asbl/ci/jenkins/release-step1.sh with
+#                   E2E_RUNNERS=<N>): the runner lists checked first (asbl/ci/full-set-runners.py check; refused: exit 2,
+#                   nothing started); then runners 1 to N at once, each started (its marks here), its share run
+#                   (E2E_RUNNER_FILES = full-set-runners.py pattern <N> <n>; its console in its log folder as
+#                   <UTC>-console.log, never here: its E2E_JSON_REPORT= line here would count its report twice), then
+#                   stopped. A runner that did not start (its engine gave no answer within E2E_RUNNER_ENGINE_WAIT_SECS, a
+#                   copy failed) runs nothing: its files are NOT_RUN. Then the lane's one log and one report in this
+#                   host's log folder, <LOG_DIR>/<UTC>-e2e-<commit>.log and its -playwright.json: the merge of the
+#                   runners' (full-set-runners.py merge), or with 1 runner its own, linked under that name; and the link
+#                   <LOG_DIR>/runners/full-set-latest.log to it (release-state.sh record-step1 reads it: this host's
+#                   latest.log is its own lanes'). Prints E2E_MERGED_LOG=<log> and E2E_JSON_REPORT=<report>. The settings
+#                   of `run`, one RELEASE_PIN and one E2E_ROTATION_DATE for every runner. This host's own lanes write
+#                   this checkout and the caches: a caller starts them once each runner's "RUNNER <n> CACHES" mark ended
 #
 # SETTINGS (environment)
 #   E2E_RUNNERS_HOME [/var/kraft-internalsystems/projects/dp-ci-runners]   each runner's checkout folder <home>/<n>
@@ -59,13 +72,15 @@
 #                                  memory.log samples it whole; RUNNER_PART [runner-<n>] is that line's part
 #
 # EXIT CODES: 0 done; 1 a runner could not start, its engine did not answer, or its lane failed (run: the lane's own
-# exit code); 2 a wrong call (a runner outside 1 to 4, a runner there already, no runner for run).
+# exit code; full-set: the lane red); 2 a wrong call (a runner outside 1 to 4, a runner there already, no runner for run,
+# runner lists refused).
 #
 # Callers: asbl/ci/jenkins/release-orchestrator.sh (step 1's full set in N runners), a person or an AI agent from the
 # shell. Examples:
 #   bash asbl/ci/e2e-runners.sh start 1 2
 #   E2E_TARGET=docker-server E2E_RETRIES=1 E2E_RUNNER_FILES='/specs/features/reporting\.spec\.ts$' bash asbl/ci/e2e-runners.sh run 1
 #   bash asbl/ci/e2e-runners.sh status
+#   E2E_TARGET=docker-server E2E_RETRIES=1 bash asbl/ci/e2e-runners.sh full-set 4
 #   bash asbl/ci/e2e-runners.sh stop
 # Tests: asbl/ci/tests/test-runners.sh (stub docker and ufw).
 set -uo pipefail
@@ -296,12 +311,83 @@ run_cmd() {
     FOLLOW_PIDFILE="" bash "$checkout/asbl/ci/jenkins/follow-ci.sh" run bash "$checkout/asbl/ci/dp-ci.sh" e2e
 }
 
+# ---- full-set: step 1's full set in N runners, as one lane ----
+# runner_lane_log <console>: the lane log a runner's console names (follow-ci.sh's "following" line), when it is there
+runner_lane_log() {
+  local log
+  log=$(sed -n 's/^follow-ci: following \([^ ]*\) .*/\1/p' "$1" 2>/dev/null | head -1)
+  [ -n "$log" ] && [ -f "$log" ] && echo "$log"
+}
+# full_set_runner <N> <n> <stamp>: runner n's share of the full set: started, run, stopped; its lane log's path (or "-")
+# in <its log folder>/<stamp>-lane.txt
+full_set_runner() {
+  local jobs="$1" n="$2" stamp="$3" console files rc lane_log
+  console="$(runner_log_dir "$n")/$stamp-console.log"
+  echo - > "$(runner_log_dir "$n")/$stamp-lane.txt" 2>/dev/null
+  if ! start_runner "$n"; then
+    echo "FAILED: runner $n did not start (above): its files NOT_RUN"
+    stop_cmd "$n"; return 1
+  fi
+  files=$(python3 -I asbl/ci/full-set-runners.py pattern "$jobs" "$n") ||
+    { echo "FAILED: runner $n: its share cannot be read (full-set-runners.py pattern $jobs $n): its files NOT_RUN"; stop_cmd "$n"; return 1; }
+  echo "RUNNER  $n: its lane starts, its console in $console"
+  E2E_RUNNER_FILES="$files" run_cmd "$n" > "$console" 2>&1; rc=$?
+  lane_log=$(runner_lane_log "$console")
+  echo "${lane_log:--}" > "$(runner_log_dir "$n")/$stamp-lane.txt"
+  echo "RUNNER  $n: its lane ended rc=$rc (its log ${lane_log:-none}, its console $console)"
+  stop_cmd "$n"
+  return "$rc"
+}
+full_set_cmd() {
+  local jobs="${1:-}" n out stamp commit merged rc pids=() logs=() report link="$LOG_DIR/runners/full-set-latest.log"
+  [[ "$jobs" =~ ^[1-4]$ ]] || { echo "usage: $0 full-set <N> (1 to $RUNNERS_MAX runners)"; return 2; }
+  [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ] ||
+    { echo "REFUSED full-set: E2E_SPEC/E2E_GREP make a targeted run, not the full set. Nothing started"; return 2; }
+  for n in $(seq 1 "$jobs"); do
+    ! runner_exists "$n" || { echo "REFUSED runner $n: $(runner_name "$n") is there already (bash $0 stop $n first). Nothing started"; return 2; }
+  done
+  out=$(python3 -I asbl/ci/full-set-runners.py check 2>&1) ||
+    { printf '%s\n' "$out" | grep -E '^(REFUSED|WARN)'; echo "REFUSED full-set: the runner lists, asbl/ci/full-set-runners.txt (above). Nothing started"; return 2; }
+  printf '%s\n' "$out" | grep '^WARN' || true
+  # one commit and one rotation date for every runner of the lane
+  export RELEASE_PIN="${RELEASE_PIN:-$(git rev-parse HEAD)}" E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-$(date -u +%F)}"
+  commit=$(git rev-parse --short "$RELEASE_PIN") || { echo "FAIL  no commit $RELEASE_PIN in this checkout"; return 1; }
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+  merged="$LOG_DIR/$stamp-e2e-$commit.log"
+  mkdir -p "$LOG_DIR/runners" || return 1
+  for n in $(seq 1 "$jobs"); do mkdir -p "$(runner_log_dir "$n")" || return 1; done
+  echo "FULL SET in $jobs runner(s) at once, on ${RELEASE_PIN:0:8}, target ${E2E_TARGET:-web}, rotation date $E2E_ROTATION_DATE"
+  for n in $(seq 1 "$jobs"); do full_set_runner "$jobs" "$n" "$stamp" & pids+=("$!"); done
+  wait "${pids[@]}"
+  for n in $(seq 1 "$jobs"); do logs+=("$(cat "$(runner_log_dir "$n")/$stamp-lane.txt" 2>/dev/null || echo -)"); done
+  if [ "$jobs" = 1 ]; then
+    # one runner: its log is the lane's, linked here under the e2e name with its report beside it
+    if [ "${logs[0]}" = - ]; then
+      echo "FAILED: runner 1 ran no lane: the full set NOT_RUN"; rm -f "$link"; return 1
+    fi
+    report="${logs[0]%.log}-playwright.json"
+    ln -f "${logs[0]}" "$merged" 2>/dev/null || cp -p "${logs[0]}" "$merged" || { echo "FAIL  the lane's log could not be linked as $merged"; return 1; }
+    [ ! -f "$report" ] || ln -f "$report" "${merged%.log}-playwright.json" 2>/dev/null || cp -p "$report" "${merged%.log}-playwright.json"
+    rc=0; grep -aq '^PIPELINE_RESULT=SUCCESS' "$merged" || rc=1
+    echo "E2E_MERGED_LOG=$merged"
+    [ ! -f "${merged%.log}-playwright.json" ] || echo "E2E_JSON_REPORT=${merged%.log}-playwright.json"
+    grep -a '^E2E_RESULT \|^PIPELINE_RESULT=' "$merged" | tail -2
+  else
+    python3 -I asbl/ci/full-set-runners.py merge "$jobs" "$merged" "${logs[@]}"; rc=$?
+    [ "$rc" != 2 ] || { echo "FAILED: the runners' results could not be merged (above): the lane is red"; rm -f "$link"; return 1; }
+  fi
+  ln -sfn "$merged" "$link"
+  [ "$rc" = 0 ] || echo "FAILED: the full set in $jobs runner(s) is red: $(grep -a -m1 '^E2E_RUNNERS_RED ' "$merged" | sed 's/^E2E_RUNNERS_RED /runner(s) /' || true)$(grep -a -m1 '^E2E_RESULT ' "$merged" | grep -oE 'failed=[0-9]+' | sed 's/^/ /')"
+  return "$rc"
+}
+
 case "${1:-help}" in
   start)  shift; start_cmd "$@" ;;
   stop)   shift; stop_cmd "$@" ;;
   status) status_cmd ;;
   run)    shift; run_cmd "$@" ;;
   images) runner_images ;;
+  full-set) shift; full_set_cmd "$@" ;;
   help|-h|--help) sed -n '2,/^set -uo pipefail/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' ;;
-  *) echo "usage: $0 start <n>...|stop [<n>...]|status|run <n>|images|help"; exit 2 ;;
+  *) echo "usage: $0 start <n>...|stop [<n>...]|status|run <n>|images|full-set <N>|help"; exit 2 ;;
 esac

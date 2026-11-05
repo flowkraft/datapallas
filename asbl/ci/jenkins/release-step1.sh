@@ -26,6 +26,11 @@
 # INPUTS (the job's parameters, the same names and defaults; seed.groovy's parameter texts say more):
 #   E2E_TARGET [web]   web | electron-linux | docker-server | windows-vm-electron | windows-vm-docker | windows-vm-server
 #   E2E_SPEC, E2E_GREP, E2E_ROTATION_DATE, E2E_RETRIES [empty]   passed on to the lane (dp-ci.sh e2e, dp-ci.sh win ...)
+#   E2E_RUNNERS [empty]   the lane whole, on this host's engine; 1 to 4: the full set (web or docker-server, E2E_SPEC and
+#                      E2E_GREP empty) in that many runners at once, each a Docker engine of its own (asbl/ci/e2e-runners.sh
+#                      full-set: each runner its list of asbl/ci/full-set-runners.txt, then the merge into the lane's one
+#                      log and one report), recorded as the lane run whole is. The release's orchestrator sets it from
+#                      SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS; the job leaves it empty
 #   STEP1_STARTED_BY   REQUIRED, who started it (none: MISSING, exit 2, nothing done): the job passes its build's cause (the
 #                      Jenkins user), a person, an agent or the orchestrator its own name; the first line, the history line,
 #                      and who chose the full lane
@@ -49,6 +54,8 @@ TARGET="${E2E_TARGET:-web}"
 # the lanes get the target only where the launcher below names it, as when the job ran these commands itself
 export -n E2E_TARGET 2>/dev/null
 export E2E_SPEC="${E2E_SPEC:-}" E2E_GREP="${E2E_GREP:-}" E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" E2E_RETRIES="${E2E_RETRIES:-}"
+RUNNERS="${E2E_RUNNERS:-}"
+export -n E2E_RUNNERS 2>/dev/null
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
 case "${DRY_RUN:-no}" in yes|1) DRY=yes ;; no|0|"") DRY=no ;; *) echo "FAIL  DRY_RUN must be yes or no (got '$DRY_RUN')"; exit 2 ;; esac
 WHO="${STEP1_STARTED_BY:-}"
@@ -62,7 +69,8 @@ run_record_begin "$WHO" "step 1 $TARGET${E2E_SPEC:+ E2E_SPEC=$E2E_SPEC}${E2E_GRE
 # report of hundreds of MB is not stored twice), a plain copy when that fails; what the lane did not leave is skipped.
 copy_reports_into() {
   local dir="$1" lane_log base i from to froms=() names=() copied=()
-  lane_log=$(sed -n 's/^follow-ci: following \([^ ]*\) .*/\1/p' "$dir/run.log" | head -1)
+  # the lane's log: the one follow-ci.sh followed, or in runners the merged one (asbl/ci/e2e-runners.sh full-set)
+  lane_log=$(sed -n 's/^follow-ci: following \([^ ]*\) .*/\1/p; s/^E2E_MERGED_LOG=//p' "$dir/run.log" | head -1)
   [ -n "$lane_log" ] && [ -f "$lane_log" ] || { echo "REPORTS none: no lane log named in $dir/run.log"; return 0; }
   ln -sfn "$lane_log" "$dir/lane.log"; base="${lane_log%.log}"; mkdir -p "$dir/reports"
   case "$TARGET" in
@@ -105,6 +113,15 @@ case "$TARGET" in
   electron-linux)      LANE=(env E2E_TARGET=electron bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e) ;;
   *)                   LANE=(env "E2E_TARGET=$TARGET" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e) ;;
 esac
+# E2E_RUNNERS: the full set in runners (above), recorded from the merged log's link
+RECORD_LOG=()
+if [ -n "$RUNNERS" ]; then
+  [[ "$RUNNERS" =~ ^[1-4]$ ]] || { echo "FAIL  E2E_RUNNERS=$RUNNERS: 1 to 4 runners, or empty for the lane whole"; finish 2; }
+  case "$TARGET" in web|docker-server) ;; *) echo "FAIL  E2E_RUNNERS is for the full set on web or docker-server (E2E_TARGET=$TARGET)"; finish 2 ;; esac
+  [ -z "$E2E_SPEC" ] && [ -z "$E2E_GREP" ] || { echo "FAIL  E2E_RUNNERS runs the full set: E2E_SPEC and E2E_GREP must be empty"; finish 2; }
+  LANE=(env "E2E_TARGET=$TARGET" bash asbl/ci/e2e-runners.sh full-set "$RUNNERS")
+  RECORD_LOG=("RELEASE_STEP1_LOG=$LOG_DIR/runners/full-set-latest.log")
+fi
 # the targets that install what `dp-ci.sh build` makes: what their lane needs, checked in seconds before that build
 case "$TARGET" in
   docker-server)     PRE=(bash asbl/ci/dp-ci.sh prereq docker) ;;
@@ -126,16 +143,16 @@ t0=$(date +%s)
 if [ "${#PRE[@]}" -gt 0 ]; then
   run "${PRE[@]}" &&
     run "${JOB_STEP[@]}" 'JOB STEP 1/2' 'the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed)' bash asbl/ci/dp-ci.sh build-if-needed &&
-    run "${JOB_STEP[@]}" 'JOB STEP 2/2' "e2e $TARGET" "${LANE[@]}"
+    run "${JOB_STEP[@]}" 'JOB STEP 2/2' "e2e $TARGET${RUNNERS:+ in $RUNNERS runner(s)}" "${LANE[@]}"
 else
-  run "${JOB_STEP[@]}" 'JOB STEP 1/1' "e2e $TARGET" "${LANE[@]}"
+  run "${JOB_STEP[@]}" 'JOB STEP 1/1' "e2e $TARGET${RUNNERS:+ in $RUNNERS runner(s)}" "${LANE[@]}"
 fi
 rc=$?
 if [ "$DRY" = yes ]; then
-  echo "WOULD  RELEASE_STEP_START=<when the steps began> bash asbl/ci/release-state.sh record-step1 $(printf '%q' "$TARGET") <their exit code>"
+  echo "WOULD  RELEASE_STEP_START=<when the steps began> ${RECORD_LOG[*]:+${RECORD_LOG[*]} }bash asbl/ci/release-state.sh record-step1 $(printf '%q' "$TARGET") <their exit code>"
   [ -z "$RUN_DIR" ] || echo "WOULD  copy the lane's reports into $RUN_DIR/reports"
   finish 0
 fi
-RECORD_OUT=$(RELEASE_STEP_START=$t0 bash asbl/ci/release-state.sh record-step1 "$TARGET" "$rc" 2>&1)
+RECORD_OUT=$(env RELEASE_STEP_START=$t0 "${RECORD_LOG[@]}" bash asbl/ci/release-state.sh record-step1 "$TARGET" "$rc" 2>&1)
 [ -z "$RECORD_OUT" ] || printf '%s\n' "$RECORD_OUT"
 finish "$rc"

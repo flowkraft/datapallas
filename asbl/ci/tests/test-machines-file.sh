@@ -2,8 +2,8 @@
 # The machines file of a release round (asbl/ci/release-machines.sh, its example asbl/ci/release-layout.example.conf, and
 # what the orchestrator does with it):
 #   1. no file gives the defaults; the caller's environment goes before the file; a file others may read is refused;
-#   2. every layout of the example file passes the rules, for N = 1 and every M (N above 1 refused: one Docker engine),
-#      and the example's layouts are the defaults;
+#   2. every layout of the example file passes the rules, for every N and M (N above 1 runs in runners; with
+#      RELEASE_RUNNERS=no refused: one Docker engine), and the example's layouts are the defaults;
 #   3. each broken rule is refused, with its numbers: the steps, the values, too few VMs, a lane twice or missing, an
 #      unknown lane, Robot not last or not on the pack's VM, Electron before the server light set; and at a press: a
 #      VM's settings file or libvirt VM missing, the memory rule (only the VMs a round starts count), /var's free disk;
@@ -61,7 +61,7 @@ for v in a b c d; do : > "$SCRATCH/vm-conf/win-ci-$v.env"; done; : > "$WIN_CI_CO
 export STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off win10-dev-c=shut-off win10-dev-d=shut-off"
 memory_gb() { printf 'MemTotal:       131072000 kB\nMemAvailable:   %s kB\n' $(($1 * 1048576)) > "$RELEASE_MEMINFO"; }
 memory_gb 100
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
 for key in $(compgen -v | grep -E '^(VM_LANES_|VM_DOMAIN_)'); do unset "$key"; done
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
@@ -79,9 +79,11 @@ refused() {
 
 # ---- 1. no file, the environment first, a file others may read ----
 rm -f "$RELEASE_REHEARSAL_CONF"
-check "no file: the defaults (together, 5 GB per server, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
+check "no file: the defaults (together, 5 GB per server, runners of 10 GB, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
 "RELEASE_STEPS=together
 RELEASE_SERVER_GB=5
+RELEASE_RUNNERS=yes
+RELEASE_RUNNER_LIMIT_GB=10
 RELEASE_WINDOWS_VMS=a
 WIN_VM_MEMORY_GB=12
 RELEASE_MIN_FREE_GB=16
@@ -104,14 +106,17 @@ example_ok() {
   done
 }
 check "every layout of the example passes the rules, for N = 1 and every M (1 to 4)" example_ok
-n_refused() {  # N above 1, every M: refused, this host's one Docker engine named
-  local n m
+n_runners() {  # N above 1, every M: allowed with the runners (the default); refused with RELEASE_RUNNERS=no
+  local n m out
   for n in 2 3 4; do for m in 1 2 3 4; do
-    refused "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time" \
-      machines check "$n" "$m" >/dev/null || { echo "      N=$n M=$m: not refused as expected"; return 1; }
+    out=$(machines check "$n" "$m") || { echo "      N=$n M=$m:"; printf '%s\n' "$out" | sed 's/^/        /'; return 1; }
+    refused "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time" \
+      env RELEASE_RUNNERS=no bash "$MACHINES" check "$n" "$m" >/dev/null || { echo "      N=$n M=$m RELEASE_RUNNERS=no: not refused as expected"; return 1; }
   done; done
 }
-check "N above 1 (2 to 4), every M: refused, one Docker engine (the report's TODO 4)" n_refused
+check "N above 1 (2 to 4), every M: allowed with the runners; refused with RELEASE_RUNNERS=no (one Docker engine)" n_runners
+check "RELEASE_RUNNERS=no with N=1: allowed" bash -c 'RELEASE_RUNNERS=no bash "$1" check 1 1 >/dev/null' _ "$MACHINES"
+check "RELEASE_RUNNERS=maybe: refused" refused "RELEASE_RUNNERS=maybe: it must be yes or no" env RELEASE_RUNNERS=maybe bash "$MACHINES" check 1 1
 check "the example names the VMs a to d only" same 'RELEASE_WINDOWS_VMS="a b c d"' "$(grep '^RELEASE_WINDOWS_VMS=' "$EXAMPLE" | sed 's/ *#.*//')"
 check "the example's layouts are the defaults (the same show with and without its VM_LANES lines)" same \
   "$(machines show)" "$(grep -v '^VM_LANES_' "$EXAMPLE" > "$RELEASE_REHEARSAL_CONF"; machines show)"
@@ -163,8 +168,9 @@ memory_gb 100
 check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
   "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 46 GB of 100 GB available, 54 GB stay free (rule 16); /var 400 GB free (rule 50)" \
   "$(machines check 1 4 --press)"
-check "press: N=4 with 100 GB available: refused, one Docker engine" refused \
-  "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4: not possible yet: this host's one Docker engine" machines check 4 4 --press
+check "press: N=4 RELEASE_RUNNERS=no with 100 GB available: refused, one Docker engine" refused \
+  "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine" \
+  env RELEASE_RUNNERS=no bash "$MACHINES" check 4 4 --press
 check "press: /var with 20 GB free: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
 
 # ---- 4. the lane times from the marks, and the schedule ----

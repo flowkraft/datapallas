@@ -50,7 +50,8 @@
 #   bash asbl/ci/release-rerun.sh lane <part> <report> <lane commit> <lane time>   a step 1 lane's run, red on the failures
 #        of <report>: each one with the newest re-run of that very test (never the whole set: a lane's set is not the
 #        light set) since <lane time>; exit 0 and LANE_RERUNS lines only when every one passed alone on a commit where
-#        nothing step 1's lanes test changed since <lane commit>; a red step with no failed test never does.
+#        nothing step 1's lanes test changed since <lane commit>; a red step with no failed test never does, nor a report
+#        with an error outside its tests (a file that never loaded, a runner whose files never ran, a run cut short).
 #   bash asbl/ci/release-rerun.sh score <log>   a re-run that ended red before a passed test could count in one (its
 #        record lines name <log>): when complete_run says it ended red on its failed tests alone, one PASS line per test
 #        that passed in its report, as that re-run would write it now; its own lines stay as they are
@@ -89,7 +90,7 @@ case "$REBUILD" in yes|no) ;; *) echo "FAIL  REBUILD must be yes or no (got '$RE
 # reuse_or_rebuild and its RR_* answers
 . "$REPO/asbl/ci/reuse-or-rebuild.sh"
 
-usage() { sed -n '2,72p' "$0"; exit 2; }
+usage() { sed -n '2,73p' "$0"; exit 2; }
 abs() { case "$1" in /*|"") echo "$1" ;; *) echo "$CALLER_PWD/$1" ;; esac; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
@@ -457,7 +458,7 @@ run_part() {
       builds="${builds:+$builds; }rebuilt $bpart"
     else
       echo "STOP   $part: $rr_why"
-      case "$RR_STEP1_WHY/$B_CMD" in
+      case "${RR_STEP1_WHY:-}/$B_CMD" in   # (no build here: the rule was not asked)
         "dirty tree/"*) echo "       commit or undo those changes first: a re-run tests a commit (the lanes' sync refuses a dirty checkout)" ;;
         */REBUILD=yes*) echo "       rebuild that part alone: $B_CMD" ;;
         *)            echo "       rebuild that part alone: $B_CMD; or the same run with REBUILD=yes, which does it first" ;;
@@ -596,7 +597,7 @@ show_execution() {
 # (failures_of); a re-run counts for the lane's commit when the rule says nothing step 1's lanes test changed between the
 # two commits (RR_STEP1 still-counts), as release-state.sh counts step 1 on an earlier commit.
 lane_reruns() {
-  local part="$1" report="$2" lc since="$4" step kind id file title rep line rtime rcommit rres rlog n=0 green=0 commits="" logs=""
+  local part="$1" report="$2" lc since="$4" step kind id file title rep line rtime rcommit rres rlog n=0 green=0 commits="" logs="" errors
   lc=$(git rev-parse --verify -q "${3:-}^{commit}") ||
     { echo "LANE_RESULT still red: the lane's commit '${3:-}' is no commit here"; return 1; }
   echo "LANE   $part on ${lc:0:8}, its run of $since (report $report); record $RELEASE_RERUN_RECORD"
@@ -620,6 +621,17 @@ lane_reruns() {
     case " $commits " in *" ${rcommit:0:8} "*) ;; *) commits="${commits:+$commits }${rcommit:0:8}" ;; esac
     logs="${logs:+$logs }$rlog"
   done < <(failures_of "$report")
+  # an error outside the tests: some tests never ran (a file that never loaded, a runner of the full set whose files never
+  # ran: full-set-runners.py merge), so the failed tests passing alone prove nothing about them
+  errors=$(python3 -I -c 'import json, sys
+try: e = json.load(open(sys.argv[1], encoding="utf-8")).get("errors") or []
+except Exception: e = []
+print(len(e), " ".join(((e[0] or {}).get("message") or "").split())[:160] if e else "")' "$report" 2>/dev/null)
+  if [ "${errors%% *}" != 0 ] && [ -n "$errors" ]; then
+    n=$((n + 1))
+    echo "  $n. the report's ${errors%% *} error(s) outside its tests: ${errors#* }"
+    echo "     some tests never ran: only a run of the whole lane makes it green"
+  fi
   if [ "$n" -gt 0 ] && [ "$green" = "$n" ]; then
     echo "LANE_RERUNS reruns=$n"
     echo "LANE_RERUNS rerun_commits=$commits"

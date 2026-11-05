@@ -259,10 +259,10 @@ check "2 VMs asked, only VM a in the machines file: refused, exit 2, nothing sta
   refused_nothing_started "the machines file does not allow N=1 M=2" "$out" "$rc"
 check "2 VMs asked: the broken rule said, with its numbers" has "USE_N_NUMBER_OF_WINDOWS_VMS=2, but RELEASE_WINDOWS_VMS has 1 VM(s) (a)" "$out"
 fresh green
-out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2; start); rc=$?
-check "N=2: refused, exit 2, nothing started (one Docker engine: N above 1 is not possible yet)" \
+out=$(export SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=2 RELEASE_RUNNERS=no; start); rc=$?
+check "N=2 with RELEASE_RUNNERS=no: refused, exit 2, nothing started (the full set whole on one Docker engine)" \
   refused_nothing_started "the machines file does not allow N=2 M=1" "$out" "$rc"
-check "N=2: the reason said" has "this host's one Docker engine runs one DataPallas e2e set at a time" "$out"
+check "N=2 with RELEASE_RUNNERS=no: the reason said" has "this host's one Docker engine, which runs one DataPallas e2e set at a time" "$out"
 fresh green; available_memory_gb 20
 out=$(start); rc=$?
 check "20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=1 M=1 now" "$out" "$rc"
