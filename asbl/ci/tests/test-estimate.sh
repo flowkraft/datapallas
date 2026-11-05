@@ -122,8 +122,11 @@ bad = {k: [] for k in ("drawn", "schedule", "bars", "total", "gain", "memory", "
 for (n, m), p in sorted(pairs.items()):
     tag = "N=%d M=%d" % (n, m)
     rows, chart, mpc = p["rows"], p["chart"], p["minutes_per_column"]
-    # the chart: its axis (2 lines), one line per part, its key, then what each part runs
-    if not rows or len(chart) < len(rows) + 4 or not chart[len(rows) + 3].startswith("What each part runs") or not mpc:
+    # the chart: its axis (2 lines), one line per part, its key, the key of "step N" (2 lines), then what each part runs
+    step_key = " ".join(" ".join(chart[len(rows) + 3:len(rows) + 5]).split())
+    if not rows or len(chart) < len(rows) + 6 or not chart[len(rows) + 5].startswith("What each part runs") or not mpc or \
+            step_key != ("step 1, 2, 3 = the release step a part belongs to, not its order: the three steps start together; "
+                         "each machine runs its parts top to bottom"):
         bad["drawn"].append("%s: %d parts, %d chart lines" % (tag, len(rows), len(chart)))
         continue
     # the times of each part: the schedule's

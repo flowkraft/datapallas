@@ -565,6 +565,13 @@ def chart(rows):
     return lines, mpc
 
 
+def steps_key(steps):
+    """the key under the chart for the "step N" in the notes: the release step a part belongs to, not its order"""
+    order = ("step 1 first, then steps 2 and 3 together" if steps == "in-order" else "the three steps start together")
+    return [" " * CHART_LEAD + "step 1, 2, 3 = the release step a part belongs to, not its order:",
+            " " * CHART_LEAD + order + "; each machine runs its parts top to bottom"]
+
+
 def estimates(args):
     """the 16 choices as one JSON document (release-estimate.py estimates, above)"""
     lanes = lane_minutes(args.runs)
@@ -613,6 +620,7 @@ def estimates(args):
                 rows = plan_round(lanes, full_info, args.target, n, vms, layouts[m], args.steps, counts)
                 total = max(end for _, _, _, end, _ in rows)
                 lines, mpc = chart(rows)
+                lines += steps_key(args.steps)
                 lines += what_each_part_runs(rows, counts, args.target)
                 if base is None:
                     base = total   # 1 and 1 comes first

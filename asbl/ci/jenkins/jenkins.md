@@ -269,6 +269,8 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
     Win VM d e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
     Win VM d light set on docker-server       ###########                         3 h 50  (step 2, Docker on Windows: the same 42 tests)
                                            # runs   . waits on its machine for its inputs (the build, the pack)   one column: 20 min
+                                           step 1, 2, 3 = the release step a part belongs to, not its order:
+                                           the three steps start together; each machine runs its parts top to bottom
     What each part runs (the counts: the newest runs that passed it; the lists: this checkout):
       build + JUnit                 dp-ci.sh build on Linux, once per commit: 1705 JUnit tests, then
                                     datapallas-server-docker.zip, the NoExe package the e2e copies its test folder from,
