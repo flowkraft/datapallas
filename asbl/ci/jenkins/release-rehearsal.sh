@@ -427,7 +427,7 @@ for p in d["pairs"]:
   src="${RELEASE_ESTIMATES_FROM:-}"
   if [ -z "$src" ]; then
     src=$(mktemp) || exit 2
-    trap 'rm -f "$src"' EXIT
+    trap "rm -f '$src'" EXIT   # the name now: src is local, gone when the trap runs at exit
     machines_estimates > "$src" || { echo "FAIL  the estimates could not be computed"; exit 1; }
   fi
   python3 -I asbl/ci/release-estimate.py block --estimates "$src" --jobs "$n" --vms "$m" --meminfo "${RELEASE_MEMINFO:-/proc/meminfo}"

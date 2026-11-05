@@ -282,6 +282,13 @@ check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with 
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \
   bash -c '[ "$(wc -l < "$1")" = 1 ] && grep -q "^The estimate could not be read from $2: " "$1"' _ "$SCRATCH/shell-nojson.txt" "$SCRATCH/no-estimates.json"
+# no RELEASE_ESTIMATES_FROM, as the Jenkinsfile's first lines run it: computed now into a temporary file, removed at exit
+mkdir -p "$SCRATCH/tmp-now"
+TMPDIR="$SCRATCH/tmp-now" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-now.txt" 2>&1
+check "estimate 1 1 computed now: the same block (but its time), no error, its temporary file removed" \
+  bash -c '[ "$(grep -v "^From " "$1")" = "$(grep -v "^From " "$2")" ] && [ -z "$(ls -A "$3")" ]' _ \
+  "$SCRATCH/shell-now.txt" "$SCRATCH/block-1-1.txt" "$SCRATCH/tmp-now" ||
+  { diff "$SCRATCH/block-1-1.txt" "$SCRATCH/shell-now.txt" | head -5; ls -A "$SCRATCH/tmp-now"; }
 
 # ---- 6. the form's Groovy draws what the shell draws ----
 image="${TEST_ESTIMATE_JENKINS_IMAGE:-$(docker inspect -f '{{.Image}}' ints-jenkins 2>/dev/null)}"
