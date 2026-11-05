@@ -10,6 +10,8 @@
 #              (exit 2): the CI is busy (see busy), the version is public on both channels already, or a prerequisite is
 #              missing (an input, the settings file, the Docker engine or the Windows VM: release-publish.sh preflight
 #              docker, UPLOAD=no). A scheduled run going (dp-ci-dev-scheduled-e2e) is stopped first: a release goes before it.
+#              So is a dead newest round (its process gone while its state says running, fixing or waiting: a crash):
+#              what it started is stopped first (stop), then the CI is asked.
 #   status     one line:  ROUND state=<state> version=<v> run=<n> pin=<commit> result=<the newest run's result.txt>
 #   follow [--from <byte>] [--for <seconds>]   the round's console (round.log) from that byte; without --for, until the round
 #              is no longer running or fixing; with it, at most that long (the job's polls of under a minute). The last line
@@ -21,8 +23,11 @@
 #              since (its process group), the VM's steps of that command (dp-ci.sh win stop, on that VM), and last a
 #              Windows VM the run started (virsh shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); then
 #              its fix run (the fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
-#              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. Exit 4
-#   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2)
+#              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. What makes
+#              the CI busy only through the round's own entries (a runner, a VM's driver, a CI container, each made after
+#              its entry and before its part's log was last written) is the round's, not another run. Exit 4
+#   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2);
+#              a runner there (dp-ci-runner-<n>) is a run going
 #   label      the build's label for the job's build list, one line: "16.6.2 run 1 going", "16.6.2 waiting for review after
 #              run 1", "16.6.2 green, 1 run, ready to upload", "16.6.2 red after run 2", ... Exit 0
 #   review     what a round waiting for review shows (the job's pause): why, the fix plan with its status line, its report,
@@ -200,14 +205,20 @@ status_line() {  # status_line <round folder or empty> [<state>]
 }
 
 # ---- is the CI busy ----
-# busy_reason: why the CI is busy, or nothing. Runs only: their lock and pid files and the newest round's state
+# busy_reason [<round folder>]: why the CI is busy, or nothing. Runs only: their lock and pid files, the runners and the
+# newest round's state. With a round folder, what that round left itself (own_leftovers) does not count
 busy_reason() {
-  local pid dir state pidfile
-  if docker ps -a --filter 'name=^dp-ci$' --format '{{.Names}}' 2>/dev/null | grep -q .; then
+  local pid dir state pidfile runner own=""
+  [ -z "${1:-}" ] || own=$'\n'"$(own_leftovers "$1")"$'\n'
+  if docker ps -a --filter 'name=^dp-ci$' --format '{{.Names}}' 2>/dev/null | grep -q . && [[ "$own" != *$'\n'"container dp-ci"$'\n'* ]]; then
     echo "a dp-ci run is going (its container dp-ci: docker logs -f dp-ci)"; return; fi
+  for runner in $(docker ps -a --filter 'name=^dp-ci-runner-[0-9]+$' --format '{{.Names}}' 2>/dev/null); do
+    [[ "$own" == *$'\n'"container $runner"$'\n'* ]] || { echo "a runner is going ($runner: bash asbl/ci/e2e-runners.sh status)"; return; }
+  done
   for pidfile in $(win_vm_pidfiles); do
     pid=$(cat "$pidfile" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then echo "a Windows run is going (pid $pid in $pidfile)"; return; fi
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [[ "$own" != *$'\n'"pidfile $pidfile"$'\n'* ]]; then
+      echo "a Windows run is going (pid $pid in $pidfile)"; return; fi
   done
   if [ -e "$LOG_DIR/release-orchestrator.lock" ] && ! flock -n "$LOG_DIR/release-orchestrator.lock" true 2>/dev/null; then
     echo "a release orchestrator run is going ($LOG_DIR/release-orchestrator.lock)"; return; fi
@@ -434,7 +445,7 @@ for p in d["pairs"]:
 }
 refuse() { echo "REFUSED: $*. Nothing started"; status_line "$(newest_round)"; exit 2; }
 start_round() {
-  local who version dir out pid
+  local who version dir out pid old
   case "$ON_FAILURES" in fix-prove-then-wait-for-review|fix-prove-then-rerun-automatically|report-only) ;;
     *) refuse "ON_FAILURES must be fix-prove-then-wait-for-review, fix-prove-then-rerun-automatically or report-only (got '$ON_FAILURES')" ;; esac
   case "$ROUND_DRY_RUN" in yes|no) ;; *) refuse "DRY_RUN must be yes or no (got '$ROUND_DRY_RUN')" ;; esac
@@ -454,6 +465,14 @@ start_round() {
     STOP_BY="a release press (release-rehearsal.sh start, by $who)" $ROUND_SCHEDULED_E2E stop
     for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 2; done
   fi
+  # a dead newest round (its process gone, its state still going: a crash): what it started stopped first, as stop does
+  old=$(newest_round)
+  case "$(state_get "${old:-/nonexistent}" state)" in running|fixing|waiting-for-review)
+    if ! is_round_process_alive; then
+      echo "the newest round's process is gone ($(status_line "$old")): stopping what it started first"
+      ( STOP_BY="a release press (release-rehearsal.sh start, by $who): its process was gone" ROUND_DRY_RUN="$(state_get "$old" dry_run)" stop_round )
+    fi ;;
+  esac
   out=$(busy_reason); [ -z "$out" ] || refuse "the CI is busy: $out"
   # a real round's memory and disk, with the CI free: the memory rule against the host's available memory now (a dry round
   # starts no server and no VM)
@@ -616,6 +635,24 @@ unfinished_started_entries() {
   done
 }
 epoch_of() { date -u -d "$1" +%s 2>/dev/null || echo 0; }   # epoch_of <time>: its seconds since 1970, 0 when unreadable
+# own_leftovers <round folder>: what the round's runs started that makes the CI busy and is the round's own, one
+# "container <name>" or "pidfile <file>" line each: a part that had not ended, its container or pid file made after its
+# entry and before its part's log was last written (the part still ran then; another run could start only after it)
+own_leftovers() {
+  local folder utc part kind name real what made
+  run_folders_of_round "$1" | while IFS= read -r folder; do
+    [ -f "$folder/started.txt" ] || continue
+    while IFS=$'\t' read -r utc part kind name real what; do
+      [ "$real" = real ] && [ ! -e "$folder/$part.rc" ] && [ -f "$folder/$part.log" ] || continue
+      case "$kind" in
+        container) made=$(docker inspect -f '{{.Created}}' "$name" 2>/dev/null) && [ -n "$made" ] || continue; made=$(epoch_of "$made") ;;
+        pidfile)   made=$(stat -c %Y "$name" 2>/dev/null) || continue ;;
+        *)         continue ;;
+      esac
+      [ "$made" -ge "$(epoch_of "$utc")" ] && [ "$made" -le "$(stat -c %Y "$folder/$part.log")" ] && echo "$kind $name"
+    done < "$folder/started.txt"
+  done
+}
 # vm_steps_of <command>: the VM's scheduled tasks (dp-ci-<step>) that a dp-ci.sh win command runs, by dp-ci.sh's names:
 # the package's npmwc and prepare (win_prepare_package), each lane's own step, the installed server dp-server; step 3's
 # release runs the pack, the server lane, the Electron light set (e2e) and the Robot UAT. Ending a task that is not
@@ -687,8 +724,9 @@ stop_round() {
     is_round_process_alive && kill -KILL -- "-$pid" 2>/dev/null
   fi
   # then what its run started that outlives that group. A round whose process was gone already (a reboot) ended long
-  # ago maybe: when another run holds the CI now, those names may be that run's, so nothing is touched
-  other_run=""; [ "$was_alive" = yes ] || other_run=$(busy_reason)
+  # ago maybe: when another run holds the CI now, those names may be that run's, so nothing is touched; what the round
+  # left itself (own_leftovers: a runner, a VM's driver, a CI container) is not another run
+  other_run=""; [ "$was_alive" = yes ] || other_run=$(busy_reason "$dir")
   case "$other_run" in "a green round waits"*|"a fix run is going"*) other_run="" ;; esac   # this round itself
   if [ -z "$other_run" ]; then stop_what_the_runs_started "$dir"
   else echo "LEFT    what this round's runs started: its process was gone already, and the CI is busy now: $other_run"; fi

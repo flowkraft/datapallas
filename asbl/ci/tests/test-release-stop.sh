@@ -11,8 +11,15 @@
 #   3. the round's process gone (a reboot) and another run holding the CI now: nothing is touched;
 #   4. the round's process gone and the CI free: what the run started is stopped;
 #   5. a run that started VM b and drives it, and started VM c, shut down already: VM a's steps stopped on VM a's host,
-#      VM b's on VM b's (WIN_VM=b), then VM b shut down (virsh shutdown); VM c left as it is.
-# Every folder is a scratch one; docker, ssh and virsh are stubs first on PATH. Takes about 15 seconds.
+#      VM b's on VM b's (WIN_VM=b), then VM b shut down (virsh shutdown); VM c left as it is;
+#   6. the round's process gone (a crash) with runner 2 and VM c it started still going, their parts' logs written after
+#      them: they make the CI look busy, yet stop counts them as the round's own: the runner removed, the drivers of VMs a
+#      and c ended, VM c shut down; win10-dev (running before) and another run's entries left; a second stop (as after a
+#      person's) says "nothing to stop" and touches nothing;
+#   7. a press after such a dead round: its leftovers stopped first, then the new round starts;
+#   8. a press while a round lives: refused, nothing stopped;
+#   9. the job (its Jenkinsfile, read): a round that ends stopped gets release-rehearsal.sh stop, then the build ends red.
+# Every folder is a scratch one; docker, ssh and virsh are stubs first on PATH. Takes about 25 seconds.
 # Callers: a person or an agent, from the shell, after changing release-rehearsal.sh's stop.
 #   bash asbl/ci/tests/test-release-stop.sh
 # Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
@@ -23,7 +30,7 @@ SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/test-release-stop.XXXXXX") || exit 2
 export STUB="$SCRATCH/stub"; mkdir -p "$STUB/bin" "$STUB/runs"
 cleanup() {
   bash "$ROUND_SCRIPT" stop >/dev/null 2>&1
-  for f in "$STUB"/*.pid "$SCRATCH"/logs/win-e2e.pid; do [ -f "$f" ] && kill -KILL "$(cat "$f")" 2>/dev/null; done
+  for f in "$STUB"/*.pid "$SCRATCH"/logs/win-e2e.pid "$SCRATCH"/logs/win-e2e-c.pid; do [ -f "$f" ] && kill -KILL "$(cat "$f")" 2>/dev/null; done
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
@@ -96,15 +103,33 @@ entry=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     printf '%s\twindows-pack\tvm\twindows-vm-b\treal\tdp-ci.sh win docker-e2e\n' "$entry"
     printf '%s\tvm-c\tdomain\twin10-dev-c\treal\tthe Windows VM c, started by this run (virsh start)\n' "$entry"
   fi
+  if [ -n "${STUB_RUNNERS:-}" ]; then   # cases 6 and 7: runner 2 and VM c started by this run, their parts going
+    printf '%s\tlane1-web-full\tcontainer\tdp-ci-runner-2\treal\trunner 2 (Docker in Docker): its engine and everything it runs\n' "$entry"
+    printf '%s\tvm-c\tdomain\twin10-dev-c\treal\tthe Windows VM c, started by this run (virsh start)\n' "$entry"
+    printf '%s\twindows-electron-light\tpidfile\t%s\treal\tthe Windows driver of win-e2e.sh\n' "$entry" "$LOG_DIR/win-e2e-c.pid"
+    printf '%s\twindows-electron-light\tvm\twindows-vm-c\treal\tdp-ci.sh win release\n' "$entry"
+  fi
 } > "$folder/started.txt"
 echo 0 > "$folder/step1-build.rc"
 [ -z "${STUB_VMS:-}" ] || echo 0 > "$folder/vm-c.rc"
+[ -z "${STUB_RUNNERS:-}" ] || echo 0 > "$folder/docker-linux.rc"   # the build part ended (the runners' round): its dp-ci gone
 sleep 1.2
 created=$(date -u +%Y-%m-%dT%H:%M:%S.123456789Z); older=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S.000000000Z)
-printf '%s\n' "ended-part-container|$created|" "dp-ci|$created|" "bundle-datapallas-1|$created|$STUB/bundle" \
+if [ -n "${STUB_RUNNERS:-}" ]; then run_container="dp-ci-runner-2|$created|"; else run_container="dp-ci|$created|"; fi
+printf '%s\n' "ended-part-container|$created|" "$run_container" "bundle-datapallas-1|$created|$STUB/bundle" \
   "dp-ci-one-command|$older|" "dry-run-container|$created|" "someone-elses-container|$created|" \
   "someone-elses-bundle-1|$created|$STUB/other-bundle" > "$STUB/containers"
 setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$LOG_DIR/win-e2e.pid"   # its own session, as win-e2e.sh's driver
+if [ -n "${STUB_RUNNERS:-}" ]; then
+  setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$LOG_DIR/win-e2e-c.pid"   # VM c's driver
+  # each part's log, written after what it started (a going part writes its console); another run's folder, not this
+  # round's, with its own entries (its container, VM d)
+  for part in $(cut -f2 "$folder/started.txt" | sort -u); do echo "the part's console" > "$folder/$part.log"; done
+  mkdir -p "$STUB/runs/other-run"
+  printf '%s\tlane1-web-full\tcontainer\tsomeone-elses-container\treal\tthe container of another run\n%s\tvm-d\tdomain\twin10-dev-d\treal\tthe VM of another run\n' \
+    "$entry" "$entry" > "$STUB/runs/other-run/started.txt"
+  echo "its console" > "$STUB/runs/other-run/lane1-web-full.log"; echo "its console" > "$STUB/runs/other-run/vm-d.log"
+fi
 echo started > "$STUB/orchestrator-ready"
 sleep 120
 EOF
@@ -139,6 +164,7 @@ chmod +x "$STUB/bin/virsh"
 # VM b's settings file (its WIN_HOST; the rest from VM a's)
 export WIN_VM_CONF_DIR="$SCRATCH/vm-conf"; mkdir -p "$WIN_VM_CONF_DIR"
 echo "WIN_HOST=vm-b.invalid" > "$WIN_VM_CONF_DIR/win-ci-b.env"; chmod 600 "$WIN_VM_CONF_DIR/win-ci-b.env"
+echo "WIN_HOST=vm-c.invalid" > "$WIN_VM_CONF_DIR/win-ci-c.env"; chmod 600 "$WIN_VM_CONF_DIR/win-ci-c.env"
 unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL
 
@@ -212,6 +238,58 @@ check "  VM a's steps on VM a's host, VM b's on VM b's, then VM b shut down; VM 
   "step npmwc on vm.invalid|step prepare on vm.invalid|step docker-e2e on vm.invalid|step npmwc on vm-b.invalid|step prepare on vm-b.invalid|step docker-e2e on vm-b.invalid|virsh shutdown win10-dev-b" \
   "$(paste -sd'|' "$STUB/events" 2>/dev/null)"
 check "  stop says it shut VM b down" bash -c 'grep -q "^STOPPED VM b (win10-dev-b): shut down (virsh shutdown)" <<< "$1"' _ "$out"
+
+# ---- 6. a crash: the round's process gone, runner 2 and VM c it started still going ----
+export STUB_RUNNERS=yes
+round_going
+unset STUB_RUNNERS
+kill_round_process   # the runner and the drivers of VMs a and c (their own sessions) live on
+busy=$(round busy); brc=$?
+out=$(round stop); rc=$?
+check "a crash: what the round left makes the CI look busy (a runner)" bash -c '[ "$1" = 2 ] && grep -q "^BUSY a runner is going (dp-ci-runner-2" <<< "$2"' _ "$brc" "$busy"
+check "  stop: exit 4, stopped, nothing left as another run's" \
+  bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2" && ! grep -q "^LEFT    what this round" <<< "$2"' _ "$rc" "$out"
+check "  runner 2 removed (docker stop: a runner is --rm); the ended part's and another run's containers left" \
+  bash -c '[ "$(sort "$1" | paste -sd" ")" = dp-ci-runner-2 ] && grep -q "^someone-elses-container|" "$2" && grep -q "^bundle-datapallas-1|" "$2"' \
+  _ "$STUB/stopped" "$STUB/containers"
+check "  the drivers of VMs a and c ended" bash -c '! kill -0 "$(cat "$1")" 2>/dev/null && ! kill -0 "$(cat "$2")" 2>/dev/null' \
+  _ "$LOG_DIR/win-e2e.pid" "$LOG_DIR/win-e2e-c.pid"
+check "  VM a's steps, VM c's steps, then VM c shut down; win10-dev (running before) and another run's VM d left" same \
+  "step npmwc on vm.invalid|step prepare on vm.invalid|step docker-e2e on vm.invalid|step npmwc on vm-c.invalid|step prepare on vm-c.invalid|step release-pack on vm-c.invalid|step server-e2e on vm-c.invalid|step dp-server on vm-c.invalid|step e2e on vm-c.invalid|step release-robot on vm-c.invalid|virsh shutdown win10-dev-c" \
+  "$(paste -sd'|' "$STUB/events" 2>/dev/null)"
+: > "$STUB/stopped"; : > "$STUB/events"; : > "$STUB/vm-stopped"
+out=$(round stop); rc=$?
+check "  a second stop (as after a person's): nothing to stop, nothing touched" \
+  bash -c '[ "$1" = 4 ] && grep -q "nothing to stop" <<< "$2" && [ ! -s "$3" ] && [ ! -s "$4" ]' _ "$rc" "$out" "$STUB/stopped" "$STUB/events"
+
+# ---- 7. a press after a dead round: its leftovers first, then the new round ----
+export STUB_RUNNERS=yes
+round_going
+unset STUB_RUNNERS
+kill_round_process
+dead=$(ls -1d "$LOG_DIR"/release-rounds/*/ | tail -1)
+rm -f "$STUB/orchestrator-ready"; sleep 1   # the new round's folder name differs from the dead one's (one per second)
+out=$(ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 ON_FAILURES=report-only round start); rc=$?
+check "a press after a dead round: its leftovers stopped first, then the round started (exit 5)" bash -c \
+  '[ "$1" = 5 ] && a=$(grep -n "^the newest round.s process is gone" <<< "$2" | cut -d: -f1) && b=$(grep -n "^STOPPED VM c (win10-dev-c)" <<< "$2" | cut -d: -f1) &&
+   c=$(grep -n "^STARTED the release round" <<< "$2" | cut -d: -f1) && [ "$a" -lt "$b" ] && [ "$b" -lt "$c" ]' _ "$rc" "$out"
+check "  the dead round: runner 2 removed, VM c shut down, its state stopped" bash -c \
+  'grep -qx dp-ci-runner-2 "$1" && grep -qx "virsh shutdown win10-dev-c" "$2" && grep -q "^state=stopped$" "$3/round.state"' \
+  _ "$STUB/stopped" "$STUB/events" "$dead"
+
+# ---- 8. a press while a round lives ----
+for _ in $(seq 1 40); do [ -e "$STUB/orchestrator-ready" ] && break; sleep 0.25; done
+: > "$STUB/stopped"; : > "$STUB/events"
+out=$(ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 ON_FAILURES=report-only round start); rc=$?
+check "a press while a round lives: refused (exit 2, the CI busy), nothing stopped, the round still running" bash -c \
+  '[ "$1" = 2 ] && grep -q "^REFUSED: the CI is busy: " <<< "$2" && ! grep -q "process is gone" <<< "$2" && [ ! -s "$3" ] && [ ! -s "$4" ] &&
+   bash "$5" status | grep -q "^ROUND state=running "' _ "$rc" "$out" "$STUB/stopped" "$STUB/events" "$ROUND_SCRIPT"
+
+# ---- 9. the job: a round that ends stopped ----
+stopped_branch=$(sed -n "/stage('Follow the round')/,/^  post {/p" asbl/ci/jenkins/dp-ci-release-steps-0-3-rehearsal.Jenkinsfile |
+  sed -n "/state == 'stopped'/,/error(/p")
+check "the job: a round that ends stopped gets release-rehearsal.sh stop, then the build ends red" bash -c \
+  'grep -q "bash asbl/ci/jenkins/release-rehearsal.sh stop" <<< "$1" && grep -q "error(" <<< "$1"' _ "$stopped_branch"
 
 echo
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-release-stop"; exit 0; fi

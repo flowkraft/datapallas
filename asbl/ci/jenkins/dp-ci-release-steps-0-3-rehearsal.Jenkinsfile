@@ -9,7 +9,9 @@
 //   - no executor is held while it runs: `agent none`, and only the short SSH calls (roundCall) take one;
 //   - a Jenkins restart only resumes the polling from the byte the build had reached; it never stops the round;
 //   - an Abort pressed by a person (the build's, or the pause's) stops the round: post { aborted }. A restart never aborts
-//     a build (it resumes), and the job has no timeout on purpose: a round lasts until green, red or stopped.
+//     a build (it resumes), and the job has no timeout on purpose: a round lasts until green, red or stopped;
+//   - a round that ends stopped (its process gone: a crash; or a person's stop) gets release-rehearsal.sh stop too, so
+//     nothing it started stays running (after a person's stop: "nothing to stop").
 
 // roundCall(<command run in the repo on the host>, keepAll, stdinVariable, quiet): one short SSH call, its output shown in
 // the console as it comes (quiet: kept only). Returns [rc: its exit code (-1 or 255: the call itself failed), text: its whole
@@ -259,6 +261,11 @@ pipeline {
             unstable('Green, but not ready to upload: an UPLOAD=yes preflight said MISSING (above).')
           } else if (state == 'red') {
             error('The round is red (ON_FAILURES=report-only, or no fixer set): the failures are in the run\'s result.txt (above).')
+          } else if (state == 'stopped') {
+            // its process is gone (a crash, a reboot) or a person stopped it: what it started is stopped, as for an Abort
+            env.ROUND_STOP_BY = "the Jenkins build ${env.BUILD_TAG} (the round ended stopped)"
+            roundCall('STOP_BY=$(q "$ROUND_STOP_BY") bash asbl/ci/jenkins/release-rehearsal.sh stop', true, '', false)
+            error('The round ended stopped: its process is gone, or a person stopped it (above). What it started is stopped.')
           } else {
             error("The round ended ${state}: see its console above.")
           }
