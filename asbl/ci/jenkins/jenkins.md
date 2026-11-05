@@ -250,26 +250,66 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from 16.6.2's marks)
     REFUSED at the press: SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so the full set runs whole: N must be 1
     Memory  needs +61 GB: 5 host test servers x 5 GB; VMs b, c, d at 12 GB
-            available now 59 GB -> -2 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
-                                   0h    2h    4h    6h    8h    10h   12h
-                                   |-----|-----|-----|-----|-----|-----|----
-    host   build                   ##                                        34 min  (the Linux build, once for every part)
-    host   Linux proof               ##                                      55 min  (step 2)
-    host   auth                        #                                     20 min  (step 1)
-    host   e2e full 1/4                 #########                            2 h 49  (step 1, 13 spec files, one subset at a time)
-    host   e2e full 2/4                          ########                    2 h 49  (step 1, 14 spec files, one subset at a time)
-    host   e2e full 3/4                                  #########           2 h 49  (step 1, 13 spec files, one subset at a time)
-    host   e2e full 4/4                                           ########   2 h 49  (step 1, 13 spec files, one subset at a time)
-    VM a   pack                    ####                                      1 h 17
-    VM a   robot                       ##                                    41 min
-    VM b   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
-    VM b   server-light               .######                                1 h 59  (waits for the pack's datapallas-server.zip)
-    VM c   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
-    VM c   electron-light             ####                                   1 h 23
-    VM d   prepare                 ###                                       58 min  (the VM's e2e package, once per pin)
-    VM d   docker-proof               ###########                            3 h 50
-                                   # runs   . waits on its machine for its inputs (the build, the pack)   one column: 20 min
-    Total   about 13 h 05   (with 1 and 1: about 12 h 30; about 0 h 35 longer)
+            available now 71 GB -> 10 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+                                           0h    2h    4h    6h    8h    10h   12h
+                                           |-----|-----|-----|-----|-----|-----|-
+    Linux    build + JUnit                 ##                                     34 min  (1705 JUnit tests, then the zips and the image)
+    Linux    light set on docker-server      ##                                   55 min  (step 2, Docker on Linux: 42 tests)
+    Linux    auth file on docker-server        #                                  20 min  (step 1: 138 tests)
+    Linux    full set on docker-server 1/4      ########                          2 h 37  (step 1, 13 spec files, one subset at a time)
+    Linux    full set on docker-server 2/4              ########                  2 h 37  (step 1, 14 spec files, one subset at a time)
+    Linux    full set on docker-server 3/4                      ########          2 h 37  (step 1, 14 spec files, one subset at a time)
+    Linux    full set on docker-server 4/4                              ########  2 h 37  (step 1, 12 spec files, one subset at a time)
+    Win VM a Windows pack                  ####                                   1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
+    Win VM a Robot UAT                         ##                                 41 min  (step 3: 16 tests)
+    Win VM b e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM b light set on server zip          .######                             1 h 59  (step 3: the same 42 tests; waits for the pack)
+    Win VM c e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM c light set on Electron            ####                                1 h 23  (step 3: 54 tests)
+    Win VM d e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM d light set on docker-server       ###########                         3 h 50  (step 2, Docker on Windows: the same 42 tests)
+                                           # runs   . waits on its machine for its inputs (the build, the pack)   one column: 20 min
+    What each part runs (the counts: the newest runs that passed it; the lists: this checkout):
+      build + JUnit                 dp-ci.sh build on Linux, once per commit: 1705 JUnit tests, then
+                                    datapallas-server-docker.zip, the NoExe package the e2e copies its test folder from,
+                                    and the image flowkraft/datapallas-server:<version>-<commit>, scanned by Trivy. One
+                                    build for every part on Linux (web and docker-server alike) and for the Windows Docker
+                                    light set.
+      light set                     asbl/ci/light-set.txt, one or a few tests of each area. On docker-server and the
+                                    server zip: 42 tests from 20 entries: base: the 23 samples; configuration; logs; cube
+                                    definitions; cube modes; explore data; jasper; jasper legacy; output targets; app: AI
+                                    Hub; app: CMS; app: generated; security: refusal; security: sharing; interface: CLI;
+                                    dashboard builder; interface: REST; connections; report configurations; quality
+                                    assurance.
+                                    On Electron: 54 tests from 21 entries: the same 20 but security: refusal, plus
+                                    security: desktop and upgrade.
+        ... on docker-server        datapallas-server-docker.zip and the build's image, installed as the self-host page
+                                    says: on Linux (step 2, then the page's one-command docker run), and in a Windows VM's
+                                    Docker Desktop (step 2, the image copied over, no registry).
+        ... on server zip           the pack's datapallas-server.zip on the VM's Java 17, installed as the installation
+                                    page says (startServer.bat).
+        ... on Electron             the desktop app on the VM, from its e2e package.
+      auth file on docker-server    auth-authorization-server.spec.ts alone, 138 tests: it creates accounts and changes
+                                    roles, so it gets a server of its own.
+      full set on docker-server     every spec file but the auth file and the Electron-only upgrade
+                                    (let-me-update-migrate-configuration): 53 spec files, 647 tests (4 skipped), on the
+                                    shipped docker zip and image. Step 0 alternates the full set between web and
+                                    docker-server from one release to the next.
+      Windows pack                  asbl\pack-datapallas.bat on the VM
+                                    (AssemblerTest#assembleDataPallasAndDataPallasServer): first the NoExe package
+                                    (NoExeAssembler: mvn clean install of every module but asbl, with their JUnit), then
+                                    the release's datapallas.zip, datapallas-server.zip and datapallas-src.zip.
+      e2e package (NoExe)           asbl\pack-prepare-for-e2e.bat on the VM (AssemblerTest#prepareForE2E: NoExeAssembler
+                                    alone, the same mvn clean install with the JUnit), after npm ci in
+                                    frend\rb-webcomponents: asbl\target\package\verified-db-noexe, the folder the VM's
+                                    light sets copy their testground from. Built at the start of the round, before the
+                                    VM's first light set, only when its stamp (.built-from) is not the pinned commit. On
+                                    the pack's VM the green pack already built it: only the stamp is written, seconds.
+      Robot UAT                     16 tests in 7 Robot Framework suites, on the pack's zips as a user installs them:
+                                    DataPallas-Server, DataPallas-Server-Auth, DataPallas.exe-prerequisites,
+                                    DataPallas.exe-quickstart, DataPallas.exe-update, datapallas.bat,
+                                    different-java-versions.
+    Total   about 12 h 15   (with 1 and 1: about 12 h 10; about 0 h 10 longer)
   ```
 
   - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.

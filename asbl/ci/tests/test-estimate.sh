@@ -16,7 +16,9 @@
 #      yet" and not drawn;
 #   6. the form's Groovy script, run by the Groovy of this host's Jenkins image in a throwaway container (no network,
 #      the scratch folder read-only), draws exactly what the shell draws, for the 16 choices and the cases of 4 and 5,
-#      and one line, not an error, without its JSON.
+#      and one line, not an error, without its JSON;
+#   7. the names say which test set and where (the light set's the same on Linux and on the VM), and under the chart
+#      what each part runs, with every entry of asbl/ci/light-set.txt.
 # Every file it writes is a scratch one: the run folders are only read, no settings file of this host is read, and the
 # Jenkins home's estimates file is not touched. Takes about 40 seconds.
 # Callers: a person or an agent, from the shell, after changing the estimate (release-estimate.py's model, estimates or
@@ -120,13 +122,14 @@ bad = {k: [] for k in ("drawn", "schedule", "bars", "total", "gain", "memory", "
 for (n, m), p in sorted(pairs.items()):
     tag = "N=%d M=%d" % (n, m)
     rows, chart, mpc = p["rows"], p["chart"], p["minutes_per_column"]
-    if not rows or len(chart) != len(rows) + 3 or not mpc:
+    # the chart: its axis (2 lines), one line per part, its key, then what each part runs
+    if not rows or len(chart) < len(rows) + 4 or not chart[len(rows) + 3].startswith("What each part runs") or not mpc:
         bad["drawn"].append("%s: %d parts, %d chart lines" % (tag, len(rows), len(chart)))
         continue
     # the times of each part: the schedule's
     schedule = []
     for line in open(os.path.join(S, "schedule-%d-%d.txt" % (n, m))):
-        found = re.match(r"^  (host|VM \S+)\s+(.+?)\s+(\d+:\d\d) ->\s+(\d+:\d\d)\s", line)
+        found = re.match(r"^  (Linux|Win VM \S+)\s+(.+?)\s+(\d+:\d\d) ->\s+(\d+:\d\d)\s", line)
         if found:
             schedule.append(found.groups())
     # the schedule prints whole minutes, the estimates keep tenths: half a minute apart at most
@@ -137,7 +140,7 @@ for (n, m), p in sorted(pairs.items()):
     # each bar from its start to its end, to half a column
     last_mark = 0
     for i, (machine, part, start, end, note) in enumerate(rows):
-        line, head = chart[2 + i], "%-6s %-24s" % (machine, part)
+        line, head = chart[2 + i], "%-8s %-30s" % (machine, part)
         if not line.startswith(head):
             bad["bars"].append("%s: line %d is not %s's: %s" % (tag, i, part, line))
             continue
@@ -245,6 +248,27 @@ else:
     check("4 and 4 by hand: the host's parts with 4 subsets of %d files (4 setups of %.1f min, ratio %.3f); VM a pack "
           "and Robot, b after the pack, c and d after their prepare: %.0f min, the estimate %.0f"
           % (len(files), setup, ratio, by_hand, pairs[(4, 4)]["total_min"]), problems)
+
+# the names (Virgil, 2026-11-05): the test set and where it runs, the same name on every machine, and under the chart
+# what each name runs, with the light set's entries from asbl/ci/light-set.txt
+problems = []
+p = pairs[(1, 1)]
+parts = [(r[0], r[1]) for r in p["rows"]]
+for expected in (("Linux", "light set on docker-server"), ("Win VM a", "light set on docker-server"),
+                 ("Win VM a", "light set on server zip"), ("Win VM a", "light set on Electron")):
+    if expected not in parts:
+        problems.append("no %s part %r: %s" % (expected[0], expected[1], parts))
+legend = p["chart"][len(p["rows"]) + 3:]
+for name in ["light set"] + [part for _, part in parts if not part.startswith("light set on ")]:
+    if not any(line.startswith("  %-29s " % name) for line in legend):
+        problems.append("what each part runs does not name %r" % name)
+entries = [line.split("|")[0].strip() for line in open("asbl/ci/light-set.txt", encoding="utf-8")
+           if line.count("|") >= 2 and not line.startswith("#")]
+listed = " ".join(" ".join(legend).split())   # the wrapped lines as one text
+if not entries or any(e not in listed for e in entries):
+    problems.append("the light set's entries are not all listed: %s" % [e for e in entries if e not in listed])
+check("the names say which test set and where, the light set's alike on Linux and the VM; under the chart what each "
+      "part runs (%d lines, the %d light set entries)" % (len(legend), len(entries)), problems)
 PYEOF
 python_checks "$SCRATCH/checks.py"
 

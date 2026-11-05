@@ -97,7 +97,7 @@ check "  the VM's parts: pack, the Windows Docker proof, the after-pack half, on
   "$(declare -f before one_at_a_time); [ \"\$1\" = 'windows-pack docker-windows windows-after-pack' ] &&
    one_at_a_time \"\$2\" windows-pack docker-windows windows-after-pack" _ "$(started '(windows-[a-z0-9-]+|docker-windows)')" "$LOG"
 check "  the schedule: the prepare after the pack kept by it (0 min), the TOTAL" bash -c \
-  'grep -qE "^  VM a   prepare +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +0 min  \(kept by the green pack before it: seconds\)" "$1" && grep -q "^TOTAL " "$1"' _ "$LOG"
+  'grep -qE "^  Win VM a e2e package \(NoExe\) +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +0 min  \(already built by the pack: seconds\)" "$1" && grep -q "^TOTAL " "$1"' _ "$LOG"
 check "  no prepare part, no WIN_VM in any command, the VM's pid file 16.6.2's" bash -c \
   '! grep -q "windows-prepare" "$1" && ! grep -q "WIN_VM=" "$1" && grep -q "WIN_RELEASE_HALF=pack FOLLOW_PIDFILE=.*/logs/win-e2e.pid " "$1"' _ "$LOG"
 
@@ -119,7 +119,7 @@ for m in 2 3 4; do
     _ "$RC" "$(key result)" "$(parts)"
   check "  the schedule: $m Windows VMs, a timed line for each VM's lanes, the total" bash -c \
     'grep -q "^SCHEDULE .*; $2 Windows VMs ($3);" "$1" && grep -q "^TOTAL " "$1" &&
-     for v in $3; do grep -qE "^  VM $v  +[a-z-]+ +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +[0-9]+ min" "$1" || exit 1; done' _ "$LOG" "$m" "$vms"
+     for v in $3; do grep -qE "^  Win VM $v +[A-Za-z].* +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +[0-9]+ min" "$1" || exit 1; done' _ "$LOG" "$m" "$vms"
   check "  the ORDER says each VM's lanes and the verdict on VM a" bash -c \
     'grep -q "one track each, its lanes of the layout for $2 VMs" "$1" && grep -q "then windows-verdict on VM a once every lane ended" "$1" &&
      for v in $3; do grep -qE "^ +VM $v: " "$1" || exit 1; done' _ "$LOG" "$m" "$vms"
@@ -157,10 +157,10 @@ check "pack then the server light set on one VM (M = 2, VM a): one prepare, righ
    before \"\$1\" 'PART    windows-pack END' 'PART    windows-prepare-a START' &&
    before \"\$1\" 'PART    windows-prepare-a END' 'PART    windows-server-light START'" _ "$SCRATCH/run-m2/console.log"
 check "  its schedule: VM a's prepare kept by the pack (0 min), VM b's whole (58 min, the default)" bash -c \
-  'grep -qE "^  VM a   prepare +1:17 -> +1:17 +0 min  \(kept by the green pack before it: seconds\)" "$1" &&
-   grep -qE "^  VM b   prepare +0:00 -> +0:58 +58 min" "$1"' _ "$SCRATCH/run-m2/console.log"
+  'grep -qE "^  Win VM a e2e package \(NoExe\) +1:17 -> +1:17 +0 min  \(already built by the pack: seconds\)" "$1" &&
+   grep -qE "^  Win VM b e2e package \(NoExe\) +0:00 -> +0:58 +58 min" "$1"' _ "$SCRATCH/run-m2/console.log"
 check "  M = 4: none on VM a, whose lanes (pack, Robot) test on no e2e package" bash -c \
-  '! grep -q "windows-prepare-a" "$1" && ! grep -q "^  VM a   prepare" "$1"' _ "$SCRATCH/run-m4/console.log"
+  '! grep -q "windows-prepare-a" "$1" && ! grep -q "^  Win VM a e2e package" "$1"' _ "$SCRATCH/run-m4/console.log"
 
 echo "---- 3. DRY_RUN_RED: what still runs after a red part ----"
 for red in build pack windows-docker-proof server-light electron-light robot; do

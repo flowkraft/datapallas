@@ -268,11 +268,21 @@ machines_check() {
   echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$MACHINES_MIN_FREE_VAR_GB")"
 }
 
-# machines_full_target: the full set's target of the version to release (release-state.sh full-lane --choose, dry)
+# machines_full_target: the full set's target of the version to release next (release-state.sh full-lane --choose, dry).
+# Before step 0 the checkout still holds the version released last, whose record says where ITS full set ran; when the
+# CHANGELOG's first heading names a newer version (the one step 0 sets), that release runs on the other target, as step
+# 1's own choice will (release-state.sh: the other side of the newest earlier release's record).
 machines_full_target() {
-  local full
-  full=$(RELEASE_COMMIT="${1:-origin/main}" DRY_RUN=yes bash asbl/ci/release-state.sh full-lane --choose 2>/dev/null |
-    sed -n 's/^FULL_LANE=\([a-z-]*\) .*/\1/p' | head -1)
+  local commit="${1:-origin/main}" chosen full version next_version
+  chosen=$(RELEASE_COMMIT="$commit" DRY_RUN=yes bash asbl/ci/release-state.sh full-lane --choose 2>/dev/null |
+    grep -m1 '^FULL_LANE=')
+  full=$(printf '%s' "$chosen" | sed -n 's/^FULL_LANE=\([a-z-]*\) .*/\1/p')
+  version=$(printf '%s' "$chosen" | sed -n 's/^FULL_LANE=[a-z-]* version=\([0-9][0-9.]*\):.*/\1/p')
+  next_version=$(git show "$commit:asbl/src/main/external-resources/db-template/CHANGELOG.md" 2>/dev/null | tr -d '\r' |
+    sed -n 's/^## \([0-9][0-9.]*\) - .*/\1/p' | head -1)
+  if [ -n "$full" ] && [ -n "$version" ] && [ -n "$next_version" ] && [ "$next_version" != "$version" ]; then
+    case "$full" in web) full=docker-server ;; docker-server) full=web ;; esac
+  fi
   printf '%s' "${full:-docker-server}"
 }
 # machines_schedule <N> <M> [<full target>]: the expected schedule (asbl/ci/release-estimate.py schedule)

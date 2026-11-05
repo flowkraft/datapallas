@@ -207,25 +207,25 @@ schedule() {  # schedule <N> <M> <full target>: the library's schedule, as the o
 settings_example
 out=$(schedule 4 4 docker-server)
 check "schedule 4 4: each VM runs its layout, the prepare before its first e2e lane" same \
-  "VM a pack|VM a robot|VM b prepare|VM b server-light|VM c prepare|VM c electron-light|VM d prepare|VM d docker-proof" \
-  "$(printf '%s\n' "$out" | awk '$1 == "VM" { print $1, $2, $3 }' | paste -sd'|')"
+  "a Windows pack|a Robot UAT|b e2e package (NoExe)|b light set on server zip|c e2e package (NoExe)|c light set on Electron|d e2e package (NoExe)|d light set on docker-server" \
+  "$(printf '%s\n' "$out" | awk '$1 == "Win" && $2 == "VM" { line = $0; sub(/^ *Win VM /, "", line); sub(/ +[0-9]+:[0-9]+ +->.*/, "", line); gsub(/ +/, " ", line); print line }' | paste -sd'|')"
 check "schedule 4 4: the server light set waits for the pack (on another VM)" has \
-  "VM b   server-light                    1:17 ->  3:16   119 min  (waits for the pack's datapallas-server.zip)" "$out"
-host_parts() {  # host_parts <schedule>: "<part> <start>-<end>" of each host row, in order
-  printf '%s\n' "$1" | awk '$1 == "host" { line = $0; sub(/^ *host +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
+  "Win VM b light set on server zip         1:17 ->  3:16   119 min  (step 3; waits for the pack)" "$out"
+host_parts() {  # host_parts <schedule>: "<part> <start>-<end>" of each Linux host row, in order
+  printf '%s\n' "$1" | awk '$1 == "Linux" { line = $0; sub(/^ *Linux +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }'
 }
 check "schedule 4 4: this host's parts one at a time (one engine), the four subsets after each other" same \
-  "build 0:00-0:34|Linux proof 0:34-1:29|auth 1:29-1:49|e2e full 1/4 1:49-4:24|e2e full 2/4 4:24-6:59|e2e full 3/4 6:59-9:34|e2e full 4/4 9:34-12:09" \
+  "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1/4 1:49-4:24|full set on docker-server 2/4 4:24-6:59|full set on docker-server 3/4 6:59-9:34|full set on docker-server 4/4 9:34-12:09" \
   "$(host_parts "$out")"
 check "  about 12 h 10, the memory the memory rule counts" bash -c \
-  'grep -qF "TOTAL     about 12 h 10 (the last part to end: host e2e full 4/4)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
+  'grep -qF "TOTAL     about 12 h 10 (the last part to end: Linux full set on docker-server 4/4)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
 settings_example "RELEASE_STEPS=in-order"
 out=$(schedule 1 1 docker-server)
 check "schedule in-order: step 1 first, the VM after it, about 20 h 25 on the 16.6.2 defaults (no prepare after its green pack)" bash -c \
-  'grep -qF "VM a   pack                           11:14 -> 12:31" <<< "$1" && grep -qF "VM a   prepare                        12:31 -> 12:31     0 min  (kept by the green pack before it: seconds)" <<< "$1" &&
-   grep -qF "TOTAL     about 20 h 25 (the last part to end: VM a robot)" <<< "$1"' _ "$out"
+  'grep -qF "Win VM a Windows pack                   11:14 -> 12:31" <<< "$1" && grep -qF "Win VM a e2e package (NoExe)            12:31 -> 12:31     0 min  (already built by the pack: seconds)" <<< "$1" &&
+   grep -qF "TOTAL     about 20 h 25 (the last part to end: Win VM a Robot UAT)" <<< "$1"' _ "$out"
 
 # ---- 5. the orchestrator ----
 # dry_run <name> [VAR=value...]: an orchestrator dry run on scratch folders (no release record: step 1 runs every lane)
@@ -266,7 +266,7 @@ check "RELEASE_STEPS=in-order: 16.6.2's ORDER lines" same \
                    then server-light (on datapallas-server.zip of pack, kept) + electron-light + robot + windows-verdict
                    (WIN_RELEASE_HALF=after-pack); never two VM parts at once" "$(grep -A3 '^        execution  host:' "$console")"
 check "a dry run prints the schedule, each part with its expected time" bash -c \
-  'grep -q "^SCHEDULE  steps in-order;" "$1" && grep -qE "^  VM a   robot +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +41 min" "$1" && grep -q "^TOTAL     about " "$1"' _ "$console"
+  'grep -q "^SCHEDULE  steps in-order;" "$1" && grep -qE "^  Win VM a Robot UAT +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +41 min" "$1" && grep -q "^TOTAL     about " "$1"' _ "$console"
 rm -f "$RELEASE_REHEARSAL_CONF"
 dry_run refused USE_N_NUMBER_OF_WINDOWS_VMS=2
 check "the orchestrator, 2 VMs asked and only VM a: refused before anything starts (exit 2, no run folder)" bash -c \

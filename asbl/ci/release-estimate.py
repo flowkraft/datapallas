@@ -32,6 +32,11 @@ newest first; each lane takes its time from the newest run in which it passed (i
 run.log and the marks of the part logs (######## ... END rc=0 ... took=<s>s) give it. A lane no run has passed takes the
 16.6.2 release's time (DEFAULT_MINUTES, measured 2026-11-04). The full set's time per file comes from the Playwright JSON
 the lane's log names (E2E_JSON_REPORT=), so subsets can be estimated (and balanced: shard_files).
+
+The names (PART_NAMES): each part says which test set it runs and where, the same name on every machine (Linux, Win VM
+<name>); its note says its step and its counts, and under the chart "What each part runs" says what each name runs, with
+the counts of the newest runs that passed it (result.txt, test_counts) and the lists of this checkout (light-set.txt, the
+Robot suites).
 """
 import argparse
 import glob
@@ -51,6 +56,28 @@ VM_LANES = ("pack", "docker-proof", "server-light", "electron-light", "robot")
 E2E_VM_LANES = ("docker-proof", "server-light", "electron-light")   # each needs the VM's e2e package (the prepare)
 LICENCE_SPECS = ("specs/components/license.spec.ts", "specs/areas/processing-license.spec.ts")
 RUNS_TO_READ = 12   # the newest real runs read for the lane times
+
+# The names a person reads in the chart, the schedule and the job's form (Virgil, 2026-11-05: "from the name I should
+# 'get it'"): the test set, and where it runs. The same tests carry the same name on every machine: "light set on
+# docker-server" on Linux and on a Windows VM are the same light set, once on each. what_each_part_runs() lists what
+# each name runs, with its counts.
+LINUX_HOST = "Linux"
+PART_NAMES = {
+    "build": "build + JUnit", "linux-proof": "light set on docker-server", "auth": "auth file on docker-server",
+    "pack": "Windows pack", "prepare": "e2e package (NoExe)", "docker-proof": "light set on docker-server",
+    "server-light": "light set on server zip", "electron-light": "light set on Electron", "robot": "Robot UAT",
+}
+HERE = os.path.dirname(os.path.abspath(__file__))
+LIGHT_SET_FILE = os.path.join(HERE, "light-set.txt")
+ROBOT_SUITES_DIR = os.path.join(HERE, "..", "src", "uat", "tests")
+
+
+def windows_vm(name):
+    return "Win VM " + name
+
+
+def full_set_name(target):
+    return "full set on " + target
 
 
 def parse_utc(text):
@@ -188,6 +215,165 @@ def playwright_files(report):
     return per_file, data.get("stats", {}).get("duration", 0) / 60000
 
 
+def playwright_counts(report):
+    """(tests, skipped, spec files) of one Playwright JSON report"""
+    data = json.loads(read_text(report) or "{}")
+    files, counted = set(), {"tests": 0, "skipped": 0}
+
+    def walk(suite, file_name):
+        file_name = suite.get("file") or file_name
+        for spec in suite.get("specs", []):
+            for test in spec.get("tests", []):
+                files.add(spec.get("file") or file_name)
+                counted["tests"] += 1
+                counted["skipped"] += test.get("status") == "skipped"
+        for child in suite.get("suites", []):
+            walk(child, file_name)
+
+    for top in data.get("suites", []):
+        walk(top, None)
+    return counted["tests"], counted["skipped"], len(files)
+
+
+def test_counts(runs, target):
+    """what the names count, each from the newest run its part passed in (that run's result.txt): {part: (tests,
+    skipped, spec files)} from the Playwright JSON of each e2e part, "junit": the build's JUnit tests (dp-ci.sh's
+    "JUnit summary"), "robot": the Robot UAT's tests (its ROBOT_RESULT line). A part no run passed has no count."""
+    e2e_parts = {"full": r"lane1-%s-full$" % re.escape(target), "auth": r"lane2-.+-auth$", "linux-proof": r"linux-proof$",
+                 "docker-proof": r"windows-docker-proof$", "server-light": r"server-light$",
+                 "electron-light": r"electron-light$"}
+    counts = {}
+    for folder in real_run_folders(runs):
+        for line in read_text(os.path.join(folder, "result.txt")).splitlines():
+            field = line.split("\t")
+            if len(field) < 5 or field[0] != "part" or field[3] != "PASS":
+                continue
+            part, log, reports = field[1], field[4], (field[5].split() if len(field) > 5 else [])
+            for key, pattern in e2e_parts.items():
+                if key not in counts and re.match(pattern, part):
+                    report = next((r for r in reports if r.endswith("-playwright.json") and os.path.isfile(r)), None)
+                    if report:
+                        counts[key] = playwright_counts(report)
+            if part == "robot" and "robot" not in counts:
+                m = re.search(r"ROBOT_RESULT passed=(\d+) failed=0 skipped=0", read_text(log))
+                if m:
+                    counts["robot"] = int(m.group(1))
+            if part in ("step1-build", "build") and "junit" not in counts:
+                m = re.search(r"^--- JUnit summary[^\n]*\nTests run: (\d+), Failures: 0, Errors: 0", read_text(log), re.M)
+                if m:
+                    counts["junit"] = int(m.group(1))
+        # a run before 16.6.2 has no result.txt: step 1's lanes name their report in their own log
+        for key in ("full", "auth"):
+            for name in sorted(os.listdir(folder)) if key not in counts and os.path.isdir(folder) else []:
+                part = name[:-len(".log")]
+                if name.endswith(".log") and re.match(e2e_parts[key], part) and passed(folder, part):
+                    m = re.search(r"E2E_JSON_REPORT=(\S+)", read_text(os.path.join(folder, name)))
+                    if m and os.path.isfile(m.group(1)):
+                        counts[key] = playwright_counts(m.group(1))
+                        break
+    return counts
+
+
+def light_set_entries():
+    """[(entry name, lane limit)] of asbl/ci/light-set.txt: all, server (every server target) or electron"""
+    entries = []
+    for line in read_text(LIGHT_SET_FILE).splitlines():
+        field = [f.strip() for f in line.split("|")]
+        if len(field) >= 3 and field[0] and not field[0].startswith("#"):
+            entries.append((field[0], field[1]))
+    return entries
+
+
+def tests_text(counts, key, same=False):
+    """': 42 tests' (': the same 42 tests'; ': 647 tests, 4 skipped'), or '' when no run counted them"""
+    if key not in counts:
+        return ""
+    tests, skipped, _ = counts[key]
+    return ": %s%d tests%s" % ("the same " if same else "", tests, ", %d skipped" % skipped if skipped else "")
+
+
+def wrapped(name, text, width=118):
+    """one entry of what_each_part_runs: the name, then the text wrapped under itself"""
+    lines, line = [], ""
+    for word in text.split():
+        if line and len(line) + 1 + len(word) > width - 32:
+            lines.append(line)
+            line = word
+        else:
+            line = (line + " " + word).strip()
+    lines.append(line)
+    return ["  %-29s %s" % (name if i == 0 else "", text_line) for i, text_line in enumerate(lines)]
+
+
+def what_each_part_runs(rows, counts, target):
+    """the lines under the chart: what each name in it runs, with its counts and lists (Virgil, 2026-11-05: "say
+    exactly which test set they run and in the description how many tests and which ones")"""
+    names = [part for _, part, _, _, _ in rows]
+    lines =["What each part runs (the counts: the newest runs that passed it; the lists: this checkout):"]
+    if PART_NAMES["build"] in names:
+        lines += wrapped(PART_NAMES["build"], "dp-ci.sh build on Linux, once per commit: %s JUnit tests, then "
+                         "datapallas-server-docker.zip, the NoExe package the e2e copies its test folder from, and the "
+                         "image flowkraft/datapallas-server:<version>-<commit>, scanned by Trivy. One build for every "
+                         "part on Linux (web and docker-server alike) and for the Windows Docker light set."
+                         % (counts["junit"] if "junit" in counts else "the"))
+    light = [n for n in names if n.startswith("light set on ")]
+    if light:
+        entries = light_set_entries()
+        server = [e for e, limit in entries if limit in ("all", "server")]
+        electron = [e for e, limit in entries if limit in ("all", "electron")]
+        server_tests = next((counts[k] for k in ("linux-proof", "docker-proof", "server-light") if k in counts), None)
+        lines += wrapped("light set", "asbl/ci/light-set.txt, one or a few tests of each area. On docker-server and "
+                         "the server zip: %s%d entries: %s." % ("%d tests from " % server_tests[0] if server_tests else "",
+                                                               len(server), "; ".join(server)))
+        if PART_NAMES["electron-light"] in light:
+            only_electron = [e for e, limit in entries if limit == "electron"]
+            only_server = [e for e, limit in entries if limit == "server"]
+            lines += wrapped("", "On Electron: %s%d entries: the same %d but %s, plus %s." % (
+                "%d tests from " % counts["electron-light"][0] if "electron-light" in counts else "", len(electron),
+                len(server), " and ".join(only_server) or "none", " and ".join(only_electron) or "none"))
+        if PART_NAMES["linux-proof"] in light:
+            lines += wrapped("  ... on docker-server", "datapallas-server-docker.zip and the build's image, installed as "
+                             "the self-host page says: on Linux (step 2, then the page's one-command docker run), and in a "
+                             "Windows VM's Docker Desktop (step 2, the image copied over, no registry).")
+        if PART_NAMES["server-light"] in light:
+            lines += wrapped("  ... on server zip", "the pack's datapallas-server.zip on the VM's Java 17, installed as "
+                             "the installation page says (startServer.bat).")
+        if PART_NAMES["electron-light"] in light:
+            lines += wrapped("  ... on Electron", "the desktop app on the VM, from its e2e package.")
+    if PART_NAMES["auth"] in names:
+        lines += wrapped(PART_NAMES["auth"], "auth-authorization-server.spec.ts alone%s: it creates accounts and changes "
+                         "roles, so it gets a server of its own." % tests_text(counts, "auth").replace(":", ","))
+    if any(n.startswith(full_set_name(target)) for n in names):
+        tests, skipped, files = counts.get("full", (None, 0, None))
+        lines += wrapped(full_set_name(target), "every spec file but the auth file and the Electron-only upgrade "
+                         "(let-me-update-migrate-configuration)%s, on %s. Step 0 alternates the full set between web and "
+                         "docker-server from one release to the next." % (
+                             (": %d spec files, %d tests%s" % (files, tests, " (%d skipped)" % skipped if skipped else ""))
+                             if tests is not None else "",
+                             "the NoExe package's server, as npm run custom:start-server-and-e2e-web starts it"
+                             if target == "web" else "the shipped docker zip and image"))
+    if PART_NAMES["pack"] in names:
+        # both .bat files start with NoExeAssembler, whose own `mvn clean install` (no -DskipTests) runs the JUnit
+        lines += wrapped(PART_NAMES["pack"], "asbl\\pack-datapallas.bat on the VM (AssemblerTest#"
+                         "assembleDataPallasAndDataPallasServer): first the NoExe package (NoExeAssembler: mvn clean "
+                         "install of every module but asbl, with their JUnit), then the release's datapallas.zip, "
+                         "datapallas-server.zip and datapallas-src.zip.")
+    if PART_NAMES["prepare"] in names:
+        lines += wrapped(PART_NAMES["prepare"], "asbl\\pack-prepare-for-e2e.bat on the VM (AssemblerTest#prepareForE2E: "
+                         "NoExeAssembler alone, the same mvn clean install with the JUnit), after npm ci in "
+                         "frend\\rb-webcomponents: asbl\\target\\package\\verified-db-noexe, the folder the VM's light sets "
+                         "copy their testground from. Built at the start of the round, before the VM's first light set, "
+                         "only when its stamp (.built-from) is not the pinned commit. On the pack's VM the green pack "
+                         "already built it: only the stamp is written, seconds.")
+    if PART_NAMES["robot"] in names:
+        suites = sorted(f[:-len(".robot")] for f in os.listdir(ROBOT_SUITES_DIR) if f.endswith(".robot")) \
+            if os.path.isdir(ROBOT_SUITES_DIR) else []
+        lines += wrapped(PART_NAMES["robot"], "%s in %d Robot Framework suites, on the pack's zips as a user installs "
+                         "them: %s." % ("%d tests" % counts["robot"] if "robot" in counts else "The tests", len(suites),
+                                        ", ".join(suites)))
+    return lines
+
+
 def full_set_files(runs, target):
     """the newest passed full set of a target: ({file: minutes}, setup minutes, ratio, where from), or None"""
     for folder in real_run_folders(runs):
@@ -241,12 +427,18 @@ def about(minutes):
     return "%d h %02d" % (minutes // 60, minutes % 60)
 
 
-def plan_round(lanes, full, target, n, vms, layouts, steps):
-    """the parts of a round: [(machine, part, start, end, note)], minutes from the round's start (after step 0)"""
+def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None):
+    """the parts of a round: [(machine, part, start, end, note)], minutes from the round's start (after step 0); the
+    machines and parts by the names a person reads (PART_NAMES), each note with what the part counts (test_counts)"""
     m = {k: v[0] for k, v in lanes.items()}
+    counts = counts or {}
+    host = LINUX_HOST
     rows = []
     build_end = m["build"]
-    rows.append(("host", "build", 0.0, build_end, "the Linux build, once for every part"))
+    junit = ("%d JUnit tests" % counts["junit"]) if "junit" in counts else "the JUnit"
+    rows.append((host, PART_NAMES["build"], 0.0, build_end, junit + ", then the zips and the image"))
+    proof = (host, PART_NAMES["linux-proof"], "step 2, Docker on Linux" + tests_text(counts, "linux-proof"))
+    auth = (host, PART_NAMES["auth"], "step 1" + tests_text(counts, "auth"))
     if full is not None:
         per_file, setup, ratio = full["files"], full["setup"], full["ratio"]
         subsets = [(setup + minutes * ratio, group) for minutes, group in shard_files(per_file, n)]
@@ -256,9 +448,9 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
         # 16.6.2: step 1 (the build, the auth file, the full set), then steps 2 and 3 side by side
         auth_end = build_end + m["auth"]
         step1_end = auth_end + subsets[0][0]
-        rows.append(("host", "auth", build_end, auth_end, "step 1"))
-        rows.append(("host", "e2e full", auth_end, step1_end, "step 1, whole"))
-        rows.append(("host", "Linux proof", step1_end, step1_end + m["linux-proof"], "step 2"))
+        rows.append((auth[0], auth[1], build_end, auth_end, auth[2]))
+        rows.append((host, full_set_name(target), auth_end, step1_end, "step 1, whole" + tests_text(counts, "full")))
+        rows.append((proof[0], proof[1], step1_end, step1_end + m["linux-proof"], proof[2]))
         offset = step1_end
     else:
         # the steps together on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped
@@ -266,13 +458,16 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
         # 2's Linux proof first (the VM's Windows Docker proof needs only the build), then step 1; the VMs from the start
         proof_end = build_end + m["linux-proof"]
         auth_end = proof_end + m["auth"]
-        rows.append(("host", "Linux proof", build_end, proof_end, "step 2"))
-        rows.append(("host", "auth", proof_end, auth_end, "step 1"))
+        rows.append((proof[0], proof[1], build_end, proof_end, proof[2]))
+        rows.append((auth[0], auth[1], proof_end, auth_end, auth[2]))
         clock = auth_end
         for k, (minutes, group) in enumerate(subsets, 1):
-            label = "e2e full %d/%d" % (k, n) if n > 1 else "e2e full"
-            note = "step 1, %d spec files, one subset at a time" % len(group) if n > 1 else "step 1, whole"
-            rows.append(("host", label, clock, clock + minutes, note))
+            label = full_set_name(target) + (" %d/%d" % (k, n) if n > 1 else "")
+            # no file times in the records: the subsets are only the lane's time split in N, no file names
+            subset = "%d spec files" % len(group) if group else "a 1/%d share of the files" % n
+            note = ("step 1, %s, one subset at a time" % subset if n > 1
+                    else "step 1, whole" + tests_text(counts, "full"))
+            rows.append((host, label, clock, clock + minutes, note))
             clock += minutes
         offset = 0.0
     # the VMs: each runs its lanes in order, each when its inputs exist; the prepare before its first e2e lane, seconds
@@ -298,18 +493,24 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
                 if lane in E2E_VM_LANES and not prepared[v]:
                     start = clock[v]
                     if v == pack_vm and pack_end is not None:
-                        minutes, note = 0, "kept by the green pack before it: seconds"
+                        minutes, note = 0, "already built by the pack: seconds"
                     else:
-                        minutes, note = m["prepare"], "the VM's e2e package, once per pin"
-                    rows.append(("VM " + v, "prepare", start, start + minutes, note))
+                        minutes, note = m["prepare"], "pack-prepare-for-e2e.bat, once per pin"
+                    rows.append((windows_vm(v), PART_NAMES["prepare"], start, start + minutes, note))
                     clock[v] = start + minutes
                     prepared[v] = True
                     ready = max(ready, clock[v])
                 end = ready + m[lane]
-                note = ""
-                if lane == "server-light" and v != pack_vm:
-                    note = "waits for the pack's datapallas-server.zip" if ready > clock[v] else ""
-                rows.append(("VM " + v, lane, ready, end, note))
+                note = {
+                    "pack": "step 3, pack-datapallas.bat: the 3 Windows zips",
+                    "docker-proof": "step 2, Docker on Windows" + tests_text(counts, "docker-proof", same=True),
+                    "server-light": "step 3" + tests_text(counts, "server-light", same=True),
+                    "electron-light": "step 3" + tests_text(counts, "electron-light"),
+                    "robot": "step 3" + (": %d tests" % counts["robot"] if "robot" in counts else ""),
+                }[lane]
+                if lane == "server-light" and v != pack_vm and ready > clock[v]:
+                    note += "; waits for the pack"
+                rows.append((windows_vm(v), PART_NAMES[lane], ready, end, note))
                 clock[v] = end
                 if lane == "pack":
                     pack_end = end
@@ -320,7 +521,9 @@ def plan_round(lanes, full, target, n, vms, layouts, steps):
 
 CHART_COLUMNS = 48   # the widest bar area of the chart, in characters
 MINUTES_PER_COLUMN = (5, 10, 15, 20, 30, 45, 60, 90, 120)
-CHART_LEAD = 31   # "VM a   server-light" and its padding: the machine (6), a space, the part (24)
+MACHINE_WIDTH, PART_WIDTH = 8, 30   # "Win VM a", "full set on docker-server 4/4"
+ROW_HEAD = "%%-%ds %%-%ds" % (MACHINE_WIDTH, PART_WIDTH)   # a row's machine and part, before its bar
+CHART_LEAD = MACHINE_WIDTH + 1 + PART_WIDTH
 
 
 def duration(minutes):
@@ -356,8 +559,8 @@ def chart(rows):
         for c in range(c0, c1):
             bar[c] = "#"
         machine_end[machine] = max(machine_end.get(machine, 0.0), end)
-        lines.append("%-6s %-24s%s  %s%s" % (machine, part, "".join(bar).ljust(width), duration(end - start),
-                                             "  (" + note + ")" if note else ""))
+        lines.append((ROW_HEAD + "%s  %s%s") % (machine, part, "".join(bar).ljust(width), duration(end - start),
+                                                "  (" + note + ")" if note else ""))
     lines.append(" " * CHART_LEAD + "# runs   . waits on its machine for its inputs (the build, the pack)   one column: %d min" % mpc)
     return lines, mpc
 
@@ -365,6 +568,7 @@ def chart(rows):
 def estimates(args):
     """the 16 choices as one JSON document (release-estimate.py estimates, above)"""
     lanes = lane_minutes(args.runs)
+    counts = test_counts(args.runs, args.target)
     full = full_set_files(args.runs, args.target)
     full_info = {"files": full[0], "setup": full[1], "ratio": full[2], "from": full[3]} if full is not None else None
     named = args.vms_named.split()
@@ -406,9 +610,10 @@ def estimates(args):
                 entry.update(rows=[], chart=[], minutes_per_column=0, total_min=None,
                              total_line="Total   not estimated: " + why_not)
             else:
-                rows = plan_round(lanes, full_info, args.target, n, vms, layouts[m], args.steps)
+                rows = plan_round(lanes, full_info, args.target, n, vms, layouts[m], args.steps, counts)
                 total = max(end for _, _, _, end, _ in rows)
                 lines, mpc = chart(rows)
+                lines += what_each_part_runs(rows, counts, args.target)
                 if base is None:
                     base = total   # 1 and 1 comes first
                 gain = base - total
@@ -519,7 +724,8 @@ def main():
     full_info = None
     if full is not None:
         full_info = {"files": full[0], "setup": full[1], "ratio": full[2], "from": full[3]}
-    rows = plan_round(lanes, full_info, args.target, args.jobs, vms, layouts, args.steps)
+    counts = test_counts(args.runs, args.target)
+    rows = plan_round(lanes, full_info, args.target, args.jobs, vms, layouts, args.steps, counts)
     total = max(end for _, _, _, end, _ in rows)
     last = max(rows, key=lambda r: r[3])
     off = vms[1:] if args.vms_off is None else args.vms_off.split()
@@ -528,8 +734,8 @@ def main():
           % (args.steps, args.target, "in %d jobs" % args.jobs if args.jobs > 1 else "whole", len(vms),
              "" if len(vms) == 1 else "s", " ".join(vms)))
     for machine, part, start, end, note in rows:
-        print("  %-6s %-30s %5s -> %5s  %4d min%s" % (machine, part, hm(start), hm(end), round(end - start),
-                                                        "  (" + note + ")" if note else ""))
+        print(("  " + ROW_HEAD + " %5s -> %5s  %4d min%s") % (machine, part, hm(start), hm(end), round(end - start),
+                                                               "  (" + note + ")" if note else ""))
     print("TOTAL     about %s (the last part to end: %s %s)" % (about(total), last[0], last[1]))
     print("MEMORY    %d host test server%s x %g GB = %g GB; VMs the round starts: %s"
           % (servers, "" if servers == 1 else "s", args.server_gb, servers * args.server_gb,
