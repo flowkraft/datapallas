@@ -247,28 +247,27 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   ── Advanced (Parallelization) ──────────────────────────
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS  [4 v]   1 (default), 2, 3, 4
   USE_N_NUMBER_OF_WINDOWS_VMS                        [4 v]   1 (default), 2, 3, 4
-  ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from 16.6.2's marks)
-    REFUSED at the press: SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4: not possible yet: this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so the full set runs whole: N must be 1
-    Memory  needs +61 GB: 5 host test servers x 5 GB; VMs b, c, d at 12 GB
-            available now 71 GB -> 10 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
-                                           0h    2h    4h    6h    8h    10h   12h
-                                           |-----|-----|-----|-----|-----|-----|-
-    Linux    build + JUnit                 ##                                     34 min  (1705 JUnit tests, then the zips and the image)
-    Linux    light set on docker-server      ##                                   55 min  (step 2, Docker on Linux: 42 tests)
-    Linux    auth file on docker-server        #                                  20 min  (step 1: 138 tests)
-    Linux    full set on docker-server 1/4      ########                          2 h 37  (step 1, 13 spec files, one subset at a time)
-    Linux    full set on docker-server 2/4              ########                  2 h 37  (step 1, 14 spec files, one subset at a time)
-    Linux    full set on docker-server 3/4                      ########          2 h 37  (step 1, 14 spec files, one subset at a time)
-    Linux    full set on docker-server 4/4                              ########  2 h 37  (step 1, 12 spec files, one subset at a time)
-    Win VM a Windows pack                  ####                                   1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
-    Win VM a Robot UAT                         ##                                 41 min  (step 3: 16 tests)
-    Win VM b e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
-    Win VM b light set on server zip          .######                             1 h 59  (step 3: the same 42 tests; waits for the pack)
-    Win VM c e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
-    Win VM c light set on Electron            ####                                1 h 23  (step 3: 54 tests)
-    Win VM d e2e package (NoExe)           ###                                    58 min  (pack-prepare-for-e2e.bat, once per pin)
-    Win VM d light set on docker-server       ###########                         3 h 50  (step 2, Docker on Windows: the same 42 tests)
-                                           # runs   . waits on its machine for its inputs (the build, the pack)   one column: 20 min
+  ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from the last release runs' marks)
+    Memory  needs +61 GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 12 GB
+            available now 72 GB -> 11 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+                                           0h    1h    2h    3h    4h
+                                           |-----|-----|-----|-----|-----
+    Linux    build + JUnit                 ###                            34 min  (1705 JUnit tests, then the zips and the image)
+    runner 1 full set on docker-server        ####################        3 h 14  (step 1, its list for 4 jobs: 2 spec files; after its start (15 min) and its images (10 min))
+    runner 2 full set on docker-server        ###################         3 h 09  (step 1, its list for 4 jobs: 7 spec files; after its start (15 min) and its images (10 min))
+    runner 3 full set on docker-server        ###################         3 h 01  (step 1, its list for 4 jobs: 8 spec files; after its start (15 min) and its images (10 min))
+    runner 4 full set on docker-server        #################           2 h 44  (step 1, its list for 4 jobs: 36 spec files; after its start (15 min) and its images (10 min))
+    Linux    auth file on docker-server       ..##                        20 min  (step 1: 138 tests; once the runners have the checkout and the caches)
+    Linux    light set on docker-server           #####                   55 min  (step 2, Docker on Linux: 42 tests)
+    Win VM a Windows pack                  ########                       1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
+    Win VM a Robot UAT                             ####                   41 min  (step 3: 16 tests)
+    Win VM b e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM b light set on server zip             ..############           1 h 59  (step 3: the same 42 tests; waits for the pack)
+    Win VM c e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM c light set on Electron               ########                 1 h 23  (step 3: 54 tests)
+    Win VM d e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM d light set on docker-server          #######################  3 h 50  (step 2, Docker on Windows: the same 42 tests)
+                                           # runs   . waits on its machine for its inputs (the build, the pack, the runners' copies)   one column: 10 min
                                            step 1, 2, 3 = the release step a part belongs to, not its order:
                                            the three steps start together; each machine runs its parts top to bottom
     What each part runs (the counts: the newest runs that passed it; the lists: this checkout):
@@ -297,6 +296,28 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     (let-me-update-migrate-configuration): 53 spec files, 647 tests (4 skipped), on the
                                     shipped docker zip and image. Step 0 alternates the full set between web and
                                     docker-server from one release to the next.
+        ... in runners              each runner a Docker engine of its own on this host (asbl/ci/e2e-runners.sh), all
+                                    started at the build's end: its engine, this checkout and the CI caches copied in (15
+                                    min), then the images of its list by id (10 min); these two times: default (not
+                                    measured yet: no runner has run). Its memory is capped at RELEASE_RUNNER_LIMIT_GB.
+                                    Their lists: asbl/ci/full-set-runners.txt for 4 jobs.
+        ... runner 1                2 spec files: canvas-dashboard-demos, explore-data-use-cases.
+        ... runner 2                7 spec files: cube-modes-parity, apps-ai-hub, apps-third-party,
+                                    canvas-dashboard-demos-low-code, canvas-mechanics, explore-data-smart-defaults,
+                                    explore-data-visualizations.
+        ... runner 3                8 spec files: connections, analytics-olap, apps-grails-nextjs-charts,
+                                    apps-grails-nextjs-dashboards, apps-grails-nextjs-pivot, apps-grails-nextjs-tabulator,
+                                    apps-grails-nextjs, reporting.
+        ... runner 4                36 spec files: configuration-templates, configuration, cube-stories,
+                                    cubes-definitions, dashboard-demos, help, processing-license, processing-qa,
+                                    button-clear-logs, button-variables, button-well-known, license,
+                                    log-files-viewer-all-together, log-files-viewer-separate-tabs,
+                                    pause-cancel-resume-jobs, status-bar, tab-attachments, tab-merge-burst-pdf-files,
+                                    apps-cms-wordpress, apps-custom, auth-authorization-desktop, auth-embed-share,
+                                    interface-client-cli, interface-client-rest, merge-split-pdf, quick-start,
+                                    reporting-dashboards, reporting-jasper-legacy, reporting-jasper, samples, security,
+                                    split-excel, split-send-emails-sms, split-send-emails-upload, split-send-emails,
+                                    variables.
       Windows pack                  asbl\pack-datapallas.bat on the VM
                                     (AssemblerTest#assembleDataPallasAndDataPallasServer): first the NoExe package
                                     (NoExeAssembler: mvn clean install of every module but asbl, with their JUnit), then
@@ -311,13 +332,13 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     DataPallas-Server, DataPallas-Server-Auth, DataPallas.exe-prerequisites,
                                     DataPallas.exe-quickstart, DataPallas.exe-update, datapallas.bat,
                                     different-java-versions.
-    Total   about 12 h 15   (with 1 and 1: about 12 h 10; about 0 h 10 longer)
+    Total   about 4 h 50   (with 1 and 1: about 11 h 20; you gain about 6 h 30)
   ```
 
   - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.
   - `ON_FAILURES`: `fix-prove-then-wait-for-review` (default: the build pauses with Proceed, showing the fix plan, its report and the commits; Proceed = run again from scratch, step 1 included), `fix-prove-then-rerun-automatically` (it runs again by itself; after 2 such re-runs it waits), `report-only` (it ends red with the failure report, no agent). A fix round that ends BLOCKED always waits.
   - `RELEASE_PIN` (empty: run 1 on step 0's commit or origin/main), `DRY_RUN` (`no`; `yes` = each run is the orchestrator's dry run, nothing runs, builds, records or uploads: to check the job after a CI change), `E2E_APPROVAL` (the shared text of steps 2 and 3; passed to every run of the round, sent to the host on stdin, never on a command line, and never written in a file by the round).
-  - **Advanced (Parallelization)**, 1 to 4 each, default 1 (`1` and `1` turn every split off): `SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS` (step 1's full set in that many subsets, each on its own host test server; refused at the press for now, exit 2: this host's one Docker engine runs one DataPallas e2e set at a time) and `USE_N_NUMBER_OF_WINDOWS_VMS` (the Windows lanes over that many VMs, each running its lanes of the machines file `/root/release-rehearsal.conf` at once with the others; the round starts each VM after the first and shuts it down after its last lane). Under them, `ESTIMATED_TIME_AND_MEMORY` draws the chosen pair's estimate, before the press: what the press refuses, the memory it needs ((N + 1) host test servers at `RELEASE_SERVER_GB`, each VM to start at `WIN_VM_MEMORY_GB`) against the host's available memory now, with a warning under `RELEASE_MIN_FREE_GB`, the Gantt chart of the round's parts per machine, the total and the gain against 1 and 1. It is an Active Choices reactive reference parameter (the `uno-choice` plugin, formatted HTML): its Groovy script, `release-estimate-block.groovy`, only reads the JSON `release-rehearsal.sh estimate` wrote (`RELEASE_ESTIMATES_FILE`, default `datapallas/release-estimates.json` in the Jenkins home, not served) and `/proc/meminfo`. It runs outside the sandbox: approve its text once in Manage Jenkins -> In-process Script Approval after each seed that changes it. The round writes the JSON again after each real run; by hand after a change to the machines file: `bash asbl/ci/jenkins/release-rehearsal.sh estimate`. Without the plugin the seed leaves the block out; the build's first lines print the same estimate either way, and `bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>` prints it in a terminal.
+  - **Advanced (Parallelization)**, 1 to 4 each, default 1 (`1` and `1` turn every split off): `SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS` (step 1's full set in that many runners at once, each a Docker engine of its own on this host, `asbl/ci/e2e-runners.sh`, with its list of `asbl/ci/full-set-runners.txt`, all started when the build ends, while this host's engine runs the auth file, then step 2's Linux proof; 1 runs the whole full set in one runner. Each runner is capped at `RELEASE_RUNNER_LIMIT_GB` (10) of memory: one that needs more fails its own job. `RELEASE_RUNNERS=no` in the machines file runs the full set whole on this host's engine instead, as before the runners, the fallback when a runner fails for its own reason; then the press refuses more than 1, exit 2) and `USE_N_NUMBER_OF_WINDOWS_VMS` (the Windows lanes over that many VMs, each running its lanes of the machines file `/root/release-rehearsal.conf` at once with the others; the round starts each VM after the first and shuts it down after its last lane). Under them, `ESTIMATED_TIME_AND_MEMORY` draws the chosen pair's estimate, before the press: what the press refuses, the memory it needs ((N + 1) host test servers at `RELEASE_SERVER_GB`: each runner and this host's engine; each VM to start at `WIN_VM_MEMORY_GB`) against the host's available memory now, with a warning under `RELEASE_MIN_FREE_GB`, the Gantt chart of the round's parts per machine, the total and the gain against 1 and 1. It is an Active Choices reactive reference parameter (the `uno-choice` plugin, formatted HTML): its Groovy script, `release-estimate-block.groovy`, only reads the JSON `release-rehearsal.sh estimate` wrote (`RELEASE_ESTIMATES_FILE`, default `datapallas/release-estimates.json` in the Jenkins home, not served) and `/proc/meminfo`. It runs outside the sandbox: approve its text once in Manage Jenkins -> In-process Script Approval after each seed that changes it. The round writes the JSON again after each real run; by hand after a change to the machines file: `bash asbl/ci/jenkins/release-rehearsal.sh estimate`. Without the plugin the seed leaves the block out; the build's first lines print the same estimate either way, and `bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>` prints it in a terminal.
   - Not parameters: who started it (the build's cause), `MODE` and `UPLOAD` (always a rehearsal, no upload), the retries (always 1), the test switches.
 - **The build:** `agent none`; only short SSH calls take an executor. It follows the round's console (`release-rehearsal.sh follow --from <byte> --for 45`) in polls of under a minute, so a Jenkins restart only resumes the polling. A round waiting for a review: the pause shows `release-rehearsal.sh review` (why, the fix plan with its status line, its report, the red run, the commits since the run's pin), outside any node; Proceed calls `proceed`. An Abort pressed by a person, the build's or the pause's, calls `stop` (at the pause, only while the round still waits there); a restart never does, and the job has no timeout on purpose.
 - **The build page:** the label in the build list (`release-rehearsal.sh label`: `16.6.2 run 1 going`, `16.6.2 waiting for review after run 1`, `16.6.2 green, 1 run, ready to upload`, `16.6.2 red after run 2`); each ended run's reports as its `result.txt` lists them (`release-rehearsal.sh reports`), in the artifacts `reports/run-<n>/`: `result.txt`, the summary, the failure reports, the flaky tests, the Playwright JSON and JUnit XML (shown in Test Result), the Robot results (shown by the Robot plugin), and `report-paths.txt`, which names every report on the host. The Playwright HTML folders are not copied (one full run's is up to 18 GB): open them on the host, or pull one with `pull-reports.sh`. The settings it ran with: `round-settings.txt`.
@@ -353,7 +374,7 @@ step3 release-windows-vm  MODE=public     (UPLOAD=yes; rehearsal/V-C -> newest/ 
 step4 demo-public                         (demo.datapallas.com installs the published release, see OD4)
 ```
 
-**The round starts steps 1, 2 and 3 together** (`dp-ci-release-steps-0-3-rehearsal`, `RELEASE_STEPS=together`, the default of the machines file `/root/release-rehearsal.conf`): this host runs its parts one after another, step 2's build and Linux proof, step 1's two lanes, step 2's keep (its one Docker engine runs one DataPallas e2e set at a time: the shipped compose files fix the container names, the ports and the network), and the VM runs its parts beside them. Steps 2 and 3 do not wait for step 1: the run's sign-off checks it, and every upload checks it again. A run after fixes starts from scratch, step 1 included. `RELEASE_STEPS=in-order` keeps the order above (16.6.2's).
+**The round starts steps 1, 2 and 3 together** (`dp-ci-release-steps-0-3-rehearsal`, `RELEASE_STEPS=together`, the default of the machines file `/root/release-rehearsal.conf`): this host's one Docker engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network), so step 1's full set runs in runners (`RELEASE_RUNNERS=yes`, the default): from the end of step 2's build, N Docker engines of their own on this host (`asbl/ci/e2e-runners.sh`, N the job's `SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS`, 1 by default), while this host's engine runs step 1's auth file, step 2's Linux proof, then step 2's keep, and the VMs run their parts beside them. With `RELEASE_RUNNERS=no` this host runs its parts one after another: step 2's build and Linux proof, step 1's two lanes, step 2's keep. The press also keeps 50 GB of `/var` free after what the runners take there (about 40 GB for a runner with no image volume yet, `dp-ci-runner-<n>-docker`; about 4 GB for one whose volume is there). Steps 2 and 3 do not wait for step 1: the run's sign-off checks it, and every upload checks it again. A run after fixes starts from scratch, step 1 included. `RELEASE_STEPS=in-order` keeps the order above (16.6.2's).
 
 Why this order:
 

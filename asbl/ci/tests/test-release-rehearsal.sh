@@ -267,7 +267,7 @@ fresh green; available_memory_gb 20
 out=$(start); rc=$?
 check "20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=1 M=1 now" "$out" "$rc"
 check "20 GB available: the memory rule's numbers said" \
-  has "needs 10 GB (2 host test servers x 5 GB), 20 GB are available now: 10 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
+  has "needs 10 GB (2 host test servers x 5 GB (runner 1 and this host's engine)), 20 GB are available now: 10 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
 fresh green
 out=$(export DRY_RUN=yes; start); rc=$?; follow > /dev/null
 check "20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"

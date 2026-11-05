@@ -7,9 +7,13 @@
 #   2. for each of the 16: the block draws (what the press refuses, the memory line, the chart, the total, where from);
 #      each part's times are the schedule's (release-machines.sh's machines_schedule) and its bar starts and ends there,
 #      to half a column; the total is the last end; the gain is against 1 and 1; the memory is N + 1 host test servers
-#      and M - 1 VMs; none is REFUSED at the press with 100 GB (N above 1 runs in runners, RELEASE_RUNNERS=yes);
-#   3. 1 and 1, and 4 and 4, match a count by hand from the lane times (release-machines.sh lanes) and the time per
-#      file (release-estimate.py files) within 5 minutes;
+#      (each runner and this host's engine, named) and M - 1 VMs; none is REFUSED at the press with 100 GB (N above 1
+#      runs in runners, RELEASE_RUNNERS=yes);
+#   3. 1 and 1, and 4 and 4, match a count by hand within 5 minutes, from the lane times (release-machines.sh lanes),
+#      the time per file (release-estimate.py files) and the runner lists (asbl/ci/full-set-runners.py files): each
+#      runner from the build's end, after its start and its images, its list's setup plus ratio times its files'
+#      minutes; this host's auth file once the runners have their copies, then the Linux proof; and with
+#      RELEASE_RUNNERS=no, 1 and 1 as before the runners (this host's parts in a row, the full set last);
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
 #      left, a warning with 1 GB less, "unknown" without the file;
 #   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 6 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
@@ -17,8 +21,9 @@
 #   6. the form's Groovy script, run by the Groovy of this host's Jenkins image in a throwaway container (no network,
 #      the scratch folder read-only), draws exactly what the shell draws, for the 16 choices and the cases of 4 and 5,
 #      and one line, not an error, without its JSON;
-#   7. the names say which test set and where (the light set's the same on Linux and on the VM), and under the chart
-#      what each part runs, with every entry of asbl/ci/light-set.txt.
+#   7. the names say which test set and where (the light set's the same on Linux and on the VM; each runner's rows
+#      "runner <n>"), and under the chart what each part runs, with every entry of asbl/ci/light-set.txt and each
+#      runner's list.
 # Every file it writes is a scratch one: the run folders are only read, no settings file of this host is read, and the
 # Jenkins home's estimates file is not touched. Takes about 40 seconds.
 # Callers: a person or an agent, from the shell, after changing the estimate (release-estimate.py's model, estimates or
@@ -81,6 +86,9 @@ check "estimate: no choice said to be refused at the press (N above 1 runs in ru
 target=$(json_field "$JSON" target)
 bash asbl/ci/release-machines.sh lanes > "$SCRATCH/lanes.txt"
 python3 -I asbl/ci/release-estimate.py files --runs "$RUNS" --target "$target" > "$SCRATCH/files.txt"
+python3 -I asbl/ci/full-set-runners.py files 1 1 > "$SCRATCH/runner-1-1.txt"
+for k in 1 2 3 4; do python3 -I asbl/ci/full-set-runners.py files 4 "$k" > "$SCRATCH/runner-4-$k.txt"; done
+RELEASE_RUNNERS=no RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-no-runners.json" bash "$ROUND" estimate > /dev/null
 bash -c '. asbl/ci/release-machines.sh && machines_load && for m in 1 4; do for v in $(machines_vms_for "$m"); do
   echo "$m:$v=$(machines_lanes_of "$m" "$v")"; done; done' > "$SCRATCH/layouts.txt"
 for n in 1 2 3 4; do
@@ -132,7 +140,7 @@ for (n, m), p in sorted(pairs.items()):
     # the times of each part: the schedule's
     schedule = []
     for line in open(os.path.join(S, "schedule-%d-%d.txt" % (n, m))):
-        found = re.match(r"^  (Linux|Win VM \S+)\s+(.+?)\s+(\d+:\d\d) ->\s+(\d+:\d\d)\s", line)
+        found = re.match(r"^  (Linux|runner \d|Win VM \S+)\s+(.+?)\s+(\d+:\d\d) ->\s+(\d+:\d\d)\s", line)
         if found:
             schedule.append(found.groups())
     # the schedule prints whole minutes, the estimates keep tenths: half a minute apart at most
@@ -179,9 +187,11 @@ for (n, m), p in sorted(pairs.items()):
         gain = "(with 1 and 1: about %s; about %s longer)" % (about(base), about(total - base))
     if p["total_line"] != "Total   about %s   %s" % (about(total), gain):
         bad["gain"].append("%s: %s, expected about %s %s" % (tag, p["total_line"], about(total), gain))
-    # the memory: N + 1 host test servers, M - 1 VMs
+    # the memory: N + 1 host test servers (each runner and this host's engine), M - 1 VMs
     need = (n + 1) * data["server_gb"] + (m - 1) * data["vm_gb"]
-    if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB; " % (n + 1, data["server_gb"])):
+    engines = {1: "runner 1", 2: "runners 1, 2"}.get(n, "runners 1 to %d" % n)
+    if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB (%s and this host's engine); "
+                                                             % (n + 1, data["server_gb"], engines)):
         bad["memory"].append("%s: needs %s (%s), expected %d" % (tag, p["need_gb"], p["need_text"], need))
     # refused at the press: none (N above 1 runs in runners)
     if p["refused"]:
@@ -204,7 +214,8 @@ check("each part's times are the schedule's (release-machines.sh machines_schedu
 check("each bar starts and ends at its part's times, to half a column, for the 16", bad["bars"])
 check("the total is the last end (also the chart's last column), for the 16", bad["total"])
 check("the gain is against 1 and 1 (about %s), for the 16" % about(base), bad["gain"])
-check("the memory: N + 1 host test servers x %d GB and M - 1 VMs x %d GB, for the 16" % (data["server_gb"], data["vm_gb"]), bad["memory"])
+check("the memory: N + 1 host test servers x %d GB (the runners and this host's engine) and M - 1 VMs x %d GB, for the 16"
+      % (data["server_gb"], data["vm_gb"]), bad["memory"])
 check("none REFUSED at the press (N above 1 runs in runners)", bad["refused"])
 check("each block: the refusals, the memory against 100 GB, the chart, the total, where from", bad["block"])
 
@@ -214,7 +225,7 @@ for line in open(os.path.join(S, "lanes.txt")):
     f = line.split()
     if len(f) >= 2:
         lanes[f[0]] = float(f[1])
-files, setup, ratio = [], None, None
+per_file, setup, ratio = {}, None, None
 for line in open(os.path.join(S, "files.txt")):
     f = line.split()
     if len(f) == 2 and f[0] == "SETUP":
@@ -222,35 +233,61 @@ for line in open(os.path.join(S, "files.txt")):
     elif len(f) == 2 and f[0] == "RATIO":
         ratio = float(f[1])
     elif len(f) == 2 and re.match(r"^\d+(\.\d+)?$", f[0]):
-        files.append(float(f[0]))
+        per_file[f[1]] = float(f[0])
+runner_lists = {(n, k): [x.strip() for x in open(os.path.join(S, "runner-%d-%d.txt" % (n, k))) if x.strip()]
+                for n, k in ((1, 1), (4, 1), (4, 2), (4, 3), (4, 4))}
 layouts = dict(line.strip().split("=", 1) for line in open(os.path.join(S, "layouts.txt")) if "=" in line)
-host = lanes["build"] + lanes["linux-proof"] + lanes["auth"]
-problems = []
-if layouts.get("1:a") != "pack docker-proof server-light electron-light robot":
-    problems.append("the example's layout for 1 VM changed: %s (count it again by hand)" % layouts.get("1:a"))
-by_hand = max(host + lanes["full-" + data["target"]],
-              lanes["pack"] + lanes["docker-proof"] + lanes["server-light"] + lanes["electron-light"] + lanes["robot"])
-if abs(pairs[(1, 1)]["total_min"] - by_hand) > 5:
-    problems.append("1 and 1: the estimate %.1f min, by hand %.1f" % (pairs[(1, 1)]["total_min"], by_hand))
-check("1 and 1 by hand: the host's build, Linux proof, auth and full set in a row; VM a's lanes in a row, its prepare "
-      "kept by the pack: %.0f min, the estimate %.0f" % (by_hand, pairs[(1, 1)]["total_min"]), problems)
-problems = []
-want = {"4:a": "pack robot", "4:b": "server-light", "4:c": "electron-light", "4:d": "docker-proof"}
-if any(layouts.get(k) != v for k, v in want.items()):
-    problems.append("the example's layout for 4 VMs changed: %s (count it again by hand)" % layouts)
-if setup is None or ratio is None or not files:
-    check("4 and 4 by hand", problems + ["no time per file read (release-estimate.py files)"])
+copied = lanes["build"] + lanes["runner-start"]   # the runners have the checkout and the caches: the auth file starts
+host = copied + lanes["auth"] + lanes["linux-proof"]
+
+
+def runner_end(files):
+    """a runner's end: from the build's end, its start and its images, then its list (a file with no time: the mean)"""
+    mean = sum(per_file.values()) / len(per_file)
+    return copied + lanes["runner-images"] + setup + ratio * sum(per_file.get(f, mean) for f in files)
+
+
+if setup is None or ratio is None or not per_file:
+    check("1 and 1, and 4 and 4, by hand", ["no time per file read (release-estimate.py files)"])
 else:
-    by_hand = max(host + 4 * setup + ratio * sum(files),   # the 4 subsets one at a time, each with its setup
-                  lanes["pack"] + lanes["robot"],
-                  max(lanes["prepare"], lanes["pack"]) + lanes["server-light"],
-                  lanes["prepare"] + lanes["electron-light"],
-                  max(lanes["prepare"], lanes["build"]) + lanes["docker-proof"])
+    problems = []
+    if layouts.get("1:a") != "pack docker-proof server-light electron-light robot":
+        problems.append("the example's layout for 1 VM changed: %s (count it again by hand)" % layouts.get("1:a"))
+    by_hand = max(runner_end(runner_lists[(1, 1)]), host,
+                  lanes["pack"] + lanes["docker-proof"] + lanes["server-light"] + lanes["electron-light"] + lanes["robot"])
+    if abs(pairs[(1, 1)]["total_min"] - by_hand) > 5:
+        problems.append("1 and 1: the estimate %.1f min, by hand %.1f" % (pairs[(1, 1)]["total_min"], by_hand))
+    check("1 and 1 by hand: runner 1 the whole full set (%d files) from the build's end after its start and images; this "
+          "host's auth file and Linux proof beside it; VM a's lanes in a row, its prepare kept by the pack: %.0f min, the "
+          "estimate %.0f" % (len(runner_lists[(1, 1)]), by_hand, pairs[(1, 1)]["total_min"]), problems)
+    problems = []
+    want = {"4:a": "pack robot", "4:b": "server-light", "4:c": "electron-light", "4:d": "docker-proof"}
+    if any(layouts.get(k) != v for k, v in want.items()):
+        problems.append("the example's layout for 4 VMs changed: %s (count it again by hand)" % layouts)
+    ends = [runner_end(runner_lists[(4, k)]) for k in (1, 2, 3, 4)]
+    by_hand = max(ends + [host,
+                          lanes["pack"] + lanes["robot"],
+                          max(lanes["prepare"], lanes["pack"]) + lanes["server-light"],
+                          lanes["prepare"] + lanes["electron-light"],
+                          max(lanes["prepare"], lanes["build"]) + lanes["docker-proof"]])
     if abs(pairs[(4, 4)]["total_min"] - by_hand) > 5:
         problems.append("4 and 4: the estimate %.1f min, by hand %.1f" % (pairs[(4, 4)]["total_min"], by_hand))
-    check("4 and 4 by hand: the host's parts with 4 subsets of %d files (4 setups of %.1f min, ratio %.3f); VM a pack "
-          "and Robot, b after the pack, c and d after their prepare: %.0f min, the estimate %.0f"
-          % (len(files), setup, ratio, by_hand, pairs[(4, 4)]["total_min"]), problems)
+    check("4 and 4 by hand: 4 runners with their lists (%s files, ending %s); VM a pack and Robot, b after the pack, c "
+          "and d after their prepare: %.0f min, the estimate %.0f"
+          % ("/".join(str(len(runner_lists[(4, k)])) for k in (1, 2, 3, 4)), "/".join(hm(e) for e in ends), by_hand,
+             pairs[(4, 4)]["total_min"]), problems)
+    # RELEASE_RUNNERS=no: as before the runners, this host's parts one after another, the full set whole and last
+    no_runners = {(p["jobs"], p["vms"]): p for p in json.load(open(os.path.join(S, "estimates-no-runners.json")))["pairs"]}
+    by_hand = max(lanes["build"] + lanes["linux-proof"] + lanes["auth"] + lanes["full-" + data["target"]],
+                  lanes["pack"] + lanes["docker-proof"] + lanes["server-light"] + lanes["electron-light"] + lanes["robot"])
+    p11 = no_runners[(1, 1)]
+    problems = [] if abs(p11["total_min"] - by_hand) <= 5 else ["the estimate %.1f min, by hand %.1f" % (p11["total_min"], by_hand)]
+    if any(r[0].startswith("runner") for r in p11["rows"]) or not p11["need_text"].startswith("2 host test servers x %d GB; " % data["server_gb"]):
+        problems.append("a runner drawn, or the runners named: %s" % p11["need_text"])
+    if not any("RELEASE_RUNNERS=no" in r for r in no_runners[(4, 1)]["refused"]):
+        problems.append("4 and 1 not refused: %s" % no_runners[(4, 1)]["refused"])
+    check("RELEASE_RUNNERS=no, 1 and 1 by hand: the host's build, Linux proof, auth and full set in a row, no runner: "
+          "%.0f min, the estimate %.0f; 4 and 1 refused" % (by_hand, p11["total_min"]), problems)
 
 # the names (Virgil, 2026-11-05): the test set and where it runs, the same name on every machine, and under the chart
 # what each name runs, with the light set's entries from asbl/ci/light-set.txt
@@ -272,6 +309,24 @@ if not entries or any(e not in listed for e in entries):
     problems.append("the light set's entries are not all listed: %s" % [e for e in entries if e not in listed])
 check("the names say which test set and where, the light set's alike on Linux and the VM; under the chart what each "
       "part runs (%d lines, the %d light set entries)" % (len(legend), len(entries)), problems)
+problems = []
+p = pairs[(4, 4)]
+runners = [r for r in p["rows"] if r[0].startswith("runner ")]
+if [r[0] for r in runners] != ["runner 1", "runner 2", "runner 3", "runner 4"] or \
+        any(r[1] != "full set on " + data["target"] for r in runners):
+    problems.append("4 and 4's runner rows: %s" % [(r[0], r[1]) for r in runners])
+legend = " ".join(" ".join(p["chart"][len(p["rows"]) + 3:]).split())
+for k in (1, 2, 3, 4):
+    names = [os.path.basename(f)[:-len(".spec.ts")] for f in runner_lists[(4, k)]]
+    if "... runner %d %d spec files: " % (k, len(names)) not in legend or any(n not in legend for n in names):
+        problems.append("runner %d's list is not under the chart" % k)
+if "... in runners each runner a Docker engine of its own" not in legend:
+    problems.append("what the runners are is not under the chart")
+one = " ".join(" ".join(pairs[(1, 1)]["chart"]).split())
+if "The whole full set in runner 1." not in one or [r[0] for r in pairs[(1, 1)]["rows"] if r[0].startswith("runner")] != ["runner 1"]:
+    problems.append("1 and 1: not the whole full set in runner 1")
+check("each runner's rows say runner <n>, the part name the full set's; under the chart each runner's list (4 and 4), "
+      "the whole full set in runner 1 (1 and 1)", problems)
 PYEOF
 python_checks "$SCRATCH/checks.py"
 
@@ -293,7 +348,7 @@ WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "
 check "WIN_VM_MEMORY_GB=10: 4 and 4 need 6 GB less ($need GB with 12)" \
   same $((need - 6)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate 4 4 > "$SCRATCH/shell-vm10.txt"
-check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 6)) GB: 5 host test servers x 5 GB; VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 6)) GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 RELEASE_WINDOWS_VMS="a b" RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate > /dev/null
 check "RELEASE_WINDOWS_VMS=\"a b\": 3 and 4 VMs not created yet, refused and not drawn; 1 and 2 VMs drawn" python3 -I -c 'import json, sys
 d = json.load(open(sys.argv[1]))
@@ -304,7 +359,7 @@ RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 3 >
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 2 > "$SCRATCH/shell-ab-1-2.txt"
 check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with its memory" \
   bash -c 'grep -q "^REFUSED at the press: USE_N_NUMBER_OF_WINDOWS_VMS=3, .*not created yet" "$1" &&
-    grep -qx "Memory  needs +34 GB: 2 host test servers x 5 GB; 2 VMs at 12 GB (1 of them not created yet)" "$1" &&
+    grep -qx "Memory  needs +34 GB: 2 host test servers x 5 GB (runner 1 and this host'"'"'s engine); 2 VMs at 12 GB (1 of them not created yet)" "$1" &&
     grep -q "^Total   not estimated" "$1"' _ "$SCRATCH/shell-ab-1-3.txt"
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \

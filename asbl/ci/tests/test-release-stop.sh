@@ -18,7 +18,9 @@
 #      person's) says "nothing to stop" and touches nothing;
 #   7. a press after such a dead round: its leftovers stopped first, then the new round starts;
 #   8. a press while a round lives: refused, nothing stopped;
-#   9. the job (its Jenkinsfile, read): a round that ends stopped gets release-rehearsal.sh stop, then the build ends red.
+#   9. the job (its Jenkinsfile, read): a round that ends stopped gets release-rehearsal.sh stop, then the build ends red;
+#  10. a dry round's stop: it started nothing, so it names what its run's started.txt names (the runners among them),
+#      one "WOULD stop" line each, and stops nothing.
 # Every folder is a scratch one; docker, ssh and virsh are stubs first on PATH. Takes about 25 seconds.
 # Callers: a person or an agent, from the shell, after changing release-rehearsal.sh's stop.
 #   bash asbl/ci/tests/test-release-stop.sh
@@ -89,6 +91,17 @@ echo $$ > "$STUB/orchestrator.pid"
 folder="$STUB/runs/run-$(date +%s%N)"; mkdir -p "$folder"
 echo "PARTS   one log per part in $folder"
 entry=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+if [ -n "${STUB_DRY:-}" ]; then   # case 10: a dry round: every line dry-run (the runners among them), nothing started
+  {
+    printf '%s\tdocker-linux\tcontainer\tdp-ci\tdry-run\tthe run container of dp-ci.sh\n' "$entry"
+    printf '%s\tlane1-docker-server-full\tcontainer\tdp-ci-runner-1\tdry-run\trunner 1 (Docker in Docker): its engine and everything it runs\n' "$entry"
+    printf '%s\tlane1-docker-server-full\tcontainer\tdp-ci-runner-2\tdry-run\trunner 2 (Docker in Docker): its engine and everything it runs\n' "$entry"
+    printf '%s\tlane2-docker-server-auth\tcontainer\tdp-ci\tdry-run\tthe run container of dp-ci.sh\n' "$entry"
+    printf '%s\twindows-pack\tpidfile\t%s\tdry-run\tthe Windows driver of win-e2e.sh\n' "$entry" "$LOG_DIR/win-e2e.pid"
+  } > "$folder/started.txt"
+  echo started > "$STUB/orchestrator-ready"
+  sleep 120; exit 0
+fi
 {
   printf '%s\tstep1-build\tcontainer\tended-part-container\treal\tthe run container of dp-ci.sh\n' "$entry"
   printf '%s\tdocker-linux\tcontainer\tdp-ci\treal\tthe run container of dp-ci.sh\n' "$entry"
@@ -290,6 +303,20 @@ stopped_branch=$(sed -n "/stage('Follow the round')/,/^  post {/p" asbl/ci/jenki
   sed -n "/state == 'stopped'/,/error(/p")
 check "the job: a round that ends stopped gets release-rehearsal.sh stop, then the build ends red" bash -c \
   'grep -q "bash asbl/ci/jenkins/release-rehearsal.sh stop" <<< "$1" && grep -q "error(" <<< "$1"' _ "$stopped_branch"
+
+# ---- 10. a dry round's stop names what it would stop, the runners among them ----
+round stop > /dev/null 2>&1
+rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/stopped "$STUB"/vm-stopped "$STUB"/containers "$STUB"/orchestrator-ready "$STUB"/events
+sleep 1   # a new round folder (one per second)
+STUB_DRY=1 DRY_RUN=yes ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 ON_FAILURES=report-only round start > /dev/null
+for _ in $(seq 1 40); do [ -e "$STUB/orchestrator-ready" ] && break; sleep 0.25; done
+out=$(DRY_RUN=yes round stop); rc=$?
+check "a dry round's stop: exit 4, it names the runners and each other thing once (WOULD), stops nothing" bash -c \
+  '[ "$1" = 4 ] && grep -q "^DRY RUN: the round started nothing" <<< "$2" &&
+   grep -qx "WOULD stop container dp-ci-runner-1 (lane1-docker-server-full): runner 1 (Docker in Docker): its engine and everything it runs" <<< "$2" &&
+   grep -qx "WOULD stop container dp-ci-runner-2 (lane1-docker-server-full): runner 2 (Docker in Docker): its engine and everything it runs" <<< "$2" &&
+   [ "$(grep -c "^WOULD stop container dp-ci " <<< "$2")" = 1 ] && grep -q "^WOULD stop pidfile .*/win-e2e.pid (windows-pack)" <<< "$2" &&
+   ! grep -q "^STOPPED" <<< "$2" && [ ! -s "$3" ] && [ ! -s "$4" ]' _ "$rc" "$out" "$STUB/stopped" "$STUB/vm-stopped"
 
 echo
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-release-stop"; exit 0; fi

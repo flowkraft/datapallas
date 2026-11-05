@@ -25,7 +25,9 @@
 #              its fix run (the fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
 #              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. What makes
 #              the CI busy only through the round's own entries (a runner, a VM's driver, a CI container, each made after
-#              its entry and before its part's log was last written) is the round's, not another run. Exit 4
+#              its entry and before its part's log was last written) is the round's, not another run. A dry round started
+#              nothing: its stop names what its runs' started.txt names (its dry-run lines: the runners dp-ci-runner-<n>,
+#              the CI and compose containers, the drivers' pid files, the VMs), one "WOULD stop" line each. Exit 4
 #   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2);
 #              a runner there (dp-ci-runner-<n>) is a run going
 #   label      the build's label for the job's build list, one line: "16.6.2 run 1 going", "16.6.2 waiting for review after
@@ -67,16 +69,22 @@
 #     E2E_APPROVAL [empty]     the owner's written decision to go on without step 1's lanes, passed to every run of the round
 #                              (with E2E_APPROVAL_USER); held by the round's process only, never written in a file
 #   Advanced (Parallelization): 1 to 4 each; the machines they use come from the settings file (below)
-#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many subsets, each on its own host
-#                                                             test server; above 1 refused for now (this host's one
-#                                                             Docker engine runs one DataPallas e2e set at a time)
+#     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners at once, each a
+#                                                             Docker engine of its own on this host with its list of
+#                                                             asbl/ci/full-set-runners.txt (1: the whole full set in
+#                                                             one runner), all started when the build ends, each capped
+#                                                             at RELEASE_RUNNER_LIMIT_GB [10] of memory; this host's
+#                                                             engine meanwhile runs the auth file, then the Linux proof.
+#                                                             RELEASE_RUNNERS=no in the settings file: the full set whole
+#                                                             on this host's engine, as before the runners; N must be 1
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs, each running the
 #                                                             lanes of the layout for that many VMs
 #     What a choice gives, before the press: the job's block under the two choices, or estimate <N> <M> (above).
 #     Checked before anything starts (asbl/ci/release-machines.sh check <N> <M>): the machines file's rules, enough VMs
 #     named, the layout's rules; a real round also what the host must have now (check <N> <M> --press): each added VM's
-#     settings file, each VM in libvirt, the memory rule with the host's available memory, /var's free disk. Refused: exit 2,
-#     one REFUSED line per broken rule, with its numbers
+#     settings file, each VM in libvirt, the memory rule with the host's available memory (N + 1 host test servers: each
+#     runner and this host's engine, and each VM to start), /var's free disk after what the runners take there (their
+#     image volumes and checkouts). Refused: exit 2, one REFUSED line per broken rule, with its numbers
 #   Not parameters: ROUND_STARTED_BY, who starts it (required; the job reads it from the build's cause); MODE and UPLOAD
 #   (always a rehearsal with no upload); the retries (always 1); the test switches.
 #
@@ -634,6 +642,18 @@ unfinished_started_entries() {
     done < "$folder/started.txt"
   done
 }
+# dry_started_entries <round folder>: a dry round's runs started nothing; each thing their started.txt names (its dry-run
+# lines) once, "WOULD stop <kind> <name> (<part>): <what>": what a real round's stop ends while its part goes
+dry_started_entries() {
+  local folder utc part kind name real what
+  echo "DRY RUN: the round started nothing; a real round's stop ends what its runs' started.txt names while its part goes:"
+  run_folders_of_round "$1" | while IFS= read -r folder; do
+    [ -f "$folder/started.txt" ] || continue
+    while IFS=$'\t' read -r utc part kind name real what; do
+      [ "$real" != dry-run ] || printf 'WOULD stop %s %s (%s): %s\n' "$kind" "$name" "$part" "$what"
+    done < "$folder/started.txt"
+  done | awk '!seen[$3 " " $4]++'
+}
 epoch_of() { date -u -d "$1" +%s 2>/dev/null || echo 0; }   # epoch_of <time>: its seconds since 1970, 0 when unreadable
 # own_leftovers <round folder>: what the round's runs started that makes the CI busy and is the round's own, one
 # "container <name>" or "pidfile <file>" line each: a part that had not ended, its container or pid file made after its
@@ -726,6 +746,7 @@ stop_round() {
   # then what its run started that outlives that group. A round whose process was gone already (a reboot) ended long
   # ago maybe: when another run holds the CI now, those names may be that run's, so nothing is touched; what the round
   # left itself (own_leftovers: a runner, a VM's driver, a CI container) is not another run
+  [ "$(state_get "$dir" dry_run)" != yes ] || dry_started_entries "$dir"
   other_run=""; [ "$was_alive" = yes ] || other_run=$(busy_reason "$dir")
   case "$other_run" in "a green round waits"*|"a fix run is going"*) other_run="" ;; esac   # this round itself
   if [ -z "$other_run" ]; then stop_what_the_runs_started "$dir"

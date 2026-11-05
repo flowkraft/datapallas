@@ -6,12 +6,16 @@
 #      RELEASE_RUNNERS=no refused: one Docker engine), and the example's layouts are the defaults;
 #   3. each broken rule is refused, with its numbers: the steps, the values, too few VMs, a lane twice or missing, an
 #      unknown lane, Robot not last or not on the pack's VM, Electron before the server light set; and at a press: a
-#      VM's settings file or libvirt VM missing, the memory rule (only the VMs a round starts count), /var's free disk;
-#   4. the lane times read from release runs' marks (a dry run's folder ignored, a red part not used), the expected
-#      schedule for 4 and 4 and for in-order;
+#      VM's settings file or libvirt VM missing, the memory rule (only the VMs a round starts count; the runners and
+#      this host's engine named), /var's free disk after what the runners take (a runner with no volume yet, one with);
+#   4. the lane times read from release runs' marks (a dry run's folder ignored, a red part not used; a run with the
+#      runners: their start and images from their marks, the Linux proof from its own part, the full set's time per
+#      file from each runner's own report, not the slowest runner's time as the lane's), the expected schedule for 4
+#      and 4 with the runners (each its list after its start, this host's auth file and Linux proof beside them), for
+#      1 and 1 with RELEASE_RUNNERS=no, and for in-order;
 #   5. the orchestrator: RELEASE_STEPS=in-order gives 16.6.2's dry-run order, a dry run prints the schedule, and a
 #      layout it cannot run is refused before anything starts.
-# Every folder is a scratch one; virsh, df, docker and ssh are stubs first on PATH: nothing is started, no live folder is
+# Every folder is a scratch one; virsh, df, docker (its runners' volumes) and ssh are stubs first on PATH: nothing is started, no live folder is
 # touched, no settings file of this host is read. Takes about 40 seconds (two orchestrator dry runs).
 # Callers: a person or an agent, from the shell, after changing the machines file's reader or the orchestrator's use of it.
 #   bash asbl/ci/tests/test-machines-file.sh
@@ -53,7 +57,18 @@ cat > "$STUBS/df" <<'STUB'
 # stub df: /var has $STUB_VAR_FREE_GB GB free
 printf ' Avail\n %sG\n' "${STUB_VAR_FREE_GB:-400}"
 STUB
-for c in docker ssh; do printf '#!/bin/bash\nexit 0\n' > "$STUBS/$c"; done
+cat > "$STUBS/docker" <<'STUB'
+#!/bin/bash
+# stub docker: volume inspect <name> answers from $STUB_RUNNER_VOLUMES (the runners' volumes there; default all four)
+if [ "${1:-}" = volume ] && [ "${2:-}" = inspect ]; then
+  case " ${STUB_RUNNER_VOLUMES-dp-ci-runner-1-docker dp-ci-runner-2-docker dp-ci-runner-3-docker dp-ci-runner-4-docker} " in
+    *" ${3:-} "*) exit 0 ;;
+  esac
+  exit 1
+fi
+exit 0
+STUB
+printf '#!/bin/bash\nexit 0\n' > "$STUBS/ssh"
 chmod +x "$STUBS"/*
 export PATH="$STUBS:$PATH"
 export WIN_CI_CONF="$SCRATCH/vm-conf/win-ci.env" WIN_VM_CONF_DIR="$SCRATCH/vm-conf" RELEASE_MEMINFO="$SCRATCH/meminfo"
@@ -159,19 +174,34 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
 check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=1 M=4 needs 46 GB (2 host test servers x 5 GB, VMs b c d to start x 12 GB), 60 GB are available now: 14 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=1 M=4 needs 46 GB (2 host test servers x 5 GB (runner 1 and this host's engine), VMs b c d to start x 12 GB), 60 GB are available now: 14 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   machines check 1 4 --press
 check "press: only the VMs a round starts count (b c d running: 10 GB needed)" has \
   "needs 10 GB of 60 GB available, 50 GB stay free (rule 16)" \
   "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
 memory_gb 100
 check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 46 GB of 100 GB available, 54 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 46 GB of 100 GB available, 54 GB stay free (rule 16); /var 400 GB free, the runners take about 4 GB, 396 GB stay free (rule 50)" \
   "$(machines check 1 4 --press)"
+check "press: N=4 M=1, the memory rule names the runners: refused, with the numbers" refused \
+  "memory: N=4 M=1 needs 25 GB (5 host test servers x 5 GB (runners 1 to 4 and this host's engine)), 40 GB are available now: 15 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  bash -c 'printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$1/meminfo-40"; RELEASE_MEMINFO="$1/meminfo-40" bash "$2" check 4 1 --press' _ "$SCRATCH" "$MACHINES"
+check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused, with the numbers" refused \
+  "disk: N=4: /var has 120 GB free, the runners take about 88 GB there (runners 3 4 with no volume yet x 40 GB, runners 1 2 with a volume x 4 GB): 32 GB would stay free, under the 50 GB a round keeps free" \
+  env STUB_VAR_FREE_GB=120 STUB_RUNNER_VOLUMES="dp-ci-runner-1-docker dp-ci-runner-2-docker" bash "$MACHINES" check 4 1 --press
+check "press: N=4, every runner's volume there, /var 120 GB free: OK, with the numbers" has \
+  "/var 120 GB free, the runners take about 16 GB, 104 GB stay free (rule 50)" "$(STUB_VAR_FREE_GB=120 machines check 4 1 --press)"
+check "press: RELEASE_RUNNERS=no: the disk rule counts no runner" has \
+  "memory: needs 10 GB of 100 GB available, 90 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "$(STUB_RUNNER_VOLUMES="" RELEASE_RUNNERS=no machines check 1 1 --press)"
 check "press: N=4 RELEASE_RUNNERS=no with 100 GB available: refused, one Docker engine" refused \
   "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine" \
   env RELEASE_RUNNERS=no bash "$MACHINES" check 4 4 --press
-check "press: /var with 20 GB free: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
+check "press: /var with 20 GB free: refused" refused \
+  "disk: N=1: /var has 20 GB free, the runners take about 4 GB there (runner 1 with a volume x 4 GB): 16 GB would stay free, under the 50 GB a round keeps free" \
+  env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
+check "press: /var with 20 GB free, RELEASE_RUNNERS=no: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" \
+  env STUB_VAR_FREE_GB=20 RELEASE_RUNNERS=no bash "$MACHINES" check 1 1 --press
 
 # ---- 4. the lane times from the marks, and the schedule ----
 RUNS="$SCRATCH/runs"
@@ -206,6 +236,47 @@ check "lanes: the build, the auth file and the full set from the PART lines (a d
 check "lanes: the Linux proof from its mark; the Windows Docker proof without its prepare (220 - 40 min)" same \
   "50.0 $F|180.0 $F|40.0 $F" "$(lane_line linux-proof)|$(lane_line docker-proof)|$(lane_line prepare)"
 check "lanes: a red pack is not used, the 16.6.2 default stands" same "77.0 default" "$(lane_line pack | cut -d' ' -f1,2)"
+check "lanes: no runner has run: the runners' start and images are the defaults, said to be not measured" same \
+  "15.0 default|10.0 default" "$(lane_line runner-start | cut -d' ' -f1,2)|$(lane_line runner-images | cut -d' ' -f1,2)"
+# a newer run with the runners (2): its build part's mark, the Linux proof in its own part, the full lane merged from two
+# runners (their marks in the lane's log, each runner's own log and report), next to the 16.6.2 run above
+RUNS2="$SCRATCH/runs-runners"; mkdir -p "$RUNS2"; cp -r "$RUNS/$F" "$RUNS2/"
+R=20261110T000000Z-release-orchestrator-execution-1-version-16.6.3; RD="$RUNS2/$R"; mkdir -p "$RD"
+cat > "$RD/run.log" <<'LOG'
+PART    docker-linux START 2026-11-10T00:00:00Z on 0123abcd: step 2's build (DOCKER_RELEASE_PART=build)
+PART    docker-linux END rc=0 2026-11-10T00:33:00Z (log x)
+PART    lane1-docker-server-full START 2026-11-10T00:33:00Z on 0123abcd: step 1 docker-server-full in 2 runner(s) (release-step1.sh)
+PART    lane1-docker-server-full END rc=0 2026-11-10T02:10:00Z (log x)
+PART    docker-linux-proof START 2026-11-10T00:50:00Z on 0123abcd: step 2's Linux proof
+PART    docker-linux-proof END rc=0 2026-11-10T01:35:00Z (log x)
+LOG
+for p in docker-linux lane1-docker-server-full docker-linux-proof; do printf '0\n' > "$RD/$p.rc"; done
+printf '######## DOCKER RELEASE STEP 2/6 END rc=0  2026-11-10T00:32:00Z  took=1920s (32m0s)  :: the build\n' > "$RD/docker-linux.log"
+printf '######## DOCKER RELEASE STEP 3/6 END rc=0  2026-11-10T01:35:00Z  took=2700s (45m0s)  :: the Linux proof\n' > "$RD/docker-linux-proof.log"
+mark() { printf '######## RUNNER %s %s END rc=0  2026-11-10T00:40:00Z  took=%ss (x)  :: x\n' "$@"; }
+{ mark 1 ENGINE 60; mark 2 ENGINE 60; mark 1 CHECKOUT 120; mark 2 CHECKOUT 180; mark 1 CACHES 300; mark 2 CACHES 360
+  mark 1 IMAGES 240; mark 2 IMAGES 300
+  echo "E2E_MERGED_LOG=$RD/merged.log"; echo "E2E_JSON_REPORT=$RD/merged-playwright.json"; } > "$RD/lane1-docker-server-full.log"
+printf 'E2E_RUNNER 1 log=%s result=SUCCESS\nE2E_RUNNER 2 log=%s result=SUCCESS\n' "$RD/r1.log" "$RD/r2.log" > "$RD/merged.log"
+echo '{"suites":[],"stats":{"startTime":"2026-11-10T01:00:00.000Z","duration":5400000}}' > "$RD/merged-playwright.json"
+runner_run() {  # runner_run <n> <its start> <Playwright's start> <wall ms> <file> <test ms>: a runner's lane log and its report
+  printf 'PIPELINE_START %s  task=e2e  commit=0123abcd  version=16.6.3\nE2E_RETRIES=1 E2E_TIMEOUT_SECS=72000 E2E_JSON_REPORT=%s\n' "$2" "$RD/r$1-playwright.json" > "$RD/r$1.log"
+  printf '{"suites":[{"file":"%s","specs":[{"file":"%s","tests":[{"results":[{"duration":%s}]}]}]}],"stats":{"startTime":"%s","duration":%s}}\n' \
+    "$5" "$5" "$6" "$3" "$4" > "$RD/r$1-playwright.json"
+}
+runner_run 1 2026-11-10T00:46:00Z 2026-11-10T00:52:00.000Z 3600000 specs/a.spec.ts 3000000   # setup 6 min, wall 60, tests 50
+runner_run 2 2026-11-10T00:48:00Z 2026-11-10T00:52:00.000Z 1800000 specs/b.spec.ts 1500000   # setup 4 min, wall 30, tests 25
+lanes=$(RUN_RECORD_DIR="$RUNS2" machines lanes)
+check "lanes with the runners: their start and images, the slowest runner's (10 and 5 min), from their marks" same \
+  "10.0 $R|5.0 $R" "$(lane_line runner-start)|$(lane_line runner-images)"
+check "  the build from the build part's mark, the Linux proof from its own part's log" same \
+  "32.0 $R|45.0 $R" "$(lane_line build)|$(lane_line linux-proof)"
+check "  the full set's lane time not from the runners' run (the slowest runner's, not the lane's on one engine)" same \
+  "600.0 $F" "$(lane_line full-docker-server)"
+check "  the time per file from each runner's own report: setup 5 min (6 and 4), ratio 1.2 (90 min wall, 75 of tests)" same \
+  "50.0 specs/a.spec.ts|25.0 specs/b.spec.ts|SETUP 5.0|RATIO 1.2000|FROM $R" \
+  "$(python3 -I asbl/ci/release-estimate.py files --runs "$RUNS2" --target docker-server | sed 's/^ *//; s/  */ /' | paste -sd'|')"
+lanes=$(RUN_RECORD_DIR="$RUNS" machines lanes)
 empty_runs="$SCRATCH/no-runs"; mkdir -p "$empty_runs"
 schedule() {  # schedule <N> <M> <full target>: the library's schedule, as the orchestrator calls it
   RUN_RECORD_DIR="$empty_runs" bash -c '. "$1"; machines_load && machines_schedule "$2" "$3" "$4"' _ "$MACHINES" "$@" 2>&1
@@ -222,11 +293,24 @@ host_parts() {  # host_parts <schedule>: "<part> <start>-<end>" of each Linux ho
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }'
 }
-check "schedule 4 4: this host's parts one at a time (one engine), the four subsets after each other" same \
-  "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1/4 1:49-4:24|full set on docker-server 2/4 4:24-6:59|full set on docker-server 3/4 6:59-9:34|full set on docker-server 4/4 9:34-12:09" \
-  "$(host_parts "$out")"
-check "  about 12 h 10, the memory the memory rule counts" bash -c \
-  'grep -qF "TOTAL     about 12 h 10 (the last part to end: Linux full set on docker-server 4/4)" <<< "$1" && grep -qF "MEMORY    5 host test servers x 5 GB = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" <<< "$1"' _ "$out"
+check "schedule 4 4: this host's parts: the build, then the auth file once the runners have their copies (0:34 + 15), then the Linux proof" same \
+  "build + JUnit 0:00-0:34|auth file on docker-server 0:49-1:09|light set on docker-server 1:09-2:04" "$(host_parts "$out")"
+runner_ends=""; total_files=$(python3 -I asbl/ci/full-set-runners.py files 1 1 | wc -l)
+for k in 1 2 3 4; do   # no file times in the records: each runner the lane's 620 min by its share of the files
+  files=$(python3 -I asbl/ci/full-set-runners.py files 4 "$k" | wc -l)
+  runner_ends="$runner_ends|runner $k full set on docker-server 0:34-$(awk -v f="$files" -v t="$total_files" 'BEGIN { m = int(34 + 15 + 10 + 620 * f / t + 0.5); printf "%d:%02d", m / 60, m % 60 }')"
+done
+check "schedule 4 4: the four runners from the build's end, each its list after its start (15 min) and images (10 min)" same \
+  "${runner_ends#|}" "$(printf '%s\n' "$out" | awk '$1 == "runner" { line = $0; sub(/^ +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
+    name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
+    printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
+check "  the memory the memory rule counts, the runners named" has \
+  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and this host's engine); VMs the round starts: b c d x 12 GB = 36 GB" "$out"
+out=$(RELEASE_RUNNERS=no schedule 1 1 docker-server)
+check "schedule 1 1, RELEASE_RUNNERS=no: this host's parts one at a time (one engine), the full set last: about 12 h 10" bash -c \
+  '[ "$2" = "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1:49-12:09" ] &&
+   grep -qF "TOTAL     about 12 h 10 (the last part to end: Linux full set on docker-server)" <<< "$1" &&
+   grep -qF "MEMORY    2 host test servers x 5 GB = 10 GB; VMs the round starts: none" <<< "$1" && ! grep -q "^  runner" <<< "$1"' _ "$out" "$(host_parts "$out")"
 settings_example "RELEASE_STEPS=in-order"
 out=$(schedule 1 1 docker-server)
 check "schedule in-order: step 1 first, the VM after it, about 20 h 25 on the 16.6.2 defaults (no prepare after its green pack)" bash -c \

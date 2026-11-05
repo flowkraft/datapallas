@@ -14,8 +14,14 @@
 #                                                       its numbers. Every start of the orchestrator and of a round asks it
 #   bash asbl/ci/release-machines.sh check <N> <M> --press   the same, plus what the host must have now for a real round:
 #                                                       each added VM's settings file, each VM in libvirt, the memory rule
-#                                                       with the host's available memory now, /var's free disk
-#                                                       (release-rehearsal.sh start; not a dry round: it starts nothing)
+#                                                       with the host's available memory now (N + 1 host test servers at
+#                                                       RELEASE_SERVER_GB: with the runners, each runner and this host's
+#                                                       engine; each VM to start at WIN_VM_MEMORY_GB), the disk rule: /var
+#                                                       keeps MACHINES_MIN_FREE_VAR_GB [50] free after what the runners take
+#                                                       there (MACHINES_RUNNER_FIRST_GB [40] for a runner with no image
+#                                                       volume yet, MACHINES_RUNNER_ROUND_GB [4] for one whose volume is
+#                                                       there) (release-rehearsal.sh start; not a dry round: it starts
+#                                                       nothing)
 #   bash asbl/ci/release-machines.sh schedule <N> <M>   what would run on which machine and when, each part's expected
 #                                                       time from the last release runs' marks (asbl/ci/release-estimate.py)
 #   bash asbl/ci/release-machines.sh lanes              the time of each lane, and the run it comes from
@@ -68,6 +74,13 @@
 MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
 MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
+# the /var disk a runner takes in a round (its image store, the volume dp-ci-runner-<n>-docker, and its checkout copy under
+# E2E_RUNNERS_HOME, both on /var): a runner with no volume yet copies in this host's images of its list and the CI
+# caches (22 GB on 2026-11-05), pulls the rest of what its lane uses, and gets its checkout (9 GB); a runner whose volume
+# is there gets each round's new server image (and the CI image when it changed), and keeps the older ones until its
+# volume is removed (docker volume rm dp-ci-runner-<n>-docker resets the runner)
+MACHINES_RUNNER_FIRST_GB=40
+MACHINES_RUNNER_ROUND_GB=4
 # The default layouts, by a VM's place in RELEASE_WINDOWS_VMS (plan 16.6.3, "The machines file"): one VM runs every lane in
 # 16.6.2's order; with more, the pack and Robot stay together (Robot installs the pack's zips) and the long Windows Docker
 # proof gets a VM of its own as soon as there are three
@@ -199,12 +212,39 @@ machines_vm_shutdown() {
 # machines_available_gb: the host's available memory now, in whole GB (GiB, MemAvailable)
 machines_available_gb() { awk '/^MemAvailable:/ { printf "%d", $2 / 1048576 }' "${RELEASE_MEMINFO:-/proc/meminfo}"; }
 machines_servers_for() { echo $(($1 + 1)); }   # the host test servers of a choice: N subsets + step 2's (the plan's rule)
+# machines_runners_used: yes when step 1's full set runs in runners (RELEASE_RUNNERS=yes with the steps together)
+machines_runners_used() { [ "$RELEASE_RUNNERS" = yes ] && [ "$RELEASE_STEPS" = together ] && echo yes || echo no; }
+# machines_servers_text <N>: what the memory rule's N + 1 host test servers are, with the runners
+machines_servers_text() {
+  [ "$(machines_runners_used)" = yes ] || return 0
+  case "$1" in
+    1) printf '%s' " (runner 1 and this host's engine)" ;;
+    2) printf '%s' " (runners 1, 2 and this host's engine)" ;;
+    *) printf '%s' " (runners 1 to $1 and this host's engine)" ;;
+  esac
+}
+# machines_runner_disk <N>: "<GB> <what>" the round's runners take on /var: MACHINES_RUNNER_FIRST_GB for each runner with
+# no volume yet, MACHINES_RUNNER_ROUND_GB for each whose volume is there (docker volume inspect); "0" without runners
+machines_runner_disk() {
+  local n k gb=0 new="" kept=""
+  n="$1"
+  [ "$(machines_runners_used)" = yes ] || { echo 0; return 0; }
+  for k in $(seq 1 "$n"); do
+    if docker volume inspect "dp-ci-runner-$k-docker" >/dev/null 2>&1; then kept="$kept $k"; gb=$((gb + MACHINES_RUNNER_ROUND_GB))
+    else new="$new $k"; gb=$((gb + MACHINES_RUNNER_FIRST_GB)); fi
+  done
+  printf '%s ' "$gb"
+  [ -z "$new" ] || printf 'runner%s%s with no volume yet x %s GB' "$([ "$(wc -w <<< "$new")" = 1 ] || echo s)" "$new" "$MACHINES_RUNNER_FIRST_GB"
+  [ -z "$new" ] || [ -z "$kept" ] || printf ', '
+  [ -z "$kept" ] || printf 'runner%s%s with a volume x %s GB' "$([ "$(wc -w <<< "$kept")" = 1 ] || echo s)" "$kept" "$MACHINES_RUNNER_ROUND_GB"
+  echo
+}
 
 # machines_check <N> <M> [--press]: every rule for these Advanced values; prints one REFUSED line per broken rule (with
 # its numbers) and returns 2, or prints MACHINES OK and returns 0
 machines_check() {
   local n="$1" m="$2" press="${3:-}" refused=0 vms v lanes lane count place robot_place light_place electron_place
-  local key value need available free_var starts="" servers
+  local key value need available free_var starts="" servers disk disk_gb=0
   refuse_rule() { echo "REFUSED $*"; refused=1; }
   case "$n" in 1|2|3|4) ;; *) refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: it must be 1, 2, 3 or 4" ;; esac
   case "$m" in 1|2|3|4) ;; *) refuse_rule "USE_N_NUMBER_OF_WINDOWS_VMS=$m: it must be 1, 2, 3 or 4" ;; esac
@@ -254,8 +294,9 @@ machines_check() {
   done
   if [ "$press" = --press ]; then
     # what the host must have now: each added VM's settings file (VM a's win-ci.env is release-publish.sh preflight
-    # docker's, at the same start) and each VM in libvirt; the memory rule: the host test servers, plus each VM this round
-    # would start, against what is available now; /var's free disk
+    # docker's, at the same start) and each VM in libvirt; the memory rule: the host test servers (with the runners: each
+    # runner and this host's engine, each one host test server), plus each VM this round would start, against what is
+    # available now; the disk rule: /var's free disk, less what the runners take there (machines_runner_disk)
     for v in $vms; do
       [ "$v" = a ] || [ -e "$(machines_conf_of "$v")" ] || refuse_rule "VM $v has no settings file $(machines_conf_of "$v")"
       case "$(machines_vm_state "$v")" in
@@ -269,14 +310,19 @@ machines_check() {
     available=$(machines_available_gb)
     if [ -z "$available" ]; then refuse_rule "the host's available memory cannot be read (${RELEASE_MEMINFO:-/proc/meminfo})"
     elif [ $((available - need)) -lt "$RELEASE_MIN_FREE_GB" ]; then
-      refuse_rule "memory: N=$n M=$m needs $need GB ($servers host test servers x $RELEASE_SERVER_GB GB${starts:+, VMs$starts to start x $WIN_VM_MEMORY_GB GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB"
+      refuse_rule "memory: N=$n M=$m needs $need GB ($servers host test servers x $RELEASE_SERVER_GB GB$(machines_servers_text "$n")${starts:+, VMs$starts to start x $WIN_VM_MEMORY_GB GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB"
     fi
     free_var=$(df -BG --output=avail /var 2>/dev/null | tail -1 | tr -dc '0-9')
-    [ -n "$free_var" ] && [ "$free_var" -ge "$MACHINES_MIN_FREE_VAR_GB" ] ||
-      refuse_rule "disk: /var has ${free_var:-?} GB free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
+    disk=$(machines_runner_disk "$n"); disk_gb=${disk%% *}
+    if [ -z "$free_var" ]; then refuse_rule "disk: /var's free disk cannot be read (df /var)"
+    elif [ "$disk_gb" = 0 ] && [ "$free_var" -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: /var has $free_var GB free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
+    elif [ $((free_var - disk_gb)) -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: N=$n: /var has $free_var GB free, the runners take about $disk_gb GB there (${disk#* }): $((free_var - disk_gb)) GB would stay free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
+    fi
   fi
   [ "$refused" = 0 ] || return 2
-  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$MACHINES_MIN_FREE_VAR_GB")"
+  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free%s (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$([ "$disk_gb" = 0 ] || printf ', the runners take about %s GB, %s GB stay free' "$disk_gb" "$((free_var - disk_gb))")" "$MACHINES_MIN_FREE_VAR_GB")"
 }
 
 # machines_full_target: the full set's target of the version to release next (release-state.sh full-lane --choose, dry).
@@ -304,7 +350,7 @@ machines_schedule() {
   for v in $vms; do [ "$v" = a ] || off="$off $v"; done
   [ -n "$target" ] || target=$(machines_full_target)
   python3 -I asbl/ci/release-estimate.py schedule --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
-    --target "$target" --jobs "$n" --vms "$vms" "${args[@]}" --steps "$RELEASE_STEPS" \
+    --target "$target" --jobs "$n" --vms "$vms" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
     --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vms-off "${off# }"
 }
 
@@ -325,7 +371,8 @@ machines_estimates() {
   done
   [ -n "$target" ] || target=$(machines_full_target)
   python3 -I asbl/ci/release-estimate.py estimates --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
-    --target "$target" --vms-named "$RELEASE_WINDOWS_VMS" "${args[@]}" --steps "$RELEASE_STEPS" --server-gb "$RELEASE_SERVER_GB" \
+    --target "$target" --vms-named "$RELEASE_WINDOWS_VMS" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
+    --server-gb "$RELEASE_SERVER_GB" \
     --vm-gb "$WIN_VM_MEMORY_GB" --min-free-gb "$RELEASE_MIN_FREE_GB"
 }
 
