@@ -683,6 +683,7 @@ vm_steps_of() {
     "dp-ci.sh win docker-e2e") echo "npmwc prepare docker-e2e" ;;
     "dp-ci.sh win release")    echo "npmwc prepare release-pack server-e2e dp-server e2e release-robot" ;;
     "dp-ci.sh win prepare")    echo "npmwc prepare" ;;
+    "dp-ci.sh win package")    echo "npmwc prepare" ;;   # the pack's copy; its own prepare when no copy can be made
   esac
 }
 # stop_container_created_since <name> <epoch>: docker stop, when it was created at or after that time (the run's)

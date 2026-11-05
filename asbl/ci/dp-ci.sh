@@ -24,6 +24,8 @@
 #                                          a Windows lane's checks, in seconds: the lanes and the release jobs run them first
 #   win sync | win prepare                 the VM's checkout to origin/main | that, plus its package rebuilt when stale: by hand
 #                                          (every Windows lane syncs first; windows-vm-electron also prepares)
+#   win package | package-pull             a release round with more VMs: a VM's e2e package copied from the pack's instead of
+#                                          built again | the copy made on the pack's VM (asbl/ci/jenkins/release-orchestrator.sh)
 #   win check | ssh | ps | run | poll | stop
 #                                          the VM itself: does it answer, a command, a PowerShell script, a task on its desktop:
 #                                          by hand
@@ -223,6 +225,23 @@
 #                               [20 min]; the lanes set their own (below).
 #       sync | prepare          the VM's checkout fast-forwarded to origin/main (stops on local changes) | that, then its
 #                               package rebuilt with asbl/pack-prepare-for-e2e.bat unless it was built from that commit.
+#       package                 a release round's part windows-package-<vm> (more VMs): sync, then the VM's package from
+#                               the pack's (WIN_PACKAGE_ARCHIVE, once its record <archive>.sha256 is there), checked by its
+#                               sha256 and its file count and stamped last; nothing when the stamp is the commit's already;
+#                               its own prepare (as `prepare`) when no copy can be made (<archive>.none, WIN_PACKAGE_PULL_RC
+#                               ended without a record) or the copy failed. WIN_PACKAGE_WAIT_SECS [32400], WIN_PACKAGE_POLL [30].
+#       package-pull <archive> <commit> <ticks>
+#                               the round's part windows-package-from-pack, on the pack's VM while it packs: once this pack's
+#                               asbl\pack-datapallas.log (written after <ticks> on the VM's clock: the pack's
+#                               WIN_PACK_LOG_SINCE= line) holds 'FINISHED Assembler:NoExeAssembler' and the checks of the
+#                               pack's own stamp hold, verified-db-noexe as one tar archive brought to <archive> on this host
+#                               (sha256 checked) with its record <archive>.sha256; else <archive>.none with why, exit 1.
+#                               WIN_PACKAGE_PACK_RC (the pack part's exit code file: it ended), WIN_PACKAGE_WAIT_SECS [28800],
+#                               WIN_PACKAGE_POLL [60].
+#       package-ready <commit> <ticks> | package-archive <archive> | package-put <archive>
+#                               by hand: one look (YES, WAIT <why>, NO <why>) | the VM's package archived to this host, only
+#                               when its stamp is its checkout's commit | an archive and its record put on the VM, which must
+#                               be on the record's commit, its stamp written last.
 #       e2e                     windows-vm-electron: the desktop app on the VM, E2E_SPEC/E2E_GREP as in `e2e` (on Windows the
 #                               path has backslashes: write the separator as [\\/]); both empty = the full suite without
 #                               auth-authorization-server; E2E_SPEC=light = the light set (asbl/ci/light-set.txt), what a release
@@ -1091,15 +1110,14 @@ PS
   echo "WIN_E2E_PACKAGE=built ($vm)"
 }
 
-# win_stamp_package_after_pack <the pack's commit>: after a green pack, the VM's e2e package is the one pack-prepare-for-e2e.bat
-# would make (the pack's first assembler is the same NoExeAssembler, on the same files), but the pack's clean removed its
-# stamp: written again, the prepare's own way, so the lanes after the pack prepare nothing. Only when the pack changed none
-# of the package's inputs: the checkout still on that commit with no tracked file changed, and frend\rb-webcomponents'
-# modules installed from that commit's lock (the hash win_prepare_package records at its npm ci). Otherwise nothing is
-# written, and the next lane prepares, as before. Never fails the pack: it says why it wrote no stamp.
-win_stamp_package_after_pack() {
-  local pkg="$WIN_REPO\\asbl\\target\\package" out vm why
-  out=$(win_ps 2>&1 <<PS | tr -d '\r'
+# win_package_inputs_check <the pack's commit>: the PowerShell lines that check the pack's NoExe package is the e2e package
+# of that commit, as pack-prepare-for-e2e.bat would make it: the package there, the checkout still on that commit with no
+# tracked file changed, and frend\rb-webcomponents' modules installed from that commit's lock (the hash win_prepare_package
+# records at its npm ci). A check not met ends the script with a 'NO <why>' line. Shared by win_stamp_package_after_pack
+# (the pack's own VM) and win_package_ready (a copy for the round's other VMs), which end the script with 'YES'.
+win_package_inputs_check() {
+  local pkg="$WIN_REPO\\asbl\\target\\package"
+  cat <<PS
 \$repo = '$WIN_REPO'
 \$wc = Join-Path \$repo 'frend\\rb-webcomponents'
 if (-not (Test-Path '$pkg\\verified-db-noexe\\DataPallas')) { 'NO the pack left no verified-db-noexe in asbl\\target\\package'; exit 0 }
@@ -1109,9 +1127,17 @@ if (& git -C \$repo status --porcelain --untracked-files=no) { 'NO the pack left
 if (-not (Test-Path \$rec)) { 'NO no record of the npm ci that installed the rb-webcomponents modules'; exit 0 }
 if ((Get-Content -Raw \$rec).Trim() -ne (Get-FileHash -Algorithm SHA256 (Join-Path \$wc 'package-lock.json')).Hash.ToLower()) {
   'NO the rb-webcomponents modules come from another package-lock.json'; exit 0 }
-'YES'
 PS
-)
+}
+
+# win_stamp_package_after_pack <the pack's commit>: after a green pack, the VM's e2e package is the one pack-prepare-for-e2e.bat
+# would make (the pack's first assembler is the same NoExeAssembler, on the same files), but the pack's clean removed its
+# stamp: written again, the prepare's own way, so the lanes after the pack prepare nothing. Only when the pack changed none
+# of the package's inputs (win_package_inputs_check). Otherwise nothing is written, and the next lane prepares, as before.
+# Never fails the pack: it says why it wrote no stamp.
+win_stamp_package_after_pack() {
+  local pkg="$WIN_REPO\\asbl\\target\\package" out vm why
+  out=$({ win_package_inputs_check "$1"; echo "'YES'"; } | win_ps 2>&1 | tr -d '\r')
   if [ "$(printf '%s\n' "$out" | tail -1)" = YES ] && vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1) &&
      [ -n "$vm" ] && win_ssh ">\"$pkg\\.built-from\" echo $vm" >/dev/null 2>&1; then
     echo "WIN_E2E_PACKAGE=kept by the pack ($vm): its NoExe package is the e2e package of this commit, the lanes after it prepare nothing"
@@ -1120,6 +1146,205 @@ PS
     echo "WIN_E2E_PACKAGE=not stamped after the pack (${why:-the VM did not answer the check}): the next lane prepares it"
   fi
   return 0
+}
+
+# ---- one e2e package per pin, from the pack (a release round with more VMs) ----
+# The pack's first assembler is the NoExeAssembler that pack-prepare-for-e2e.bat runs alone, and the pack's later
+# assemblers only read its asbl\target\package\verified-db-noexe. So once this pack's asbl\pack-datapallas.log holds
+# 'FINISHED Assembler:NoExeAssembler' (printed after its verify(), about an hour in), the round's other VMs take a copy of
+# that folder instead of building their own (an hour each, and the product's whole JUnit suite): one archive, made on the
+# pack's VM while the pack goes on, brought to this host and checked by its sha256 (win_package_pull), then put on each
+# VM, its stamp written last (win_package_put). A VM whose stamp is the pin's already takes nothing. When no copy can be
+# made (the pack red before that line, a check of win_package_inputs_check not met, a copy red), the VM prepares its own,
+# as before (win_package_from_pack). The record beside the archive tells each VM's part which it is: <archive>.sha256
+# ("sha256 <hex>", "files <n>", "commit <full>"), or <archive>.none (one line: why there is no copy).
+WIN_PACKAGE_LINE='FINISHED Assembler:NoExeAssembler'   # AssemblerTest#assembleDataPallasAndDataPallasServer, after verify()
+
+# win_package_ready <the pin> <the pack's start on the VM's clock, in ticks>: one look at the pack's VM (WIN_VM): 'YES'
+# (this pack's NoExeAssembler finished and win_package_inputs_check holds), 'WAIT <why>' (not yet) or 'NO <why>' (no copy
+# can be made). This pack's log is the one written after the pack started, on the VM's own clock (WIN_PACK_LOG_SINCE=,
+# which win_release prints before pack-datapallas.bat): an earlier pack's log, which holds the line too, is never read as
+# this one's. The VM's clock, not this host's: a VM may start hours off until its time service corrects it.
+win_package_ready() {
+  local out
+  case "${2:-}" in ''|*[!0-9]*) echo "NO the pack's start on the VM's clock is unknown (no WIN_PACK_LOG_SINCE= number)"; return 0 ;; esac
+  out=$({ cat <<PS
+\$log = '$WIN_REPO\\asbl\\pack-datapallas.log'
+if (-not (Test-Path \$log)) { 'WAIT this pack has written no asbl\\pack-datapallas.log yet'; exit 0 }
+if ((Get-Item \$log).LastWriteTimeUtc.Ticks -lt [long]'$2') { 'WAIT asbl\\pack-datapallas.log is an earlier pack''s (written before this pack started)'; exit 0 }
+if (-not (Select-String -Path \$log -SimpleMatch '$WIN_PACKAGE_LINE' -Quiet)) { 'WAIT this pack''s NoExeAssembler has not finished yet'; exit 0 }
+PS
+    win_package_inputs_check "$1"; echo "'YES'"; } | win_ps 2>&1 | tr -d '\r' | grep -E '^(YES|WAIT|NO)( |$)' | tail -1)
+  echo "${out:-WAIT the VM did not answer the check}"
+}
+
+# win_package_archive <archive on this host> <commit>: on the VM (WIN_VM), the archive of its verified-db-noexe (tar.exe,
+# in C:\dp-ci\tmp), brought to <archive>, its sha256 checked here, the VM's copy removed, and the record <archive>.sha256
+# written last (the archive's sha256, its file count, <commit>). Exit 1 with the reason on its last line.
+win_package_archive() {
+  local archive="$1" commit="$2" remote_tar out sha files t0
+  t0=$(date +%s)
+  remote_tar="C:\\dp-ci\\tmp\\$(basename "$archive")"
+  rm -f "$archive" "$archive.part" "$archive.sha256"
+  out=$(win_ps 2>&1 <<PS | tr -d '\r'
+\$pkg = '$WIN_REPO\\asbl\\target\\package'
+\$tar = '$remote_tar'
+New-Item -ItemType Directory -Force (Split-Path \$tar) | Out-Null
+Remove-Item \$tar -Force -ErrorAction SilentlyContinue
+& tar.exe -cf \$tar -C \$pkg verified-db-noexe 2>&1 | Select-Object -Last 3
+if (\$LASTEXITCODE -ne 0) { "FAIL tar.exe exit \$LASTEXITCODE"; exit 1 }
+'FILES ' + (Get-ChildItem -Recurse -File -Force (Join-Path \$pkg 'verified-db-noexe')).Count
+'SHA256 ' + (Get-FileHash -Algorithm SHA256 \$tar).Hash.ToLower()
+PS
+)
+  sha=$(sed -n 's/^SHA256 \([0-9a-f]\{64\}\)$/\1/p' <<< "$out" | tail -1)
+  files=$(sed -n 's/^FILES \([0-9][0-9]*\)$/\1/p' <<< "$out" | tail -1)
+  if [ -z "$sha" ] || [ -z "$files" ]; then echo "the archive on VM $WIN_VM failed: $(tail -3 <<< "$out" | paste -sd' ')"; return 1; fi
+  if ! win_pull "$(printf '%s' "$remote_tar" | tr '\\' '/')" "$archive.part"; then
+    win_ssh "del /q $remote_tar" >/dev/null 2>&1; rm -f "$archive.part"
+    echo "the archive could not be brought from VM $WIN_VM to this host"; return 1
+  fi
+  win_ssh "del /q $remote_tar" >/dev/null 2>&1   # the VM's copy is never left behind
+  [ "$(sha256sum "$archive.part" | cut -d' ' -f1)" = "$sha" ] ||
+    { rm -f "$archive.part"; echo "the archive brought to this host is not VM $WIN_VM's (sha256)"; return 1; }
+  mv "$archive.part" "$archive"
+  printf 'sha256 %s\nfiles %s\ncommit %s\n' "$sha" "$files" "$commit" > "$archive.sha256.tmp" && mv "$archive.sha256.tmp" "$archive.sha256"
+  echo "WIN_E2E_PACKAGE_ARCHIVE=$archive sha256=${sha:0:16}... files=$files took=$(( $(date +%s) - t0 ))s"
+}
+
+# win_package_archive_by_hand <archive on this host>: `dp-ci.sh win package-archive`, for a person or an agent who moves a
+# package without a round (a measure, a VM made again): the VM's package only when its stamp is its checkout's commit,
+# which the record then names; the round's own path is win_package_pull, with its checks.
+win_package_archive_by_hand() {
+  local pkg="$WIN_REPO\\asbl\\target\\package" short built full
+  [ -n "${1:-}" ] || { echo "usage: dp-ci.sh win package-archive <archive on this host>"; return 2; }
+  short=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  full=$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  built=$(win_ssh "type $pkg\\.built-from" 2>/dev/null | tr -d '\r' | tail -1)
+  [ -n "$short" ] && [ "$built" = "$short" ] ||
+    { echo "FAIL  VM $WIN_VM's package is built from '${built:-nothing}', its checkout is at ${short:-?}: nothing archived"; return 1; }
+  win_package_archive "$1" "$full"
+}
+
+# win_package_pull <archive on this host> <the pin> <the pack's start on the VM's clock, in ticks>: on the pack's VM
+# (WIN_VM), while the pack goes on: waits for win_package_ready (a look every WIN_PACKAGE_POLL seconds, 60), then
+# win_package_archive. No copy (the pack's part ended, WIN_PACKAGE_PACK_RC there, before its NoExeAssembler finished; a
+# check not met; WIN_PACKAGE_WAIT_SECS passed, 8 h as the pack's own cap; the archive or its copy red): <archive>.none
+# with why, exit 1, and each VM prepares its own. Exit 0 with the archive and its record there.
+win_package_pull() {
+  local archive="$1" pin="$2" since="${3:-}" ready why="" began
+  rm -f "$archive" "$archive.part" "$archive.sha256" "$archive.none"
+  began=$(date +%s)
+  echo "WIN_E2E_PACKAGE_WAIT VM $WIN_VM's asbl\\pack-datapallas.log, written after ${since:-?} on the VM's clock, to hold '$WIN_PACKAGE_LINE'; a look every ${WIN_PACKAGE_POLL:-60}s"
+  while :; do
+    ready=$(win_package_ready "$pin" "$since")
+    case "$ready" in YES) break ;; NO\ *) why="a check not met: ${ready#NO }"; break ;; esac
+    if [ -n "${WIN_PACKAGE_PACK_RC:-}" ] && [ -f "$WIN_PACKAGE_PACK_RC" ]; then
+      # the pack ended: one last look, its line may have come just before its end
+      ready=$(win_package_ready "$pin" "$since")
+      case "$ready" in
+        YES) ;;
+        NO\ *) why="a check not met: ${ready#NO }" ;;
+        *) why="the pack ended before its NoExeAssembler finished (${ready#WAIT })" ;;
+      esac
+      break
+    fi
+    [ $(( $(date +%s) - began )) -lt "${WIN_PACKAGE_WAIT_SECS:-28800}" ] ||
+      { why="no '$WIN_PACKAGE_LINE' after $(( ($(date +%s) - began) / 60 )) min (${ready#WAIT })"; break; }
+    sleep "${WIN_PACKAGE_POLL:-60}"
+  done
+  if [ -z "$why" ]; then
+    echo "WIN_E2E_PACKAGE_READY at=$(date -u +%Y-%m-%dT%H:%M:%SZ) after=$(( $(date +%s) - began ))s: this pack's NoExeAssembler finished, the checks hold"
+    why=$(win_package_archive "$archive" "$pin") && { printf '%s\n' "$why"; return 0; }
+    why=$(tail -1 <<< "$why")
+  fi
+  rm -f "$archive" "$archive.part"
+  echo "$why" > "$archive.none"
+  echo "WIN_E2E_PACKAGE_NONE $why: each VM of the round prepares its own"
+  return 1
+}
+
+# win_package_put <archive on this host>: on a VM of the round (WIN_VM), the pack's e2e package from the archive and the
+# record win_package_archive wrote, for the commit the record names, which the VM's checkout must be on: the old package
+# and its stamp removed first, the archive copied and checked (sha256), unpacked into asbl\target\package and counted,
+# then the stamp (.built-from) written last, as win_prepare_package writes it. Exit 1 with nothing stamped on any failure.
+win_package_put() {
+  local archive="$1" pkg="$WIN_REPO\\asbl\\target\\package" sha files commit vm short remote_tar out t0
+  t0=$(date +%s)
+  sha=$(sed -n 's/^sha256 //p' "$archive.sha256" 2>/dev/null); files=$(sed -n 's/^files //p' "$archive.sha256" 2>/dev/null)
+  commit=$(sed -n 's/^commit //p' "$archive.sha256" 2>/dev/null)
+  [ -n "$sha" ] && [ -n "$files" ] && [ -n "$commit" ] && [ -f "$archive" ] || { echo "FAIL  no archive with its record at $archive"; return 1; }
+  vm=$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  [ "$vm" = "$commit" ] || { echo "FAIL  VM $WIN_VM's checkout is at ${vm:0:8}, the package is of ${commit:0:8}"; return 1; }
+  short=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  [ -n "$short" ] || { echo "FAIL  could not read VM $WIN_VM's commit"; return 1; }
+  remote_tar="C:\\dp-ci\\tmp\\$(basename "$archive")"
+  # the old package and its stamp first: a copy that fails half way leaves no package stamped as this commit's
+  win_ssh "if exist $pkg\\.built-from del /q $pkg\\.built-from" >/dev/null 2>&1
+  out=$(win_ps 2>&1 <<PS | tr -d '\r'
+\$pkg = '$pkg'
+Remove-Item (Join-Path \$pkg 'verified-db-noexe') -Recurse -Force -ErrorAction SilentlyContinue
+if (Test-Path (Join-Path \$pkg 'verified-db-noexe')) { 'FAIL the old verified-db-noexe could not be removed (a process holds its files?)'; exit 1 }
+New-Item -ItemType Directory -Force \$pkg, (Split-Path '$remote_tar') | Out-Null
+'EMPTY'
+PS
+)
+  grep -qx EMPTY <<< "$out" || { echo "FAIL  $(tail -1 <<< "$out")"; return 1; }
+  win_scp "$archive" "$(printf '%s' "$remote_tar" | tr '\\' '/')" || { echo "FAIL  could not copy the archive to VM $WIN_VM"; return 1; }
+  out=$(win_ps 2>&1 <<PS | tr -d '\r'
+\$pkg = '$pkg'
+\$tar = '$remote_tar'
+\$sha = (Get-FileHash -Algorithm SHA256 \$tar).Hash.ToLower()
+if (\$sha -ne '$sha') { "FAIL the archive on the VM is not the pack's (sha256 \$sha)"; Remove-Item \$tar -Force; exit 1 }
+& tar.exe -xf \$tar -C \$pkg 2>&1 | Select-Object -Last 3
+\$rc = \$LASTEXITCODE
+Remove-Item \$tar -Force -ErrorAction SilentlyContinue
+if (\$rc -ne 0) { "FAIL tar.exe exit \$rc"; exit 1 }
+if (-not (Test-Path (Join-Path \$pkg 'verified-db-noexe\\DataPallas'))) { 'FAIL no verified-db-noexe\\DataPallas after unpacking'; exit 1 }
+'FILES ' + (Get-ChildItem -Recurse -File -Force (Join-Path \$pkg 'verified-db-noexe')).Count
+PS
+)
+  [ "$(sed -n 's/^FILES //p' <<< "$out" | tail -1)" = "$files" ] ||
+    { echo "FAIL  the package unpacked on VM $WIN_VM: $(grep -E '^(FAIL|FILES)' <<< "$out" | tail -1) (the pack's: $files files)"; return 1; }
+  win_ssh ">\"$pkg\\.built-from\" echo $short" >/dev/null 2>&1 || { echo "FAIL  could not write the stamp on VM $WIN_VM"; return 1; }
+  echo "WIN_E2E_PACKAGE=copied from the pack ($short): $files files, sha256 ${sha:0:16}..., took=$(( $(date +%s) - t0 ))s"
+}
+
+# win_package_from_pack: the part windows-package-<vm> of a release round with more VMs (asbl/ci/jenkins/release-orchestrator.sh,
+# through win-e2e.sh package): the VM's checkout on the pin (win_sync_repo), then its e2e package: nothing when its stamp is
+# that commit's already; else the pack's copy (WIN_PACKAGE_ARCHIVE, once its record <archive>.sha256 is there); else its own
+# prepare (win_prepare_package), as when no copy can be made (<archive>.none, or the pull's part ended without a record:
+# WIN_PACKAGE_PULL_RC) or the copy failed. Waits WIN_PACKAGE_WAIT_SECS at most (9 h: the pack's own cap, and an hour).
+win_package_from_pack() {
+  local archive="${WIN_PACKAGE_ARCHIVE:-}" pkg="$WIN_REPO\\asbl\\target\\package" vm built why="" began
+  win_sync_repo || return $?
+  vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  built=$(win_ssh "type $pkg\\.built-from" 2>/dev/null | tr -d '\r' | tail -1)
+  if [ -n "$vm" ] && [ "$built" = "$vm" ] && win_ssh "if exist $pkg\\verified-db-noexe\\DataPallas echo yes" 2>/dev/null | grep -q yes; then
+    echo "WIN_E2E_PACKAGE=current ($vm): no copy needed"
+    return 0
+  fi
+  if [ -z "$archive" ]; then why="no archive named (WIN_PACKAGE_ARCHIVE)"
+  else
+    echo "WIN_E2E_PACKAGE_WAIT the pack's copy (this VM's is built from '${built:-nothing}', the VM is at $vm): $archive.sha256"
+    began=$(date +%s)
+    while [ ! -f "$archive.sha256" ] && [ ! -f "$archive.none" ]; do
+      if [ -n "${WIN_PACKAGE_PULL_RC:-}" ] && [ -f "$WIN_PACKAGE_PULL_RC" ]; then
+        # the pull writes its record before it ends: none now = it ended without one
+        [ -f "$archive.sha256" ] || [ -f "$archive.none" ] || why="the pull ended with no archive and no reason"
+        break
+      fi
+      [ $(( $(date +%s) - began )) -lt "${WIN_PACKAGE_WAIT_SECS:-32400}" ] || { why="no copy after $(( ($(date +%s) - began) / 60 )) min"; break; }
+      sleep "${WIN_PACKAGE_POLL:-30}"
+    done
+    if [ -z "$why" ] && [ -f "$archive.sha256" ]; then
+      win_package_put "$archive" && return 0
+      why="the copy failed (above)"
+    elif [ -z "$why" ]; then why=$(cat "$archive.none" 2>/dev/null)
+    fi
+  fi
+  echo "WIN_E2E_PACKAGE=not copied from the pack (${why:-no reason given}): VM $WIN_VM prepares its own"
+  win_prepare_package
 }
 
 # Docker Desktop is a hard prerequisite of both Windows lanes, not an optional extra: every containerised
@@ -2583,6 +2808,10 @@ win_release() {
     win_stacks_down server
     win_temp_clean
 
+    # the pack's start on the VM's own clock: its asbl\pack-datapallas.log is this pack's when written after it (the bat
+    # deletes the old one first). A round with more VMs copies the pack's e2e package to its other VMs once that log holds
+    # the NoExeAssembler's line (win_package_pull, which reads this line)
+    echo "WIN_PACK_LOG_SINCE=$(win_ps 2>/dev/null <<< '[DateTime]::UtcNow.Ticks' | tr -d '\r' | grep -E '^[0-9]+$' | tail -1)"
     WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
       win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat
     rc=$?
@@ -4158,12 +4387,21 @@ if [ "$TASK" = "win" ]; then
     rclone-ensure) shift 2; win_rclone_ensure "$@"; exit $? ;;   # release-publish.sh upload-kept: the VM's rclone for its upload   # release-publish.sh upload-kept: the kept zips back in the VM's asbl\dist
     sync)  win_sync_repo; exit $? ;;
     prepare) win_sync_repo && win_prepare_package; exit $? ;;
+    # one e2e package per pin, from the pack (a round with more VMs): see win_package_from_pack and win_package_pull
+    package) win_package_from_pack; exit $? ;;
+    package-pull) shift 2; win_package_pull "$@"; exit $? ;;
+    package-ready) shift 2; win_package_ready "$@"; exit 0 ;;
+    package-archive) shift 2; win_package_archive_by_hand "$@"; exit $? ;;
+    package-put) shift 2; win_package_put "$@"; exit $? ;;
     prereq) shift 2; win_prereq "$@"; exit $? ;;
     *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"
            echo "       $0 win run <step> <windows-working-dir> <command...>   (runs on the desktop, waits)"
            echo "       $0 win poll <step> [offset] | $0 win stop <step>"
            echo "       $0 win sync         (fast-forward the VM's checkout to origin/main; win e2e does this first)"
            echo "       $0 win prepare      (sync, then rebuild the VM's package when it is not from the VM's commit; win e2e does this too)"
+           echo "       $0 win package      (a release round with more VMs: sync, then the pack's copy of the e2e package, WIN_PACKAGE_ARCHIVE; else the VM's own prepare)"
+           echo "       $0 win package-pull <archive> <commit> <ticks> | package-ready <commit> <ticks> | package-archive <archive> | package-put <archive>"
+           echo "                           (the pack's e2e package: made on the pack's VM once its NoExeAssembler finished | one look | by hand: archived | put on the VM)"
            echo "       $0 win prereq e2e|docker-e2e|server-e2e|release   (what that lane needs, checked in seconds: the VM over SSH, its Docker Desktop, Java and Maven, no other Windows run)"
            echo "       $0 win e2e          (Electron e2e on the desktop; E2E_SPEC=light = the light set; other E2E_SPEC/E2E_GREP = targeted)"
            echo "       $0 win docker-e2e   (DataPallas Server in Docker Desktop, installed as the self-host page says; a light set by default)"

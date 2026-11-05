@@ -12,8 +12,10 @@
 #   3. 1 and 1, and 4 and 4, match a count by hand within 5 minutes, from the lane times (release-machines.sh lanes),
 #      the time per file (release-estimate.py files) and the runner lists (asbl/ci/full-set-runners.py files): each
 #      runner from the build's end, after its start and its images, its list's setup plus ratio times its files'
-#      minutes; this host's auth file once the runners have their copies, then the Linux proof; and with
-#      RELEASE_RUNNERS=no, 1 and 1 as before the runners (this host's parts in a row, the full set last);
+#      minutes; this host's auth file once the runners have their copies, then the Linux proof; each VM other than the
+#      pack's on a copy of the pack's e2e package, from its NoExeAssembler's end (pack-noexe) plus the copy
+#      (package-copy), in the rows of 4 and 4 and of 4 and 3, never a prepare of its own; and with RELEASE_RUNNERS=no,
+#      1 and 1 as before the runners (this host's parts in a row, the full set last);
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
 #      left, a warning with 1 GB less, "unknown" without the file;
 #   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 6 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
@@ -265,17 +267,33 @@ else:
     if any(layouts.get(k) != v for k, v in want.items()):
         problems.append("the example's layout for 4 VMs changed: %s (count it again by hand)" % layouts)
     ends = [runner_end(runner_lists[(4, k)]) for k in (1, 2, 3, 4)]
+    copy_end = lanes["pack-noexe"] + lanes["package-copy"]   # the pack starts at 0: VM a runs nothing before it
     by_hand = max(ends + [host,
                           lanes["pack"] + lanes["robot"],
-                          max(lanes["prepare"], lanes["pack"]) + lanes["server-light"],
-                          lanes["prepare"] + lanes["electron-light"],
-                          max(lanes["prepare"], lanes["build"]) + lanes["docker-proof"]])
+                          max(copy_end, lanes["pack"]) + lanes["server-light"],
+                          copy_end + lanes["electron-light"],
+                          max(copy_end, lanes["build"]) + lanes["docker-proof"]])
     if abs(pairs[(4, 4)]["total_min"] - by_hand) > 5:
         problems.append("4 and 4: the estimate %.1f min, by hand %.1f" % (pairs[(4, 4)]["total_min"], by_hand))
     check("4 and 4 by hand: 4 runners with their lists (%s files, ending %s); VM a pack and Robot, b after the pack, c "
-          "and d after their prepare: %.0f min, the estimate %.0f"
-          % ("/".join(str(len(runner_lists[(4, k)])) for k in (1, 2, 3, 4)), "/".join(hm(e) for e in ends), by_hand,
-             pairs[(4, 4)]["total_min"]), problems)
+          "and d on the pack's copy (%.0f + %.0f min): %.0f min, the estimate %.0f"
+          % ("/".join(str(len(runner_lists[(4, k)])) for k in (1, 2, 3, 4)), "/".join(hm(e) for e in ends),
+             lanes["pack-noexe"], lanes["package-copy"], by_hand, pairs[(4, 4)]["total_min"]), problems)
+    # the rows of the copy: 4 and 4 (VMs b c d), 4 and 3 (VMs b c; VM a prepares after its pack, kept by it)
+    problems = []
+    for vms, others in ((4, "b c d"), (3, "b c")):
+        rows = {(r[0], r[1]): r for r in pairs[(4, vms)]["rows"]}
+        pack = rows.get(("Win VM a", "Windows pack"))
+        for v in others.split():
+            r = rows.get(("Win VM " + v, "e2e package (from the pack)"))
+            if pack is None or r is None:
+                problems.append("4 and %d: no copy row on VM %s: %s" % (vms, v, sorted(rows)))
+            elif abs(r[2] - (pack[2] + lanes["pack-noexe"])) > 0.5 or abs(r[3] - r[2] - lanes["package-copy"]) > 0.5:
+                problems.append("4 and %d, VM %s: the copy %.1f -> %.1f, the pack from %.1f" % (vms, v, r[2], r[3], pack[2]))
+            if ("Win VM " + v, "e2e package (NoExe)") in rows:
+                problems.append("4 and %d: a prepare of its own on VM %s" % (vms, v))
+    check("4 and 4, 4 and 3: each VM other than the pack's takes its copy %.0f min into the pack, for %.0f min; no prepare "
+          "of its own" % (lanes["pack-noexe"], lanes["package-copy"]), problems)
     # RELEASE_RUNNERS=no: as before the runners, this host's parts one after another, the full set whole and last
     no_runners = {(p["jobs"], p["vms"]): p for p in json.load(open(os.path.join(S, "estimates-no-runners.json")))["pairs"]}
     by_hand = max(lanes["build"] + lanes["linux-proof"] + lanes["auth"] + lanes["full-" + data["target"]],

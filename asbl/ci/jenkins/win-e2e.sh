@@ -8,11 +8,13 @@
 # closing Jenkins, the browser or the SSH session leaves it running. A reboot of this host kills the
 # driver, not the VM task: then `bash asbl/ci/dp-ci.sh win poll e2e` (or `docker-e2e`, `server-e2e`) shows what the VM did.
 #
-#   bash win-e2e.sh [e2e|docker-e2e|server-e2e|release|robot|prepare]   which lane: e2e (default) = windows-vm-electron, docker-e2e = windows-vm-docker,
+#   bash win-e2e.sh [e2e|docker-e2e|server-e2e|release|robot|prepare|package]   which lane: e2e (default) = windows-vm-electron, docker-e2e = windows-vm-docker,
 #                                                         server-e2e = windows-vm-server (RELEASE_KEPT, REBUILD_PACK passed on: the pack zip it installs),
 #                                                         release = job dp-ci-release-step3-release-windows-vm (MODE, UPLOAD, DRY_RUN passed on),
 #                                                         robot = the Robot UAT again on a kept pack (asbl/ci/release-rerun.sh; RELEASE_KEPT, ROBOT_TEST, REBUILD_PACK passed on),
 #                                                         prepare = the VM's e2e package, built only when its stamp is not the VM's commit (a release round, once per pin)
+#                                                         package = the same from the pack's copy (a release round with more VMs; WIN_PACKAGE_ARCHIVE,
+#                                                                   WIN_PACKAGE_PULL_RC passed on), its own prepare when no copy can be made
 #   E2E_SPEC / E2E_GREP / E2E_ROTATION_DATE / E2E_RETRIES  passed on to dp-ci.sh win <lane> through the environment (both filters
 #                                            empty = its default set; E2E_RETRIES empty = the lane's own, see dp-ci.sh)
 #   WIN_VM [a]                               the VM (dp-ci.sh, `win`): its own pid file, its own log names and latest link
@@ -20,7 +22,7 @@
 set -uo pipefail
 
 LANE="${1:-e2e}"
-case "$LANE" in e2e|docker-e2e|server-e2e|release|robot|prepare) ;; *) echo "FAIL  lane must be e2e, docker-e2e, server-e2e, release, robot or prepare (got '$LANE')"; exit 2 ;; esac
+case "$LANE" in e2e|docker-e2e|server-e2e|release|robot|prepare|package) ;; *) echo "FAIL  lane must be e2e, docker-e2e, server-e2e, release, robot, prepare or package (got '$LANE')"; exit 2 ;; esac
 
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
 . asbl/ci/win-vm.sh

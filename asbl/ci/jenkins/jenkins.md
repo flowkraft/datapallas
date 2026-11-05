@@ -249,7 +249,7 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   USE_N_NUMBER_OF_WINDOWS_VMS                        [4 v]   1 (default), 2, 3, 4
   ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from the last release runs' marks)
     Memory  needs +61 GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 12 GB
-            available now 72 GB -> 11 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+            available now 71 GB -> 10 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
                                            0h    1h    2h    3h    4h
                                            |-----|-----|-----|-----|-----
     Linux    build + JUnit                 ###                            34 min  (1705 JUnit tests, then the zips and the image)
@@ -261,11 +261,11 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
     Linux    light set on docker-server           #####                   55 min  (step 2, Docker on Linux: 42 tests)
     Win VM a Windows pack                  ########                       1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
     Win VM a Robot UAT                             ####                   41 min  (step 3: 16 tests)
-    Win VM b e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM b e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)
     Win VM b light set on server zip             ..############           1 h 59  (step 3: the same 42 tests; waits for the pack)
-    Win VM c e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM c e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)
     Win VM c light set on Electron               ########                 1 h 23  (step 3: 54 tests)
-    Win VM d e2e package (NoExe)           ######                         58 min  (pack-prepare-for-e2e.bat, once per pin)
+    Win VM d e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)
     Win VM d light set on docker-server          #######################  3 h 50  (step 2, Docker on Windows: the same 42 tests)
                                            # runs   . waits on its machine for its inputs (the build, the pack, the runners' copies)   one column: 10 min
                                            step 1, 2, 3 = the release step a part belongs to, not its order:
@@ -322,12 +322,11 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     (AssemblerTest#assembleDataPallasAndDataPallasServer): first the NoExe package
                                     (NoExeAssembler: mvn clean install of every module but asbl, with their JUnit), then
                                     the release's datapallas.zip, datapallas-server.zip and datapallas-src.zip.
-      e2e package (NoExe)           asbl\pack-prepare-for-e2e.bat on the VM (AssemblerTest#prepareForE2E: NoExeAssembler
-                                    alone, the same mvn clean install with the JUnit), after npm ci in
-                                    frend\rb-webcomponents: asbl\target\package\verified-db-noexe, the folder the VM's
-                                    light sets copy their testground from. Built at the start of the round, before the
-                                    VM's first light set, only when its stamp (.built-from) is not the pinned commit. On
-                                    the pack's VM the green pack already built it: only the stamp is written, seconds.
+      e2e package (from the pack)   the pack's own NoExe package (asbl\target\package\verified-db-noexe, about 1 GB),
+                                    copied to this VM through the Linux host once the pack's NoExeAssembler finished,
+                                    while the pack goes on: sha256 and file count checked, stamped with the pinned commit.
+                                    No build and no JUnit on this VM. When no copy can be made (the pack red before that
+                                    line, a check not met, the copy red), the VM builds its own: e2e package (NoExe).
       Robot UAT                     16 tests in 7 Robot Framework suites, on the pack's zips as a user installs them:
                                     DataPallas-Server, DataPallas-Server-Auth, DataPallas.exe-prerequisites,
                                     DataPallas.exe-quickstart, DataPallas.exe-update, datapallas.bat,
@@ -567,7 +566,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `jenkins.md` | this document |
 | `seed.groovy` | Job DSL: creates the folder and every job. The source of truth for the jobs |
 | `<job>.Jenkinsfile` | one per job, named as the job: starts its script on the host over SSH |
-| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` (or `win docker-e2e` / `win server-e2e` / `win release` / `win robot` with the argument `docker-e2e` / `server-e2e` / `release` / `robot`) as a detached host process (pid in `win-e2e.pid`, shared by every Windows lane), log `<ts>-win-e2e-<sha>.log` (`-win-docker-e2e-`, `-win-server-e2e-`, `-win-release-`), ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (to `RELEASE_PIN` under the orchestrator; `dp-ci.sh win sync`; stops on local changes), the commit tested is printed as `WIN_E2E_COMMIT`, and the VM's package is rebuilt with `asbl/pack-prepare-for-e2e.bat` unless it was built from that commit (`WIN_E2E_PACKAGE=`; `dp-ci.sh win prepare` does both without the tests) |
+| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` (or `win docker-e2e` / `win server-e2e` / `win release` / `win robot` / `win prepare` / `win package` with the argument `docker-e2e` / `server-e2e` / `release` / `robot` / `prepare` / `package`) as a detached host process (pid in `win-e2e.pid`, shared by every Windows lane), log `<ts>-win-e2e-<sha>.log` (`-win-docker-e2e-`, `-win-server-e2e-`, `-win-release-`), ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (to `RELEASE_PIN` under the orchestrator; `dp-ci.sh win sync`; stops on local changes), the commit tested is printed as `WIN_E2E_COMMIT`, and the VM's package is rebuilt with `asbl/pack-prepare-for-e2e.bat` unless it was built from that commit (`WIN_E2E_PACKAGE=`; `dp-ci.sh win prepare` does both without the tests) |
 | `job-step.sh` | on the host: runs one part of a job between a `######## JOB STEP n/N START` and an `END ... took=` line (format: `asbl/ci/marks.sh`) |
 | `release-step1.sh` | on the host: job `dp-ci-release-step1-e2e-prerelease` (the job passes its parameters): one step 1 lane, its record and its history line; the same from the shell |
 | `release-orchestrator.sh` | on the host, no job: one execution from step 0 to the verdicts, on two tracks ("Running the release from the scripts") |
@@ -702,8 +701,27 @@ and for both executions of a release; the image is checked the same way, by its 
 |---|---|---|
 | Linux (`dp-ci.sh e2e`) | `prepare_package`: `mvn clean install -pl asbl -am -DskipTests` + `AssemblerTest#prepareForE2E` (= `pack-prepare-for-e2e.bat`, no JUnit, no image) | `package: built from ...` |
 | Windows VM (`dp-ci.sh win e2e`) | `win_prepare_package`: runs `asbl\pack-prepare-for-e2e.bat` unchanged on the desktop | `WIN_E2E_PACKAGE=current/stale/built` |
+| A release round's other VMs (`dp-ci.sh win package`) | `win_package_from_pack`: a copy of the pack's own package, else `win_prepare_package` | `WIN_E2E_PACKAGE=current/copied from the pack/not copied from the pack (<why>)` |
 
 `dp-ci.sh build` writes the same stamp after it assembles, so an e2e straight after a build does not rebuild again.
+
+A release round with more Windows VMs (`USE_N_NUMBER_OF_WINDOWS_VMS` above 1) builds the Windows package once per pin. The
+pack's first assembler is the `NoExeAssembler` that `pack-prepare-for-e2e.bat` runs alone, so after a green pack the
+pack's VM only writes the stamp. Every other VM takes a copy of the pack's package instead of building its own (an hour
+each, with the product's whole JUnit suite):
+- part `windows-package-from-pack` (`dp-ci.sh win package-pull`), on the pack's VM while it packs: once this pack's
+  `asbl\pack-datapallas.log` holds `FINISHED Assembler:NoExeAssembler`, `verified-db-noexe` goes as one tar archive to
+  this host, its sha256 checked. The log counts only when written after the pack's start on the VM's own clock (the
+  pack prints `WIN_PACK_LOG_SINCE=`): an earlier pack's log, which holds the line too, is never read as this one's. The
+  checks of the pack's own stamp must hold too (the checkout on the pin, no tracked file changed, the
+  `rb-webcomponents` modules from the pin's lock);
+- part `windows-package-<vm>` (`dp-ci.sh win package`, through `win-e2e.sh package`), on each other VM: nothing when its
+  stamp is the pin's already; else the old package and stamp removed, the archive copied and checked, unpacked and
+  counted, the stamp written last;
+- no copy (the pack red before that line, a check not met, a copy red): that VM prepares its own, as before, and every
+  lane runs.
+
+One copy, VM `a`'s package to VM `b` on 2026-11-05: 4,444 files, 1.0 GB, the archive 43 s, the put 39 s.
 
 The one exception is a re-run between the two executions (`asbl/ci/release-rerun.sh`, which sets `E2E_REUSE_BUILD`). It
 takes the build already there, an earlier commit's package or image, only when `asbl/ci/reuse-or-rebuild.sh` finds that

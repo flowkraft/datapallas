@@ -5,12 +5,16 @@
 #      part, no WIN_VM in its commands;
 #   2. M = 2, 3 and 4: the schedule with its times, a line per VM part; each VM's parts in its layout's order, one at a
 #      time, each command to its own VM (WIN_VM, its pid file); the server light set and Robot after the pack ended, the
-#      Windows Docker proof after the build began; one prepare per VM whose lanes test on its e2e package (at its start,
-#      or right after the pack on the pack's VM: pack then the server light set on one VM, one prepare), none on a VM
-#      without one; step 3's verdict on the pack's VM after every lane;
+#      Windows Docker proof after the build began; one e2e package per VM whose lanes test on one, never a prepare on a VM
+#      other than the pack's: the pack's VM prepares (right after the pack: pack then the server light set on one VM), each
+#      other VM takes a copy of the pack's (windows-package-<vm>), made once on the pack's VM after the pack started
+#      (windows-package-from-pack), each copy after it; the schedule's copy rows from 58 min into the pack; step 3's
+#      verdict on the pack's VM after every lane;
 #   3. DRY_RUN_RED: a red build, pack, Windows Docker proof, light set or Robot gives the same verdicts with M = 4 as with
 #      M = 1 (a red pack with M = 2 too); a VM that does not start: its lanes red, the other VMs' lanes run (the pack's VM:
-#      the server light set elsewhere not run, no kept pack); a red prepare: its VM's lane still runs.
+#      the server light set elsewhere not run, no kept pack); no copy of the pack's (the pack red before its NoExeAssembler's
+#      line, a check not met, a copy red): that VM prepares its own and every lane runs; its own prepare red too: its VM's
+#      lane still runs.
 # Every folder is a scratch one; ssh and virsh are stubs first on PATH, every VM running at 12 GB: nothing is started on
 # this host, no settings file of this host is read. Takes about three minutes.
 # Callers: a person or an agent, from the shell, after changing how a round spreads its Windows lanes over its VMs.
@@ -84,7 +88,8 @@ dry_run() {  # dry_run <name> [VAR=value...]: a dry run pinned to C on the scrat
 key() { sed -n "s/^$1=//p" "$RUN/result.txt"; }
 parts() { awk -F'\t' '$1 == "part" { printf "%s%s:%s", s, $2, $4; s = " " }' "$RUN/result.txt"; }
 started() { grep -oE "^PART    $1 START" "$LOG" | awk '{print $2}' | paste -sd' '; }   # started <part regex>: in start order
-vm_parts() { grep -E "^PART    [a-z0-9-]+ START .*VM $1[ ,']" "$LOG" | awk '{print $2}' | paste -sd' '; }   # <vm>: its parts
+# vm_parts <vm>: its parts; not windows-package-from-pack, which watches the pack's VM while it packs (its own cases)
+vm_parts() { grep -E "^PART    [a-z0-9-]+ START .*VM $1[ ,']" "$LOG" | awk '$2 != "windows-package-from-pack" {print $2}' | paste -sd' '; }
 # would_has <log> <text> <text>: one WOULD line of that console has both
 would_has() { grep '^WOULD   RELEASE_PIN=' "$1" | grep -F -- "$2" | grep -qF -- "$3" || { echo "      no WOULD line with \"$2\" and \"$3\""; return 1; }; }
 pidfile_of() { [ "$1" = a ] && echo "/win-e2e.pid" || echo "/win-e2e-$1.pid"; }
@@ -98,20 +103,21 @@ check "  the VM's parts: pack, the Windows Docker proof, the after-pack half, on
    one_at_a_time \"\$2\" windows-pack docker-windows windows-after-pack" _ "$(started '(windows-[a-z0-9-]+|docker-windows)')" "$LOG"
 check "  the schedule: the prepare after the pack kept by it (0 min), the TOTAL" bash -c \
   'grep -qE "^  Win VM a e2e package \(NoExe\) +[0-9]+:[0-9]{2} -> +[0-9]+:[0-9]{2} +0 min  \(already built by the pack: seconds\)" "$1" && grep -q "^TOTAL " "$1"' _ "$LOG"
-check "  no prepare part, no WIN_VM in any command, the VM's pid file 16.6.2's" bash -c \
-  '! grep -q "windows-prepare" "$1" && ! grep -q "WIN_VM=" "$1" && grep -q "WIN_RELEASE_HALF=pack FOLLOW_PIDFILE=.*/logs/win-e2e.pid " "$1"' _ "$LOG"
+check "  no prepare or package part, no WIN_VM in any command, the VM's pid file 16.6.2's" bash -c \
+  '! grep -q "windows-prepare\|windows-package\|WIN_PACK_LOG_SINCE" "$1" && ! grep -q "WIN_VM=" "$1" &&
+   grep -q "WIN_RELEASE_HALF=pack FOLLOW_PIDFILE=.*/logs/win-e2e.pid " "$1"' _ "$LOG"
 
 echo "---- 2. two, three and four VMs: each VM its lanes of the layout ----"
 declare -A LAYOUT
 LAYOUT[2a]="windows-pack windows-prepare-a windows-server-light windows-robot windows-verdict"
-LAYOUT[2b]="windows-prepare-b docker-windows windows-electron-light"
+LAYOUT[2b]="windows-package-b docker-windows windows-electron-light"
 LAYOUT[3a]="windows-pack windows-prepare-a windows-server-light windows-robot windows-verdict"
-LAYOUT[3b]="windows-prepare-b docker-windows"
-LAYOUT[3c]="windows-prepare-c windows-electron-light"
+LAYOUT[3b]="windows-package-b docker-windows"
+LAYOUT[3c]="windows-package-c windows-electron-light"
 LAYOUT[4a]="windows-pack windows-robot windows-verdict"
-LAYOUT[4b]="windows-prepare-b windows-server-light"
-LAYOUT[4c]="windows-prepare-c windows-electron-light"
-LAYOUT[4d]="windows-prepare-d docker-windows"
+LAYOUT[4b]="windows-package-b windows-server-light"
+LAYOUT[4c]="windows-package-c windows-electron-light"
+LAYOUT[4d]="windows-package-d docker-windows"
 for m in 2 3 4; do
   vms=$(echo "a b c d" | cut -d' ' -f1-"$m")
   dry_run "m$m" USE_N_NUMBER_OF_WINDOWS_VMS="$m"
@@ -131,7 +137,8 @@ for m in 2 3 4; do
        one_at_a_time \"\$3\" \$2" _ "$(vm_parts "$v")" "$exp" "$LOG"
     for p in $exp; do
       case "$p" in
-        windows-prepare-*) w="win-e2e.sh prepare" ;; docker-windows) w="DOCKER_RELEASE_PART=windows" ;;
+        windows-prepare-*) w="win-e2e.sh prepare" ;; windows-package-*) w="win-e2e.sh package" ;;
+        docker-windows) w="DOCKER_RELEASE_PART=windows" ;;
         *) w="WIN_RELEASE_HALF=${p#windows-} " ;;
       esac
       [ "$p" = docker-windows ] && pf="" || pf=$(pidfile_of "$v")
@@ -139,9 +146,25 @@ for m in 2 3 4; do
         "$(declare -f would_has); would_has \"\$4\" \"\$1\" \"WIN_VM=\$2 \" && { [ -z \"\$3\" ] || would_has \"\$4\" \"\$1\" \"\$3\"; }" _ "$w" "$v" "$pf" "$LOG"
     done
   done
-  check "  one prepare per VM whose lanes test on its e2e package, one part each" same \
-    "$(for v in $vms; do case " ${LAYOUT[$m$v]} " in *" windows-prepare-$v "*) printf 'windows-prepare-%s\n' "$v" ;; esac; done | sort | paste -sd' ')" \
-    "$(started 'windows-prepare-[a-z]+' | tr ' ' '\n' | sort | paste -sd' ')"
+  others=$(for v in $vms; do case " ${LAYOUT[$m$v]} " in *" windows-package-$v "*) printf '%s ' "$v" ;; esac; done); others=${others% }
+  check "  one e2e package part per VM whose lanes test on one: a prepare on VM a alone, a copy of the pack's on VM(s) $others" same \
+    "$(for v in $vms; do printf '%s\n' ${LAYOUT[$m$v]}; done | grep -E '^windows-(prepare|package)-' | sort | paste -sd' ')" \
+    "$(started 'windows-(prepare|package)-[a-z]+' | tr ' ' '\n' | sort | paste -sd' ')"
+  check "  the pack's e2e package made once, on VM a, after the pack started: for VM(s) $others" bash -c \
+    "$(declare -f before would_has); [ \"\$(grep -c '^PART    windows-package-from-pack START' \"\$1\")\" = 1 ] &&
+     grep -q \"^PART    windows-package-from-pack START .*for VM(s) \$2, once this pack's NoExeAssembler finished\" \"\$1\" &&
+     before \"\$1\" 'PART    windows-pack START' 'PART    windows-package-from-pack START' &&
+     would_has \"\$1\" 'WIN_VM=a WIN_PACKAGE_PACK_RC=' 'dp-ci.sh win package-pull ' &&
+     grep -q '^WIN_PACK_LOG_SINCE=' \"\$3/windows-pack.log\"" _ "$LOG" "$others" "$RUN"
+  check "  each copy waits for it, its archive named, and says it is copied" bash -c \
+    "$(declare -f before would_has); for v in \$2; do
+       before \"\$1\" 'PART    windows-package-from-pack END' \"PART    windows-package-\$v END\" &&
+       would_has \"\$1\" \"WIN_VM=\$v WIN_PACKAGE_ARCHIVE=\" '/e2e-package.tar WIN_PACKAGE_PULL_RC=' &&
+       grep -q '^WIN_E2E_PACKAGE=copied from the pack' \"\$3/windows-package-\$v.log\" || exit 1; done" _ "$LOG" "$others" "$RUN"
+  check "  no prepare on a VM other than the pack's" bash -c '! grep -qE "^PART    windows-prepare-[b-z][a-z0-9]* START" "$1"' _ "$LOG"
+  check "  the schedule: VM(s) $others take the pack's copy 58 min into the pack (the default)" bash -c \
+    'for v in $2; do grep -qE "^  Win VM $v e2e package \(from the pack\) +0:58 -> +[0-9]+:[0-9]{2} +[0-9]+ min  \(a copy of the pack.s, once its NoExeAssembler finished \(58 min into the pack\): no build, no JUnit\)" "$1" || exit 1; done
+     ! grep -qE "^  Win VM [b-z] e2e package \(NoExe\)" "$1"' _ "$LOG" "$others"
   check "  the server light set and Robot after the pack ended" bash -c \
     "$(declare -f before); before \"\$1\" 'PART    windows-pack END' 'PART    windows-server-light START' &&
      before \"\$1\" 'PART    windows-pack END' 'PART    windows-robot START'" _ "$LOG"
@@ -156,9 +179,9 @@ check "pack then the server light set on one VM (M = 2, VM a): one prepare, righ
   "$(declare -f before); [ \"\$(grep -c '^PART    windows-prepare-a START' \"\$1\")\" = 1 ] &&
    before \"\$1\" 'PART    windows-pack END' 'PART    windows-prepare-a START' &&
    before \"\$1\" 'PART    windows-prepare-a END' 'PART    windows-server-light START'" _ "$SCRATCH/run-m2/console.log"
-check "  its schedule: VM a's prepare kept by the pack (0 min), VM b's whole (58 min, the default)" bash -c \
+check "  its schedule: VM a's prepare kept by the pack (0 min), VM b's a copy of the pack's from 0:58" bash -c \
   'grep -qE "^  Win VM a e2e package \(NoExe\) +1:17 -> +1:17 +0 min  \(already built by the pack: seconds\)" "$1" &&
-   grep -qE "^  Win VM b e2e package \(NoExe\) +0:00 -> +0:58 +58 min" "$1"' _ "$SCRATCH/run-m2/console.log"
+   grep -qE "^  Win VM b e2e package \(from the pack\) +0:58 -> " "$1"' _ "$SCRATCH/run-m2/console.log"
 check "  M = 4: none on VM a, whose lanes (pack, Robot) test on no e2e package" bash -c \
   '! grep -q "windows-prepare-a" "$1" && ! grep -q "^  Win VM a e2e package" "$1"' _ "$SCRATCH/run-m4/console.log"
 
@@ -171,6 +194,9 @@ for red in build pack windows-docker-proof server-light electron-light robot; do
     { printf "      M = 1: %s\n      M = 4: %s\n" "$1" "$2"; exit 1; }' _ "$one" "$four"
 done
 dry_run red-pack-m2 USE_N_NUMBER_OF_WINDOWS_VMS=2 DRY_RUN_RED=pack
+check "  DRY_RUN_RED=pack, 4 VMs: no copy of the pack's, VMs b c d each prepare their own" bash -c \
+  'for v in b c d; do grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the pack ended before its NoExeAssembler finished (DRY_RUN_RED=pack)): VM $v prepares its own" "$1/windows-package-$v.log" || exit 1; done' \
+  _ "$(ls -1d "$SCRATCH"/run-red-pack-m4/runs/*/ | tail -1)"
 check "DRY_RUN_RED=pack, 2 VMs: the same verdicts as with 1; the server light set and Robot say there is no pack" bash -c \
   '[ "$1" = "$2" ] && grep -q "^not run: there is no kept pack" "$3/windows-server-light.log" && grep -q "^not run: there is no pack" "$3/windows-robot.log"' \
   _ "$RC $(key result) $(parts)" "$one_pack" "$RUN"
@@ -181,7 +207,8 @@ check "DRY_RUN_RED=vm-b, 2 VMs: VM b's lanes red, VM a's run, the host's green" 
   "1 red lane2-docker-server-auth:PASS lane1-$FULL-full:PASS build:PASS linux-proof:PASS pack:PASS windows-docker-proof:FAIL server-light:PASS electron-light:FAIL robot:PASS docker-verdict:FAIL windows-verdict:FAIL" \
   "$RC $(key result) $(parts)"
 check "  VM b's parts not started, each says why" bash -c \
-  '[ -z "$(grep -E "^PART    (windows-prepare-b|docker-windows|windows-electron-light) START" "$1")" ] &&
+  '[ -z "$(grep -E "^PART    (windows-package-b|docker-windows|windows-electron-light) START" "$1")" ] &&
+   grep -q "^PART    windows-package-b NOT RUN: VM b (win10-dev-b) did not start (DRY_RUN_RED)" "$1" &&
    grep -q "^PART    docker-windows RED: VM b (win10-dev-b) did not start (DRY_RUN_RED)" "$1" &&
    grep -q "^PART    windows-electron-light RED: VM b (win10-dev-b) did not start (DRY_RUN_RED)" "$1"' _ "$LOG"
 echo "shut off" > "$STUB/vms/win10-dev"
@@ -192,9 +219,23 @@ check "DRY_RUN_RED=vm-a, 4 VMs (the pack's VM): its lanes and the verdict red, t
   "$RC $(key result) $(parts)"
 check "  the server light set on VM b not run: no kept pack" bash -c \
   'grep -q "^not run: there is no kept pack" "$1/windows-server-light.log" || { sed "s/^/        /" "$1/windows-server-light.log"; exit 1; }' _ "$RUN"
-dry_run red-prepare USE_N_NUMBER_OF_WINDOWS_VMS=4 DRY_RUN_RED=prepare-c
-check "DRY_RUN_RED=prepare-c, 4 VMs: the prepare red, VM c's Electron light set still runs after it" bash -c \
-  "$(declare -f before); grep -q '^PART    windows-prepare-c END rc=1 ' \"\$1\" && before \"\$1\" 'PART    windows-prepare-c END' 'PART    windows-electron-light START' &&
+check "  the pack's VM down: no copy made (the pack never started), VMs c and d prepare their own" bash -c \
+  'grep -q "^not run: the pack never started" "$1/windows-package-from-pack.log" &&
+   for v in c d; do grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the pack never started .*VM $v prepares its own" "$1/windows-package-$v.log" || exit 1; done' _ "$RUN"
+dry_run red-from-pack USE_N_NUMBER_OF_WINDOWS_VMS=4 DRY_RUN_RED=package-from-pack
+check "DRY_RUN_RED=package-from-pack (a check not met), 4 VMs: green, every lane PASS; VMs b c d each prepare their own" bash -c \
+  '[ "$1 $2" = "0 green" ] && [[ "$3" != *":FAIL"* ]] && [[ "$3" != *":NOT_RUN"* ]] &&
+   for v in b c d; do grep -q "^WIN_E2E_PACKAGE=not copied from the pack (a check not met (DRY_RUN_RED=package-from-pack)): VM $v prepares its own" "$4/windows-package-$v.log" || exit 1; done' \
+  _ "$RC" "$(key result)" "$(parts)" "$RUN"
+dry_run red-copy USE_N_NUMBER_OF_WINDOWS_VMS=4 DRY_RUN_RED=package-c
+check "DRY_RUN_RED=package-c (the copy to VM c red), 4 VMs: green, every lane PASS; VM c prepares its own, b and d copied" bash -c \
+  '[ "$1 $2" = "0 green" ] && [[ "$3" != *":FAIL"* ]] && [[ "$3" != *":NOT_RUN"* ]] &&
+   grep -q "^FAILED: the copy to VM c red" "$4/windows-package-c.log" && grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the copy failed): VM c prepares its own" "$4/windows-package-c.log" &&
+   for v in b d; do grep -q "^WIN_E2E_PACKAGE=copied from the pack" "$4/windows-package-$v.log" || exit 1; done' \
+  _ "$RC" "$(key result)" "$(parts)" "$RUN"
+dry_run red-prepare USE_N_NUMBER_OF_WINDOWS_VMS=4 DRY_RUN_RED="package-c prepare-c"
+check "DRY_RUN_RED=\"package-c prepare-c\", 4 VMs: the copy and its own prepare red, VM c's Electron light set still runs after it" bash -c \
+  "$(declare -f before); grep -q '^PART    windows-package-c END rc=1 ' \"\$1\" && before \"\$1\" 'PART    windows-package-c END' 'PART    windows-electron-light START' &&
    [[ \"\$2\" == *' electron-light:PASS '* ]]" _ "$LOG" "$(parts)"
 
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-vm-lanes"; exit 0; fi

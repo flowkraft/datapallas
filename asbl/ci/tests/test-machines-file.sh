@@ -10,9 +10,11 @@
 #      this host's engine named), /var's free disk after what the runners take (a runner with no volume yet, one with);
 #   4. the lane times read from release runs' marks (a dry run's folder ignored, a red part not used; a run with the
 #      runners: their start and images from their marks, the Linux proof from its own part, the full set's time per
-#      file from each runner's own report, not the slowest runner's time as the lane's), the expected schedule for 4
-#      and 4 with the runners (each its list after its start, this host's auth file and Linux proof beside them), for
-#      1 and 1 with RELEASE_RUNNERS=no, and for in-order;
+#      file from each runner's own report, not the slowest runner's time as the lane's; a round that copied the pack's
+#      e2e package: its NoExeAssembler's line into the pack, the archive plus the slower put, not when the pull was
+#      red), the expected schedule for 4 and 4 with the runners (each its list after its start, this host's auth file
+#      and Linux proof beside them, the other VMs on the pack's copy), for 1 and 1 with RELEASE_RUNNERS=no, and for
+#      in-order;
 #   5. the orchestrator: RELEASE_STEPS=in-order gives 16.6.2's dry-run order, a dry run prints the schedule, and a
 #      layout it cannot run is refused before anything starts.
 # Every folder is a scratch one; virsh, df, docker (its runners' volumes) and ssh are stubs first on PATH: nothing is started, no live folder is
@@ -238,6 +240,24 @@ check "lanes: the Linux proof from its mark; the Windows Docker proof without it
 check "lanes: a red pack is not used, the 16.6.2 default stands" same "77.0 default" "$(lane_line pack | cut -d' ' -f1,2)"
 check "lanes: no runner has run: the runners' start and images are the defaults, said to be not measured" same \
   "15.0 default|10.0 default" "$(lane_line runner-start | cut -d' ' -f1,2)|$(lane_line runner-images | cut -d' ' -f1,2)"
+check "lanes: no round has copied the pack's e2e package: its line at the prepare's 58 min, the one copy of 2026-11-05 (82 s)" same \
+  "58.0 default|1.4 default" "$(lane_line pack-noexe | cut -d' ' -f1,2)|$(lane_line package-copy | cut -d' ' -f1,2)"
+# a round with more VMs that copied the pack's e2e package: the NoExeAssembler's line 55 min into the pack, the archive
+# brought here in 50 s, the slower of two puts 70 s
+RUNS3="$SCRATCH/runs-copy"; P=20261111T000000Z-release-orchestrator-execution-1-version-16.6.3; PD="$RUNS3/$P"; mkdir -p "$PD"
+printf 'PART    windows-pack START 2026-11-11T01:00:00Z on 0123abcd: step 3s pack on VM a, kept\n' > "$PD/run.log"
+printf '%s\n' "WIN_E2E_PACKAGE_WAIT VM a's asbl\pack-datapallas.log" "WIN_E2E_PACKAGE_READY at=2026-11-11T01:55:00Z after=3290s: x" \
+  "WIN_E2E_PACKAGE_ARCHIVE=/x/e2e-package.tar sha256=0123456789abcdef... files=4444 took=50s" > "$PD/windows-package-from-pack.log"
+printf '0\n' > "$PD/windows-package-from-pack.rc"
+for v in b:70 c:40; do
+  printf 'WIN_E2E_PACKAGE=copied from the pack (0123abcd): 4444 files, sha256 0123456789abcdef..., took=%ss\n' "${v#*:}" > "$PD/windows-package-${v%%:*}.log"
+done
+copy_lanes=$(RUN_RECORD_DIR="$RUNS3" machines lanes)
+check "lanes: a round that copied it: its line 55 min into the pack, the copy 50 s + the slower put 70 s = 2 min" same \
+  "55.0 $P|2.0 $P" "$(printf '%s\n' "$copy_lanes" | awk '$1 == "pack-noexe" || $1 == "package-copy" { print $2, $3 }' | paste -sd'|')"
+printf '1\n' > "$PD/windows-package-from-pack.rc"
+check "  that pull red: not used, the defaults stand" same "58.0 default|1.4 default" \
+  "$(RUN_RECORD_DIR="$RUNS3" machines lanes | awk '$1 == "pack-noexe" || $1 == "package-copy" { print $2, $3 }' | paste -sd'|')"
 # a newer run with the runners (2): its build part's mark, the Linux proof in its own part, the full lane merged from two
 # runners (their marks in the lane's log, each runner's own log and report), next to the 16.6.2 run above
 RUNS2="$SCRATCH/runs-runners"; mkdir -p "$RUNS2"; cp -r "$RUNS/$F" "$RUNS2/"
@@ -283,8 +303,8 @@ schedule() {  # schedule <N> <M> <full target>: the library's schedule, as the o
 }
 settings_example
 out=$(schedule 4 4 docker-server)
-check "schedule 4 4: each VM runs its layout, the prepare before its first e2e lane" same \
-  "a Windows pack|a Robot UAT|b e2e package (NoExe)|b light set on server zip|c e2e package (NoExe)|c light set on Electron|d e2e package (NoExe)|d light set on docker-server" \
+check "schedule 4 4: each VM runs its layout, the pack's e2e package before its first e2e lane" same \
+  "a Windows pack|a Robot UAT|b e2e package (from the pack)|b light set on server zip|c e2e package (from the pack)|c light set on Electron|d e2e package (from the pack)|d light set on docker-server" \
   "$(printf '%s\n' "$out" | awk '$1 == "Win" && $2 == "VM" { line = $0; sub(/^ *Win VM /, "", line); sub(/ +[0-9]+:[0-9]+ +->.*/, "", line); gsub(/ +/, " ", line); print line }' | paste -sd'|')"
 check "schedule 4 4: the server light set waits for the pack (on another VM)" has \
   "Win VM b light set on server zip         1:17 ->  3:16   119 min  (step 3; waits for the pack)" "$out"

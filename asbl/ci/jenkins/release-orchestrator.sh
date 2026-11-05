@@ -26,11 +26,15 @@
 #     VMs   with USE_N_NUMBER_OF_WINDOWS_VMS=M above 1, one track per VM instead: each VM runs its lanes of the layout for M
 #           VMs (VM_LANES_<M>_<name>, asbl/ci/release-machines.sh), in order, each when its inputs exist: the Windows Docker
 #           proof once the build ended, the server light set once the pack ended (it installs its datapallas-server.zip),
-#           Robot after the pack on the pack's VM. Each VM whose lanes test on its e2e package prepares it once per pin
-#           (win-e2e.sh prepare): at its start, or right after the pack on the pack's VM (seconds: a green pack stamps its
-#           own package); a red prepare stops none of its lanes: each prepares the package itself first, as when pressed
-#           alone. Each lane alone (WIN_RELEASE_HALF=<lane>); once every lane ended, step 3's verdict on the pack's VM
-#           (WIN_RELEASE_HALF=verdict)
+#           Robot after the pack on the pack's VM. Each VM whose lanes test on its e2e package has it once per pin: the
+#           pack's VM right after the pack (win-e2e.sh prepare: seconds, a green pack stamps its own package); every other
+#           VM a copy of the pack's (windows-package-<vm>, win-e2e.sh package), which the pack's VM makes once, while it
+#           packs, when this pack's NoExeAssembler finished (windows-package-from-pack, dp-ci.sh win package-pull: one
+#           archive through this host, sha256 checked, removed once every VM took it). A VM whose stamp is the pin's
+#           already takes nothing; when no copy can be made (the pack red before that line, a check not met, a copy red)
+#           the VM prepares its own, as before. A red package part stops none of its lanes: each prepares the package
+#           itself first, as when pressed alone. Each lane alone (WIN_RELEASE_HALF=<lane>); once every lane ended, step
+#           3's verdict on the pack's VM (WIN_RELEASE_HALF=verdict)
 #   Step 1 is not asked before steps 2 and 3: their parts get RELEASE_STEP1_AT_SIGNOFF=yes, which release-state.sh
 #   step1-guard honours inside this run only, and the sign-off asks it at the end (release-state.sh step1-guard): not green
 #   = the run is red. Every lane runs whatever the release record says (no verdict carried: a run after fixes starts from
@@ -69,8 +73,12 @@
 #   run.log            this console
 #   <id>.log, <id>.rc  one per part started (step0, step1-build, lane*, docker-linux (with the runners the build only),
 #                      docker-linux-proof (with the runners), docker-windows, docker-keep,
-#                      windows-pack, windows-after-pack; with more VMs windows-prepare-<vm>, windows-server-light,
+#                      windows-pack, windows-after-pack; with more VMs windows-prepare-<vm> (the pack's VM),
+#                      windows-package-from-pack, windows-package-<vm> (the others), windows-server-light,
 #                      windows-electron-light, windows-robot, windows-verdict): its output and its exit code ("-" = not run)
+#   e2e-package.tar    with more VMs, the pack's e2e package for the other VMs while they take it (removed then; a
+#                      crashed round leaves it here), and its record beside it: .sha256 (its sha256, file count, commit)
+#                      or .none (why there is no copy)
 #   result.txt         written at every end: key=value lines, then one tab-separated line per part of the summary
 #                        result=green|red  dry_run=yes|no  execution=1|2  version=<x.y.z>  pin=<commit>
 #                        kept=<the kept folder of the pin, or empty>  step1=green|red|not-run  summary=<run.log>
@@ -131,7 +139,9 @@
 #   DRY_RUN_RED=vm-<name> makes an off VM not start.
 #   The parts: step0, step1-build, lane1-<web|docker-server>-full, lane2-docker-server-auth,
 #   build, linux-proof, pack, windows-docker-proof, server-light, electron-light, robot, docker-verdict, windows-verdict;
-#   with more VMs also prepare-<name>, a VM's e2e package; with the runners also runner-<n> (its share red) and
+#   with more VMs also prepare-<name>, a VM's own e2e package (the pack's VM, or another one's when it takes no copy),
+#   package-from-pack (no copy made: a check not met; pack = the pack red before its NoExeAssembler finished) and
+#   package-<name> (that VM's copy red); with the runners also runner-<n> (its share red) and
 #   runner-<n>-start (it did not start: its engine gave no answer, its files NOT_RUN).
 #
 # USE:
@@ -217,6 +227,8 @@ what_part_starts() {
     windows-pack|windows-after-pack|windows-server-light|windows-electron-light|windows-robot|windows-verdict)
       printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win release' "$(win_vm_suffix "$vm")")" ;;
     windows-prepare-*) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win prepare' "$(win_vm_suffix "$vm")")" ;;
+    windows-package-from-pack) ;;   # SSH calls of this script's own process to the pack's VM: nothing outlives it
+    windows-package-*) printf '%s\n' "$windows_driver" "$(printf 'vm\twindows-vm%s\tdp-ci.sh win package' "$(win_vm_suffix "$vm")")" ;;
     vm-*) printf 'domain\t%s\tthe Windows VM %s, started by this run (virsh start): shut down after its last part\n' \
       "$(machines_domain_of "${1#vm-}")" "${1#vm-}" ;;
   esac
@@ -398,7 +410,8 @@ vm_of_lane() {
 vm_of_part() {
   case "$1" in
     windows-prepare-*) echo "${1#windows-prepare-}" ;;
-    windows-pack|windows-verdict) vm_of_lane pack ;;
+    windows-pack|windows-verdict|windows-package-from-pack) vm_of_lane pack ;;
+    windows-package-*) echo "${1#windows-package-}" ;;
     docker-windows) vm_of_lane docker-proof ;;
     windows-server-light|windows-electron-light|windows-robot) vm_of_lane "${1#windows-}" ;;
     *) echo a ;;
@@ -411,10 +424,18 @@ vm_needs_package() {
   for l in $(machines_lanes_of "$WINDOWS_VMS_USED" "$1"); do case "$l" in docker-proof|server-light|electron-light) return 0 ;; esac; done
   return 1
 }
+# PACKAGE_TO: with more VMs, the VMs other than the pack's whose lanes test on an e2e package: each takes a copy of the
+# pack's (windows-package-<vm>) instead of building its own; PACKAGE_ARCHIVE: that copy on this host, while they take it
+PACKAGE_TO=""
+if [ "$WINDOWS_VMS_USED" != 1 ] && [[ " $(machines_lanes_of "$WINDOWS_VMS_USED" "$PACK_VM") " == *" pack "* ]]; then
+  for vm in $RUN_VMS; do [ "$vm" = "$PACK_VM" ] || ! vm_needs_package "$vm" || PACKAGE_TO="${PACKAGE_TO:+$PACKAGE_TO }$vm"; done
+fi
+PACKAGE_ARCHIVE="$PARTS/e2e-package.tar"   # its record beside it names the commit
 # vm_order <vm>: its parts in order, as the ORDER line says them (more VMs)
 vm_order() {
   local l out=""
-  [ "$1" = "$PACK_VM" ] || ! vm_needs_package "$1" || out="prepare (its e2e package, once per pin), "
+  [ "$1" = "$PACK_VM" ] || ! vm_needs_package "$1" ||
+    out="package (its e2e package, once per pin: a copy of the pack's once VM $PACK_VM's NoExeAssembler finished, else its own prepare), "
   for l in $(machines_lanes_of "$WINDOWS_VMS_USED" "$1"); do
     case "$l" in
       pack) out="${out}pack (WIN_RELEASE_HALF=pack), "; ! vm_needs_package "$1" || out="${out}prepare (right after the pack: seconds, the pack stamps its package), " ;;
@@ -483,6 +504,7 @@ simulate() {
       simulated_mark "DOCKER RELEASE STEP 3/6" linux-proof ;;
     windows-pack)
       echo "RELEASE_ARTIFACTS=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/${VERSION:-<version>}-${PIN:0:8} (dry run: the folder this half would begin)"
+      [ -z "$PACKAGE_TO" ] || echo "WIN_PACK_LOG_SINCE=0 (dry run: the pack's start on its VM's clock, before asbl\\pack-datapallas.bat)"
       simulated_mark "RELEASE STEP 1/5" pack ;;
     docker-windows) simulated_mark "DOCKER RELEASE STEP 4/6" windows-docker-proof ;;
     windows-after-pack)
@@ -504,6 +526,31 @@ simulate() {
     windows-prepare-*)
       echo "dry run: VM ${1#windows-prepare-}'s e2e package: pack-prepare-for-e2e.bat only when its stamp is not ${PIN:0:8}"
       red_in_dry_run "${1#windows-}" && { echo "FAILED: ${1#windows-} red (DRY_RUN_RED)"; return 1; }
+      return 0 ;;
+    # one e2e package per pin, from the pack: the pack ended red before its NoExeAssembler's line = DRY_RUN_RED=pack
+    windows-package-from-pack)
+      echo "dry run: on VM $PACK_VM while it packs, a look every minute until this pack's asbl\\pack-datapallas.log (written after WIN_PACK_LOG_SINCE, the VM's clock) holds 'FINISHED Assembler:NoExeAssembler' and the checks of the pack's stamp hold (the checkout on ${PIN:0:8}, no tracked file changed, the rb-webcomponents modules from its lock); then verified-db-noexe as one archive to $PACKAGE_ARCHIVE (sha256 checked) for VM(s) $PACKAGE_TO"
+      if red_in_dry_run pack; then
+        until [ -f "$PARTS/windows-pack.rc" ]; do sleep 1; done
+        echo "WIN_E2E_PACKAGE_NONE the pack ended before its NoExeAssembler finished (DRY_RUN_RED=pack): each VM of the round prepares its own"; return 1
+      elif red_in_dry_run package-from-pack; then
+        echo "WIN_E2E_PACKAGE_NONE a check not met (DRY_RUN_RED=package-from-pack): each VM of the round prepares its own"; return 1
+      fi
+      echo "WIN_E2E_PACKAGE_ARCHIVE=$PACKAGE_ARCHIVE (dry run: nothing archived or copied)"
+      return 0 ;;
+    windows-package-*)
+      v=${1#windows-package-}
+      echo "dry run: VM $v's e2e package: nothing when its stamp is ${PIN:0:8}'s already; else the pack's copy once windows-package-from-pack brought it here, else its own prepare (pack-prepare-for-e2e.bat)"
+      until [ -f "$PARTS/windows-package-from-pack.rc" ]; do sleep 1; done
+      if [ "$(cat "$PARTS/windows-package-from-pack.rc")" != 0 ]; then
+        echo "WIN_E2E_PACKAGE=not copied from the pack ($(sed -n 's/^WIN_E2E_PACKAGE_NONE \(.*\): each VM of the round prepares its own$/\1/p; s/^not run: //p' "$PARTS/windows-package-from-pack.log" | tail -1)): VM $v prepares its own (dry run)"
+      elif red_in_dry_run "package-$v"; then
+        echo "FAILED: the copy to VM $v red (DRY_RUN_RED)"
+        echo "WIN_E2E_PACKAGE=not copied from the pack (the copy failed): VM $v prepares its own (dry run)"
+      else
+        echo "WIN_E2E_PACKAGE=copied from the pack (dry run: nothing copied, the stamp would be ${PIN:0:8})"; return 0
+      fi
+      red_in_dry_run "prepare-$v" && { echo "FAILED: prepare-$v red (DRY_RUN_RED)"; return 1; }
       return 0 ;;
     # the lanes alone (more VMs): what the pack left is its part's exit code, whichever VM packed
     windows-server-light)
@@ -1032,6 +1079,32 @@ vm_prepare() {
   run_part "windows-prepare-$1" "VM $1's e2e package, once per pin (win-e2e.sh prepare: built only when its stamp is not ${PIN:0:8})" \
     env WIN_VM="$1" FOLLOW_PIDFILE="$(win_vm_pidfile "$1")" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh prepare
 }
+# vm_package <vm>: a VM other than the pack's: its e2e package once per pin, a copy of the pack's (dp-ci.sh win package:
+# nothing when its stamp is the pin's already; its own prepare when no copy can be made)
+vm_package() {
+  run_part "windows-package-$1" "VM $1's e2e package, once per pin: a copy of the pack's, from windows-package-from-pack (win-e2e.sh package; its own prepare when no copy can be made)" \
+    env WIN_VM="$1" WIN_PACKAGE_ARCHIVE="$PACKAGE_ARCHIVE" WIN_PACKAGE_PULL_RC="$PARTS/windows-package-from-pack.rc" \
+      FOLLOW_PIDFILE="$(win_vm_pidfile "$1")" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh package
+}
+# package_from_pack: the pack's e2e package for the VMs of PACKAGE_TO, once: from the pack's start on its VM's clock
+# (WIN_PACK_LOG_SINCE=, which the pack prints before asbl\pack-datapallas.bat), dp-ci.sh win package-pull waits on the
+# pack's VM for this pack's NoExeAssembler and brings the archive here; the archive is removed once every one of those
+# VMs' package parts ended. A pack that never started the bat (its VM did not start, a check before the pack red): no
+# copy, each VM prepares its own
+package_from_pack() {
+  local since v
+  until grep -aq '^WIN_PACK_LOG_SINCE=' "$PARTS/windows-pack.log" 2>/dev/null || [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done
+  since=$(sed -n 's/^WIN_PACK_LOG_SINCE=\([0-9][0-9]*\).*/\1/p' "$PARTS/windows-pack.log" 2>/dev/null | head -1)
+  if [ -z "$since" ] && ! grep -aq '^WIN_PACK_LOG_SINCE=' "$PARTS/windows-pack.log" 2>/dev/null; then
+    [ "$DRY" = yes ] || echo "the pack never started asbl\\pack-datapallas.bat (no WIN_PACK_LOG_SINCE= in its log)" > "$PACKAGE_ARCHIVE.none"
+    not_run windows-package-from-pack "the pack never started asbl\\pack-datapallas.bat (no WIN_PACK_LOG_SINCE= in its log): VM(s) $PACKAGE_TO prepare their own"
+  else
+    run_part windows-package-from-pack "VM $PACK_VM's e2e package for VM(s) $PACKAGE_TO, once this pack's NoExeAssembler finished (dp-ci.sh win package-pull)" \
+      env WIN_VM="$PACK_VM" WIN_PACKAGE_PACK_RC="$PARTS/windows-pack.rc" bash asbl/ci/dp-ci.sh win package-pull "$PACKAGE_ARCHIVE" "$PIN" "$since"
+  fi
+  for v in $PACKAGE_TO; do until [ -f "$PARTS/windows-package-$v.rc" ]; do sleep "$POLL"; done; done
+  if [ -e "$PACKAGE_ARCHIVE" ]; then rm -f "$PACKAGE_ARCHIVE"; echo "PACKAGE the pack's e2e package removed from this host ($PACKAGE_ARCHIVE): VM(s) $PACKAGE_TO took it"; fi
+}
 lane_id() { case "$1" in pack) echo windows-pack ;; docker-proof) echo docker-windows ;; *) echo "windows-$1" ;; esac; }   # lane_id <lane>: its part
 # vm_lanes_track <vm>: that VM's lanes in order, each when its inputs exist; the VM shut down after them when this run
 # started it (the pack's VM after the verdict)
@@ -1041,11 +1114,13 @@ vm_lanes_track() {
   if ! vm_up "$v"; then
     vm_red "$VM_WHY" $(for lane in $(machines_lanes_of "$WINDOWS_VMS_USED" "$v"); do lane_id "$lane"; done)
     [ "$v" != "$(vm_of_lane docker-proof)" ] || touch "$PARTS/.docker-windows-done"
+    [[ " $PACKAGE_TO " != *" $v "* ]] || not_run "windows-package-$v" "$VM_WHY"
     echo "$VM_WHY" > "$PARTS/.vm-$v-red"
     [ "$v" = "$PACK_VM" ] || vm_down "$v"
     return
   fi
-  [ "$v" = "$PACK_VM" ] || ! vm_needs_package "$v" || vm_prepare "$v"
+  if [[ " $PACKAGE_TO " == *" $v "* ]]; then vm_package "$v"
+  else [ "$v" = "$PACK_VM" ] || ! vm_needs_package "$v" || vm_prepare "$v"; fi
   for lane in $(machines_lanes_of "$WINDOWS_VMS_USED" "$v"); do
     case "$lane" in
       pack)
@@ -1071,6 +1146,7 @@ vm_lanes_track() {
 # when this run started it
 track_vms() {
   local v pids=()
+  [ -z "$PACKAGE_TO" ] || { package_from_pack & pids+=("$!"); }
   for v in $RUN_VMS; do vm_lanes_track "$v" & pids+=("$!"); done
   wait "${pids[@]}"
   if [ -f "$PARTS/.vm-$PACK_VM-red" ]; then vm_red "$(cat "$PARTS/.vm-$PACK_VM-red")" windows-verdict

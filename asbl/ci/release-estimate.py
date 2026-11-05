@@ -8,7 +8,7 @@ Playwright JSON reports, and writes nothing.
 
   release-estimate.py lanes    --runs <RUN_RECORD_DIR>
       one "<lane> <minutes> <where from>" line per lane: build auth full-web full-docker-server linux-proof pack prepare
-      docker-proof server-light electron-light robot runner-start runner-images
+      docker-proof server-light electron-light robot runner-start runner-images pack-noexe package-copy
   release-estimate.py files    --runs <RUN_RECORD_DIR> --target web|docker-server
       the time per spec file of that target's newest passed full set: "<minutes> <file>" lines, longest first, then
       "SETUP <minutes>" (the lane's time before Playwright) and "RATIO <wall/test time>" (Playwright's overhead)
@@ -46,6 +46,12 @@ host's lanes write the checkout and the caches), then step 2's Linux proof. The 
 a machine's name goes. --runners no (or the steps in order): the full set whole on this host's engine, after the Linux
 proof and the auth file, as before the runners.
 
+One e2e package per pin, from the pack (more VMs): every VM other than the pack's whose lanes test on an e2e package
+takes a copy of the pack's (asbl/ci/dp-ci.sh win package) instead of building it (prepare): once the pack's
+NoExeAssembler finished (pack-noexe, minutes into the pack: windows-package-from-pack's WIN_E2E_PACKAGE_READY at= after
+the pack's start), then the copy (package-copy: that part's WIN_E2E_PACKAGE_ARCHIVE took= plus the slowest VM's
+WIN_E2E_PACKAGE=copied took=). With one VM, or no pack in the round, each VM prepares its own, as before.
+
 The names (PART_NAMES): each part says which test set it runs and where, the same name on every machine (Linux, Win VM
 <name>); its note says its step and its counts, and under the chart "What each part runs" says what each name runs, with
 the counts of the newest runs that passed it (result.txt, test_counts) and the lists of this checkout (light-set.txt, the
@@ -66,12 +72,19 @@ from datetime import datetime, timezone
 # runner-images (its images copied by id) are not measured: no runner ran before the 16.6.3 release. They are a first
 # start's guess from what it copies (this host's sizes on 2026-11-05: the checkout 9 GB, the caches 12 GB, the images of
 # the runner's list 10 GB); a later start copies only what changed. The 16.6.3 release's RUNNER <n> marks replace them.
+# pack-noexe (the pack's NoExeAssembler line, minutes into the pack) is the prepare's 58 until a round measures it, and
+# package-copy is the one copy of VM a's package to VM b of 2026-11-05 (plan 16.6.3 TODO 20): the archive made on VM a
+# and brought here in 43 s, put on VM b in 39 s (4,444 files, 1.0 GB), 1.4 min; the 16.6.3 release's windows-package-*
+# parts replace both, with three VMs taking their copy at once.
 DEFAULT_MINUTES = {
     "build": 34, "auth": 20, "full-web": 640, "full-docker-server": 620, "linux-proof": 55, "pack": 77, "prepare": 58,
     "docker-proof": 230, "server-light": 119, "electron-light": 83, "robot": 41, "runner-start": 15, "runner-images": 10,
+    "pack-noexe": 58, "package-copy": 1.4,
 }
 DEFAULT_FROM = {"runner-start": "default (not measured yet: no runner has run)",
-                "runner-images": "default (not measured yet: no runner has run)"}
+                "runner-images": "default (not measured yet: no runner has run)",
+                "pack-noexe": "default (not measured yet: the prepare's time, no round has copied a package)",
+                "package-copy": "default (the one copy of VM a's package to VM b, 2026-11-05: 82 s)"}
 VM_LANES = ("pack", "docker-proof", "server-light", "electron-light", "robot")
 E2E_VM_LANES = ("docker-proof", "server-light", "electron-light")   # each needs the VM's e2e package (the prepare)
 LICENCE_SPECS = ("specs/components/license.spec.ts", "specs/areas/processing-license.spec.ts")
@@ -84,7 +97,8 @@ RUNS_TO_READ = 12   # the newest real runs read for the lane times
 LINUX_HOST = "Linux"
 PART_NAMES = {
     "build": "build + JUnit", "linux-proof": "light set on docker-server", "auth": "auth file on docker-server",
-    "pack": "Windows pack", "prepare": "e2e package (NoExe)", "docker-proof": "light set on docker-server",
+    "pack": "Windows pack", "prepare": "e2e package (NoExe)", "package-copy": "e2e package (from the pack)",
+    "docker-proof": "light set on docker-server",
     "server-light": "light set on server zip", "electron-light": "light set on Electron", "robot": "Robot UAT",
 }
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -215,11 +229,29 @@ def lanes_of_run(folder):
             if prep > 5 and "prepare" not in found:
                 found["prepare"] = prep
     for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
-        if "prepare" not in found and re.match(r"windows-prepare-[a-z0-9]+\.log$", name):
+        if "prepare" not in found and re.match(r"windows-(prepare|package)-[a-z0-9]+\.log$", name):
             prep = prepare_minutes(read_text(os.path.join(folder, name)))
             if prep > 5:   # a stamp of this commit already there takes seconds
                 found["prepare"] = prep
+    found.update(package_copy_minutes(folder, run_log))
     return found
+
+
+def package_copy_minutes(folder, run_log):
+    """{pack-noexe, package-copy} of a round that copied the pack's e2e package (more VMs): the pack's NoExeAssembler
+    line after the pack's start, and the copy (the archive brought here, then the slowest VM's put), or {}"""
+    pull = read_text(os.path.join(folder, "windows-package-from-pack.log"))
+    ready = re.search(r"^WIN_E2E_PACKAGE_READY at=(\S+)", pull, re.M)
+    archive = re.search(r"^WIN_E2E_PACKAGE_ARCHIVE=.* took=(\d+)s", pull, re.M)
+    pack = re.search(r"^PART +windows-pack START (\S+)", run_log, re.M)
+    if not (passed(folder, "windows-package-from-pack") and ready and archive and pack):
+        return {}
+    puts = [int(t) for name in os.listdir(folder) if re.match(r"windows-package-[a-z0-9]+\.log$", name)
+            for t in re.findall(r"^WIN_E2E_PACKAGE=copied from the pack .* took=(\d+)s", read_text(os.path.join(folder, name)), re.M)]
+    if not puts:
+        return {}
+    return {"pack-noexe": (parse_utc(ready.group(1)) - parse_utc(pack.group(1))).total_seconds() / 60,
+            "package-copy": (int(archive.group(1)) + max(puts)) / 60}
 
 
 def lane_minutes(runs):
@@ -455,6 +487,12 @@ def what_each_part_runs(rows, counts, target, groups=None, lanes=None):
                          "copy their testground from. Built at the start of the round, before the VM's first light set, "
                          "only when its stamp (.built-from) is not the pinned commit. On the pack's VM the green pack "
                          "already built it: only the stamp is written, seconds.")
+    if PART_NAMES["package-copy"] in names:
+        lines += wrapped(PART_NAMES["package-copy"], "the pack's own NoExe package (asbl\\target\\package\\verified-db-noexe, "
+                         "about 1 GB), copied to this VM through the Linux host once the pack's NoExeAssembler finished, "
+                         "while the pack goes on: sha256 and file count checked, stamped with the pinned commit. No build "
+                         "and no JUnit on this VM. When no copy can be made (the pack red before that line, a check not "
+                         "met, the copy red), the VM builds its own: %s." % PART_NAMES["prepare"])
     if PART_NAMES["robot"] in names:
         suites = sorted(f[:-len(".robot")] for f in os.listdir(ROBOT_SUITES_DIR) if f.endswith(".robot")) \
             if os.path.isdir(ROBOT_SUITES_DIR) else []
@@ -622,10 +660,12 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
             clock += minutes
         offset = 0.0
     # the VMs: each runs its lanes in order, each when its inputs exist; the prepare before its first e2e lane, seconds
-    # after a green pack on the same VM (it stamps its NoExe package as the VM's e2e package)
+    # after a green pack on the same VM (it stamps its NoExe package as the VM's e2e package); with more VMs, the others
+    # take a copy of the pack's once its NoExeAssembler finished (pack-noexe into the pack), instead of preparing
     pack_vm = next((v for v in vms if "pack" in layouts[v]), vms[0])
+    copies = len(vms) > 1 and "pack" in layouts[pack_vm]
     clock = {v: offset for v in vms}
-    pack_end = None
+    pack_start = pack_end = None
     pending = {v: list(layouts[v]) for v in vms}
     prepared = {v: False for v in vms}
     progress = True
@@ -642,12 +682,19 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
                         break   # waits for the pack, on another VM (or later on this one)
                     ready = max(ready, pack_end)
                 if lane in E2E_VM_LANES and not prepared[v]:
-                    start = clock[v]
+                    start, name = clock[v], PART_NAMES["prepare"]
                     if v == pack_vm and pack_end is not None:
                         minutes, note = 0, "already built by the pack: seconds"
+                    elif v != pack_vm and copies:
+                        if pack_start is None:
+                            break   # the copy waits for the pack's NoExeAssembler, on another VM
+                        start, name = max(start, pack_start + m["pack-noexe"]), PART_NAMES["package-copy"]
+                        minutes = m["package-copy"]
+                        note = ("a copy of the pack's, once its NoExeAssembler finished (%d min into the pack): no "
+                                "build, no JUnit" % round(m["pack-noexe"]))
                     else:
                         minutes, note = m["prepare"], "pack-prepare-for-e2e.bat, once per pin"
-                    rows.append((windows_vm(v), PART_NAMES["prepare"], start, start + minutes, note))
+                    rows.append((windows_vm(v), name, start, start + minutes, note))
                     clock[v] = start + minutes
                     prepared[v] = True
                     ready = max(ready, clock[v])
@@ -664,7 +711,7 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
                 rows.append((windows_vm(v), PART_NAMES[lane], ready, end, note))
                 clock[v] = end
                 if lane == "pack":
-                    pack_end = end
+                    pack_start, pack_end = ready, end
                 pending[v].pop(0)
                 progress = True
     return rows
@@ -919,7 +966,10 @@ def main():
           % (servers, "" if servers == 1 else "s", args.server_gb, servers * args.server_gb,
              engines_text(args.jobs, use_runners),
              ("%s x %g GB = %g GB" % (" ".join(off), args.vm_gb, len(off) * args.vm_gb)) if off else "none"))
-    where = sorted({src for _, src in lanes.values()})
+    # the copy's two times are named only when a VM copies the pack's e2e package (more VMs): with one VM the line reads
+    # as before the copy
+    copying = any(part == PART_NAMES["package-copy"] for _, part, _, _, _ in rows)
+    where = sorted({src for lane, (_, src) in lanes.items() if copying or lane not in ("pack-noexe", "package-copy")})
     print("FROM      the lane times of %s; the time per file of %s" % (", ".join(where),
                                                                      full_info["from"] if full_info else "none (the whole lane's)"))
     return 0
