@@ -7,7 +7,7 @@
 #   2. for each of the 16: the block draws (what the press refuses, the memory line, the chart, the total, where from);
 #      each part's times are the schedule's (release-machines.sh's machines_schedule) and its bar starts and ends there,
 #      to half a column; the total is the last end; the gain is against 1 and 1; the memory is N + 1 host test servers
-#      (each runner and this host's engine, named) and M - 1 VMs; none is REFUSED at the press with 100 GB (N above 1
+#      (each runner and the host lanes' runner, named) and M - 1 VMs; none is REFUSED at the press with 100 GB (N above 1
 #      runs in runners, RELEASE_RUNNERS=yes);
 #   3. 1 and 1, and 4 and 4, match a count by hand within 5 minutes, from the lane times (release-machines.sh lanes),
 #      the time per file (release-estimate.py files) and the runner lists (asbl/ci/full-set-runners.py files): each
@@ -189,10 +189,10 @@ for (n, m), p in sorted(pairs.items()):
         gain = "(with 1 and 1: about %s; about %s longer)" % (about(base), about(total - base))
     if p["total_line"] != "Total   about %s   %s" % (about(total), gain):
         bad["gain"].append("%s: %s, expected about %s %s" % (tag, p["total_line"], about(total), gain))
-    # the memory: N + 1 host test servers (each runner and this host's engine), M - 1 VMs
+    # the memory: N + 1 host test servers (each runner and the host lanes' runner), M - 1 VMs
     need = (n + 1) * data["server_gb"] + (m - 1) * data["vm_gb"]
     engines = {1: "runner 1", 2: "runners 1, 2"}.get(n, "runners 1 to %d" % n)
-    if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB (%s and this host's engine); "
+    if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB (%s and the host lanes' runner); "
                                                              % (n + 1, data["server_gb"], engines)):
         bad["memory"].append("%s: needs %s (%s), expected %d" % (tag, p["need_gb"], p["need_text"], need))
     # refused at the press: none (N above 1 runs in runners)
@@ -216,7 +216,7 @@ check("each part's times are the schedule's (release-machines.sh machines_schedu
 check("each bar starts and ends at its part's times, to half a column, for the 16", bad["bars"])
 check("the total is the last end (also the chart's last column), for the 16", bad["total"])
 check("the gain is against 1 and 1 (about %s), for the 16" % about(base), bad["gain"])
-check("the memory: N + 1 host test servers x %d GB (the runners and this host's engine) and M - 1 VMs x %d GB, for the 16"
+check("the memory: N + 1 host test servers x %d GB (the runners and the host lanes' runner) and M - 1 VMs x %d GB, for the 16"
       % (data["server_gb"], data["vm_gb"]), bad["memory"])
 check("none REFUSED at the press (N above 1 runs in runners)", bad["refused"])
 check("each block: the refusals, the memory against 100 GB, the chart, the total, where from", bad["block"])
@@ -366,7 +366,7 @@ WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "
 check "WIN_VM_MEMORY_GB=10: 4 and 4 need 42 GB less ($need GB with 24)" \
   same $((need - 42)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate 4 4 > "$SCRATCH/shell-vm10.txt"
-check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 42)) GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 42)) GB: 5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 RELEASE_WINDOWS_VMS="a b" RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate > /dev/null
 check "RELEASE_WINDOWS_VMS=\"a b\": 3 and 4 VMs not created yet, refused and not drawn; 1 and 2 VMs drawn" python3 -I -c 'import json, sys
 d = json.load(open(sys.argv[1]))
@@ -377,7 +377,7 @@ RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 3 >
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 2 > "$SCRATCH/shell-ab-1-2.txt"
 check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with its memory" \
   bash -c 'grep -q "^REFUSED at the press: USE_N_NUMBER_OF_WINDOWS_VMS=3, .*not created yet" "$1" &&
-    grep -qx "Memory  needs +58 GB: 2 host test servers x 5 GB (runner 1 and this host'"'"'s engine); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
+    grep -qx "Memory  needs +58 GB: 2 host test servers x 5 GB (runner 1 and the host lanes'"'"' runner); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
     grep -q "^Total   not estimated" "$1"' _ "$SCRATCH/shell-ab-1-3.txt"
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \

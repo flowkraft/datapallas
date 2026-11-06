@@ -613,8 +613,8 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
         subsets = [(m["full-" + target] / n, [])] * n
     if steps == "together" and runners:
         # the runners: N Docker engines of their own on this host, all started at the build's end mark, each its list
-        # after its start (its engine, this checkout and the caches, then the images); this host's engine meanwhile:
-        # the auth file once every runner's caches are copied in (this host's lanes write both), then the Linux proof
+        # after its start (its engine, this checkout and the caches, then the images); the host lanes' runner meanwhile,
+        # started at the same mark: the auth file after its own start, then the Linux proof
         groups, why = runner_groups(full, lanes, target, n)
         copied = build_end + m["runner-start"]
         for k, (minutes, files) in enumerate(groups, 1):
@@ -629,8 +629,9 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
             rows.append(("runner %d" % k, full_set_name(target), build_end, copied + m["runner-images"] + minutes,
                          "step 1, %s; after its start (%d min) and its images (%d min)"
                          % (what, round(m["runner-start"]), round(m["runner-images"]))))
-        auth_end = copied + m["auth"]
-        rows.append((auth[0], auth[1], copied, auth_end, auth[2] + "; once the runners have the checkout and the caches"))
+        auth_end = copied + m["runner-images"] + m["auth"]
+        rows.append((auth[0], auth[1], build_end, auth_end, auth[2] + "; in the host lanes' runner, after its start (%d min) and its images (%d min)"
+                     % (round(m["runner-start"]), round(m["runner-images"]))))
         rows.append((proof[0], proof[1], auth_end, auth_end + m["linux-proof"], proof[2]))
         offset = 0.0
     elif steps == "in-order":
@@ -851,10 +852,10 @@ def estimates(args):
 
 
 def engines_text(n, runners):
-    """what the memory rule's N + 1 host test servers are, with the runners: " (runner 1 and this host's engine)" """
+    """what the memory rule's N + 1 host test servers are, with the runners: " (runner 1 and the host lanes' runner)" """
     if not runners:
         return ""
-    return " (%s and this host's engine)" % ("runner 1" if n == 1 else "runners 1, 2" if n == 2 else
+    return " (%s and the host lanes' runner)" % ("runner 1" if n == 1 else "runners 1, 2" if n == 2 else
                                              "runners 1 to %d" % n)
 
 

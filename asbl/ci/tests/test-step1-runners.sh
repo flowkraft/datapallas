@@ -7,9 +7,7 @@
 #      full set; one dp-ci-runner-<n> line per runner in started.txt; lane 1 gets E2E_RUNNERS=N and the round's rotation
 #      date; this host runs the build, then the auth file, then the Linux proof (the ORDER lines, the parts' order, their
 #      DOCKER_RELEASE_PART); lane 1 starts before the Linux proof ends;
-#   2. the runners start at the build's end mark (the orchestrator's track_runners, run alone on scratch logs), and this
-#      host's next lane waits for each runner's checkout and caches, a runner that did not start, or lane 1's end
-#      (runner_copies_in);
+#   2. the runners start at the build's end mark (the orchestrator's track_runners, run alone on scratch logs);
 #   3. reds (N=4): the auth file red: the Linux proof still runs; a runner red, and one not started: lane 1 red, the
 #      sign-off refused; the build red: the auth file and the Linux proof NOT_RUN;
 #   4. the switches: RELEASE_RUNNERS=no and RELEASE_STEPS=in-order start no runner; RELEASE_RUNNERS=no with N=2 is
@@ -160,9 +158,16 @@ check "  the build part: DOCKER_RELEASE_PART=build; the Linux proof: DOCKER_RELE
    grep -q "^######## DOCKER RELEASE STEP 2/6 END rc=0" "$2/docker-linux.log" && ! grep -q "STEP 3/6" "$2/docker-linux.log" &&
    grep -q "^######## DOCKER RELEASE STEP 3/6 END rc=0" "$2/docker-linux-proof.log"' _ "$LOG" "$RUN"
 check "  the ORDER lines say so" bash -c \
-  'grep -qF "docker-linux (step 2'"'"'s build, DOCKER_RELEASE_PART=build), then step 1'"'"'s lane2-docker-server-auth once each runner'"'"'s" "$1" &&
+  'grep -qF "docker-linux (step 2'"'"'s build, DOCKER_RELEASE_PART=build), then step 1'"'"'s lane2-docker-server-auth," "$1" &&
    grep -qF "then docker-linux-proof (step 2'"'"'s Linux proof, DOCKER_RELEASE_PART=linux-proof)" "$1" &&
    grep -qF "runners, from the build'"'"'s end mark (DOCKER RELEASE STEP 2/6 END): step 1'"'"'s '"$L1"' in 4 runner(s)" "$1"' _ "$LOG"
+check "  the auth file and the Linux proof in the host lanes' runner; the build and lane 1 not" bash -c \
+  'grep "^WOULD .*release-step1\.sh" "$1" | grep -v "E2E_RUNNERS=" | grep -q "E2E_IN_HOST_LANES_RUNNER=yes" &&
+   grep "^WOULD " "$1" | grep "DOCKER_RELEASE_PART=linux-proof " | grep -q "E2E_IN_HOST_LANES_RUNNER=yes" &&
+   ! grep "^WOULD " "$1" | grep "DOCKER_RELEASE_PART=build " | grep -q "E2E_IN_HOST_LANES_RUNNER" &&
+   ! grep "^WOULD .*E2E_RUNNERS=" "$1" | grep -q "E2E_IN_HOST_LANES_RUNNER"' _ "$LOG"
+check "  started.txt names that runner for both, so a stop finds it" same "docker-linux-proof lane2-docker-server-auth" \
+  "$(awk -F'\t' '$3 == "container" && $4 == "dp-ci-runner-5" { print $2 }' "$RUN/started.txt" | sort | paste -sd' ')"
 check "  the summary's linux-proof is the Linux proof part's verdict" same "PASS $RUN/docker-linux-proof.log" \
   "$(awk -F'\t' '$1 == "part" && $2 == "linux-proof" { print $4 }' "$RUN/result.txt") $(sed -n 's/^  linux-proof  *PASS  *(log \(.*\))$/\1/p' "$LOG")"
 whole_set() {  # 1 runner holds the whole full set: the files of the 4 runners together
@@ -170,7 +175,7 @@ whole_set() {  # 1 runner holds the whole full set: the files of the 4 runners t
 }
 check "N=1: one runner, with the whole full set (the 4 runners' files together, $(for r in 1 2 3 4; do runner_files 4 "$r"; done | wc -l) files)" whole_set
 
-echo "---- 2. the runners start at the build's end mark; this host's next lane waits for their copies ----"
+echo "---- 2. the runners start at the build's end mark ----"
 T="$SCRATCH/alone"; mkdir -p "$T"
 fn() { sed -n "/^$1() {/,/^}/p" "$ORCHESTRATOR"; }
 # alone <full> <script>: the orchestrator's own function, with stubs for what it calls, in a scratch PARTS folder
@@ -179,7 +184,7 @@ alone() {
     echo "run_lane() { echo \"RUN_LANE \$1\" >> $T/calls; }"
     echo "not_run() { echo \"NOT_RUN \$1: \$2\" >> $T/calls; }"
     echo "build_verdict() { cat $T/build-verdict; }"
-    fn lane_part; fn track_runners; fn runner_copies_in; echo "$2"; } > "$T/alone.sh"
+    fn lane_part; fn track_runners; echo "$2"; } > "$T/alone.sh"
   timeout 20 bash "$T/alone.sh" > "$T/out" 2>&1 & ALONE=$!
 }
 running() { kill -0 "$ALONE" 2>/dev/null; }
@@ -196,16 +201,6 @@ check "  the build part ended with no end mark: lane 1 started (on web it needs 
 reset; echo "######## DOCKER RELEASE STEP 2/6 END rc=1  2026-11-05T10:30:00Z" > "$T/docker-linux.log"; echo "FAIL|" > "$T/build-verdict"
 alone docker-server track_runners; ended
 check "  on docker-server with the build red: lane 1 NOT_RUN, no runner" has "NOT_RUN lane1-docker-server-full: no build of" "$(cat "$T/calls")"
-reset; echo "######## RUNNER 1 CACHES END rc=0  2026-11-05T10:40:00Z" > "$T/lane1-web-full.log"
-alone web runner_copies_in; sleep 3
-check "runner_copies_in: runner 1's caches in, runner 2's not: still waiting" running
-echo "######## RUNNER 2 ENGINE END rc=1  2026-11-05T10:41:00Z" >> "$T/lane1-web-full.log"
-ended; check "  runner 2 did not start (its engine red): no more waiting" bash -c '! kill -0 "$1" 2>/dev/null && grep -q "^WAIT    this host" "$2"' _ "$ALONE" "$T/out"
-reset; : > "$T/lane1-web-full.log"
-alone web runner_copies_in; sleep 2
-check "  no runner mark yet: waiting" running
-echo - > "$T/lane1-web-full.rc"
-ended; check "  lane 1 ended (or NOT_RUN): no more waiting" bash -c '! kill -0 "$1" 2>/dev/null' _ "$ALONE"
 
 echo "---- 3. reds (N=4) ----"
 dry_run red-auth SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 DRY_RUN_RED=lane2-docker-server-auth
@@ -248,6 +243,11 @@ out=$(step1 E2E_TARGET=web E2E_RUNNERS=2); rc=$?
 check "E2E_RUNNERS=2 on web: exit 0; the lane is e2e-runners.sh full-set 2; the record reads the merged log's link" bash -c \
   '[ "$1" = 0 ] && grep -qF "WOULD  bash asbl/ci/jenkins/job-step.sh JOB\ STEP\ 1/1 e2e\ web\ in\ 2\ runner\(s\) env E2E_TARGET=web bash asbl/ci/e2e-runners.sh full-set 2" <<< "$2" &&
    grep -qF "WOULD  RELEASE_STEP_START=<when the steps began> RELEASE_STEP1_LOG=$3/runners/full-set-latest.log bash asbl/ci/release-state.sh record-step1 web <their exit code>" <<< "$2"' \
+  _ "$rc" "$out" "$S1"
+out=$(step1 E2E_TARGET=docker-server E2E_IN_HOST_LANES_RUNNER=yes); rc=$?
+check "E2E_IN_HOST_LANES_RUNNER=yes: exit 0; the lane is e2e-runners.sh host-lane; the record reads that runner's latest log" bash -c \
+  '[ "$1" = 0 ] && grep -qF "env E2E_TARGET=docker-server bash asbl/ci/e2e-runners.sh host-lane" <<< "$2" &&
+   grep -qF "RELEASE_STEP1_LOG=$3/runners/5/latest.log bash asbl/ci/release-state.sh record-step1 docker-server" <<< "$2"' \
   _ "$rc" "$out" "$S1"
 out=$(step1 E2E_TARGET=docker-server E2E_RUNNERS=4); rc=$?
 check "E2E_RUNNERS=4 on docker-server: the build first (JOB STEP 1/2), then full-set 4" bash -c \

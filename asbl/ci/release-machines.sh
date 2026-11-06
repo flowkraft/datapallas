@@ -47,7 +47,7 @@
 #   RELEASE_RUNNERS [yes]       yes: with the steps together, step 1's full set runs in runners (N of them, 1 the
 #                               default), each a Docker engine of its own; no: on this host's engine, as before the
 #                               runners (the fallback when a runner fails for its own reason; N must be 1)
-#   RELEASE_RUNNER_LIMIT_GB [32]   each runner's memory ceiling: it reserves nothing, a runner takes what it needs
+#   RELEASE_RUNNER_LIMIT_GB [24]   each runner's memory ceiling: it reserves nothing, a runner takes what it needs
 #   RELEASE_WINDOWS_VMS [a]     the Windows VMs that exist, in order: a = win10-dev (win-ci.env); each other VM's
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
 #   WIN_VM_MEMORY_GB [24]       one memory for every Windows VM, set on each before a round (virsh --config): a ceiling,
@@ -79,7 +79,8 @@
 #   Docker in a VM    WIN_VM_DOCKER_MEMORY_GB         .wslconfig (vm-memory-setup)
 #   the CI container  RELEASE_CI_CONTAINER_LIMIT_GB   docker run --memory (asbl/ci/dp-ci.sh), on this host's engine or in a
 #                                                     runner: about twice the biggest seen, 5.9 GiB
-# What the two host lanes start on this host's engine has none of these around it.
+# With the runners this host's engine, which its own apps share, holds no app of a round: the auth file and the Linux proof
+# run in the host lanes' runner, and only dp-ci stays there, for the build.
 # THE VMS' MEMORY, the same for every VM: its size is a ceiling, not a reservation. Windows sees all of it and uses what it
 # needs, inside it Docker does the same up to its own ceiling, and the host holds only what Windows really uses. That takes
 # KSM on this host (machines_host_memory_sharing_on) and a memory placement rule on the VM (machines_vm_memory_placement_set),
@@ -104,6 +105,9 @@ MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overla
 # volume is removed (docker volume rm dp-ci-runner-<n>-docker resets the runner)
 MACHINES_RUNNER_FIRST_GB=40
 MACHINES_RUNNER_ROUND_GB=4
+# The host lanes' runner: with the runners, step 1's auth file and step 2's Linux proof run in it, one after the other,
+# beside the runners of the full set (1 to 4). Its number is fixed, so its images stay in one volume whatever N is
+HOST_LANES_RUNNER=5
 # The default layouts, by a VM's place in RELEASE_WINDOWS_VMS (plan 16.6.3, "The machines file"): one VM runs every lane in
 # 16.6.2's order; with more, the pack and Robot stay together (Robot installs the pack's zips) and the long Windows Docker
 # proof gets a VM of its own as soon as there are three
@@ -138,7 +142,7 @@ machines_load() {
   RELEASE_STEPS="${RELEASE_STEPS:-together}"
   RELEASE_SERVER_GB="${RELEASE_SERVER_GB:-5}"
   RELEASE_RUNNERS="${RELEASE_RUNNERS:-yes}"
-  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-32}"
+  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-24}"
   RELEASE_WINDOWS_VMS="${RELEASE_WINDOWS_VMS:-a}"
   WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-24}"
   WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
@@ -330,9 +334,9 @@ machines_runners_used() { [ "$RELEASE_RUNNERS" = yes ] && [ "$RELEASE_STEPS" = t
 machines_servers_text() {
   [ "$(machines_runners_used)" = yes ] || return 0
   case "$1" in
-    1) printf '%s' " (runner 1 and this host's engine)" ;;
-    2) printf '%s' " (runners 1, 2 and this host's engine)" ;;
-    *) printf '%s' " (runners 1 to $1 and this host's engine)" ;;
+    1) printf '%s' " (runner 1 and the host lanes' runner)" ;;
+    2) printf '%s' " (runners 1, 2 and the host lanes' runner)" ;;
+    *) printf '%s' " (runners 1 to $1 and the host lanes' runner)" ;;
   esac
 }
 # machines_runner_disk <N>: "<GB> <what>" the round's runners take on /var: MACHINES_RUNNER_FIRST_GB for each runner with
@@ -341,7 +345,7 @@ machines_runner_disk() {
   local n k gb=0 new="" kept=""
   n="$1"
   [ "$(machines_runners_used)" = yes ] || { echo 0; return 0; }
-  for k in $(seq 1 "$n"); do
+  for k in $(seq 1 "$n") "$HOST_LANES_RUNNER"; do
     if docker volume inspect "dp-ci-runner-$k-docker" >/dev/null 2>&1; then kept="$kept $k"; gb=$((gb + MACHINES_RUNNER_ROUND_GB))
     else new="$new $k"; gb=$((gb + MACHINES_RUNNER_FIRST_GB)); fi
   done
@@ -413,7 +417,7 @@ machines_check() {
   if [ "$press" = --press ]; then
     # what the host must have now: each added VM's settings file (VM a's win-ci.env is release-publish.sh preflight
     # docker's, at the same start) and each VM in libvirt; the memory rule: the host test servers (with the runners: each
-    # runner and this host's engine, each one host test server), plus each VM this round would start, against what is
+    # runner and the host lanes' runner, each one host test server), plus each VM this round would start, against what is
     # available now; the disk rule: /var's free disk, less what the runners take there (machines_runner_disk)
     for v in $vms; do
       [ "$v" = a ] || [ -e "$(machines_conf_of "$v")" ] || refuse_rule "VM $v has no settings file $(machines_conf_of "$v")"

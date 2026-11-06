@@ -9,10 +9,10 @@
 #   part to its end whatever the others say:
 #     host  one part at a time (this host's one Docker engine runs one DataPallas e2e set at a time: the shipped compose
 #           files fix the container names, the ports and the network). With the runners (RELEASE_RUNNERS=yes, the
-#           machines file's default): step 2's build (DOCKER_RELEASE_PART=build), step 1's lane 2 (the auth file) once
-#           each runner has this checkout and the caches copied in (its RUNNER <n> CACHES mark ended: this host's lanes
-#           write both), then step 2's Linux proof (DOCKER_RELEASE_PART=linux-proof; it runs whatever the auth file
-#           says), then step 2's keep part once the Windows Docker proof ended. With RELEASE_RUNNERS=no: step 2's linux
+#           machines file's default): step 2's build (DOCKER_RELEASE_PART=build) on this host's engine, then in the host
+#           lanes' runner step 1's lane 2 (the auth file) and step 2's Linux proof (DOCKER_RELEASE_PART=linux-proof; it
+#           runs whatever the auth file says), so a round starts no app on the engine this host's own apps share, then
+#           step 2's keep part once the Windows Docker proof ended. With RELEASE_RUNNERS=no: step 2's linux
 #           part (the build, then the Linux proof), step 1's lanes 2 and 1, then the keep part. A lane or part that needs
 #           the build is NOT RUN when the build is red
 #     runners  with the runners: from the build's end mark (DOCKER RELEASE STEP 2/6 END, never the build part's end),
@@ -222,6 +222,8 @@ what_part_starts() {
         printf 'container\tdp-ci-runner-%s\trunner %s (Docker in Docker): its engine and everything it runs\n' "$n" "$n"
       done; return ;;
     yes:docker-linux) echo "$run_container"; return ;;   # the build only
+    yes:lane2-docker-server-auth|yes:docker-linux-proof)   # in the host lanes' runner, whole (HOST_LANES_RUNNER)
+      printf 'container\tdp-ci-runner-%s\tthe host lanes\047 runner (Docker in Docker): its engine and everything it runs\n' "$HOST_LANES_RUNNER"; return ;;
   esac
   case "$1" in
     step1-build|lane1-web-full) echo "$run_container" ;;
@@ -871,13 +873,17 @@ lane_part() {
   esac
 }
 run_lane() {  # run_lane <lane>
-  local id envs runners="" rotation=""
+  local id envs runners="" rotation="" host_lane=""
   read -r id envs <<< "$(lane_part "$1")"
   # with the runners, lane 1 runs the full set in N of them (HOW, runners), all on the round's one rotation date
-  case "$RUNNERS:$1" in yes:*-full) runners="E2E_RUNNERS=$FULL_SET_JOBS"; rotation="$ROUND_ROTATION_DATE" ;; esac
+  # and the auth file in the host lanes' runner
+  case "$RUNNERS:$1" in
+    yes:*-full) runners="E2E_RUNNERS=$FULL_SET_JOBS"; rotation="$ROUND_ROTATION_DATE" ;;
+    yes:*) host_lane="E2E_IN_HOST_LANES_RUNNER=yes" ;;
+  esac
   # Retries 1 on every lane (owner, 2026-10-30): a release's step 1 gives a flaky test one more try, like the light sets
   # of steps 2 and 3. Left empty, each lane would take its own default: 2 for a Linux full run, 0 for the auth lane.
-  run_part "$id" "step 1 ${1#step1.}${runners:+ in $FULL_SET_JOBS runner(s)} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE=$rotation $runners \
+  run_part "$id" "step 1 ${1#step1.}${runners:+ in $FULL_SET_JOBS runner(s)} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE=$rotation $runners $host_lane \
     STEP1_STARTED_BY="release orchestrator, started by $WHO" \
     bash asbl/ci/jenkins/release-step1.sh
 }
@@ -928,9 +934,9 @@ runners_plan() {
 }
 if [ "$RUNNERS" = yes ]; then
 echo "ORDER   steps 1, 2 and 3 together (RELEASE_STEPS=together), on three tracks:"
-echo "        host's engine, one part at a time (it runs one DataPallas e2e set at a time):"
-echo "                   docker-linux (step 2's build, DOCKER_RELEASE_PART=build), then step 1's$(for l in $needed; do [ "$l" = "step1.$full-full" ] || printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done | sed 's/,$//') once each runner's"
-echo "                   checkout and caches are copied in, then docker-linux-proof (step 2's Linux proof, DOCKER_RELEASE_PART=linux-proof),"
+echo "        host, one part at a time (the build on this host's engine, the two after it in the host lanes' runner):"
+echo "                   docker-linux (step 2's build, DOCKER_RELEASE_PART=build), then step 1's$(for l in $needed; do [ "$l" = "step1.$full-full" ] || printf ' %s,' "$(lane_part "$l" | cut -d' ' -f1)"; done | sed 's/,$//'),"
+echo "                   then docker-linux-proof (step 2's Linux proof, DOCKER_RELEASE_PART=linux-proof),"
 echo "                   then docker-verdict (keep, guard: DOCKER_RELEASE_PART=keep) once windows-docker-proof ended"
 echo "        runners, from the build's end mark (DOCKER RELEASE STEP 2/6 END): step 1's $(lane_part "step1.$full-full" | cut -d' ' -f1) in $FULL_SET_JOBS runner(s)"
 echo "                   (release-step1.sh E2E_RUNNERS=$FULL_SET_JOBS), then the merge and step 1's record"
@@ -1045,22 +1051,8 @@ DOCKER="bash asbl/ci/jenkins/release-docker.sh"
 WINDOWS="bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh release"
 # build_verdict: the build's verdict from the linux part's log, once its mark ended or the part did
 build_verdict() { mark_verdict "$PARTS/docker-linux.log" "DOCKER RELEASE STEP 2/6"; }
-# runner_copies_in: with the runners, waits until each runner of lane 1 has this checkout and the caches copied in (its
-# RUNNER <n> CACHES mark ended), or did not start, or lane 1 ended (NOT RUN too): this host's lanes write both
-runner_copies_in() {
-  local id log n
-  case " $needed " in *" step1.$full-full "*) ;; *) return 0 ;; esac
-  read -r id _ <<< "$(lane_part "step1.$full-full")"
-  log="$PARTS/$id.log"
-  echo "WAIT    this host's next lane once each runner of $id has this checkout and the caches copied in"
-  for n in $(seq 1 "$FULL_SET_JOBS"); do
-    until [ -f "$PARTS/$id.rc" ] || grep -aqE "^######## RUNNER $n (CACHES END|(ENGINE|CHECKOUT) END rc=[1-9])" "$log" 2>/dev/null; do
-      sleep "$POLL"
-    done
-  done
-}
 # step1_lanes_after_the_build: together, step 1's lanes on the host track, after step 2's linux part (with the runners:
-# after the build part, lane 2 only, once the runners' copies are in); a lane on the docker-server target installs the
+# after the build part, lane 2 only, in the host lanes' runner); a lane on the docker-server target installs the
 # build's zip and image, so it does not run when the build is red
 step1_lanes_after_the_build() {
   local lane id envs
@@ -1073,10 +1065,11 @@ step1_lanes_after_the_build() {
           not_run "$id" "no build of ${PIN:0:8} to test (the build is not green)"; continue
         fi ;;
     esac
-    [ "$RUNNERS" = no ] || runner_copies_in
     run_lane "$lane"
   done
 }
+# track_host: with the runners, this host's engine only builds: the auth file and the Linux proof run in the host lanes' runner,
+# so a round starts no app on the engine the host's own apps share
 track_host() {
   if [ "$RUNNERS" = yes ]; then
     # the build, step 1's auth file, then the Linux proof, each to its end: a red auth file leaves the Linux proof to run
@@ -1084,8 +1077,10 @@ track_host() {
     step1_lanes_after_the_build
     if [ "$(build_verdict | cut -d'|' -f1)" = PASS ]; then
       run_part docker-linux-proof "step 2's Linux proof, on the build the build part made (DOCKER_RELEASE_PART=linux-proof)" \
-        env $STEP1_SWITCH DOCKER_RELEASE_PART=linux-proof $DOCKER
+        env $STEP1_SWITCH E2E_IN_HOST_LANES_RUNNER=yes DOCKER_RELEASE_PART=linux-proof $DOCKER
     else not_run docker-linux-proof "no build of ${PIN:0:8} to prove (the build is not green)"; fi
+    # its memory goes back as soon as the last of its lanes ended, not at the round's end
+    [ "$DRY" = yes ] || bash asbl/ci/e2e-runners.sh stop "$HOST_LANES_RUNNER"
   else
     run_part docker-linux "step 2's build, then its Linux proof (DOCKER_RELEASE_PART=linux)" env $STEP1_SWITCH DOCKER_RELEASE_PART=linux $DOCKER
     [ "$STEPS" = in-order ] || step1_lanes_after_the_build

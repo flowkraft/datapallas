@@ -63,7 +63,7 @@ cat > "$STUBS/docker" <<'STUB'
 #!/bin/bash
 # stub docker: volume inspect <name> answers from $STUB_RUNNER_VOLUMES (the runners' volumes there; default all four)
 if [ "${1:-}" = volume ] && [ "${2:-}" = inspect ]; then
-  case " ${STUB_RUNNER_VOLUMES-dp-ci-runner-1-docker dp-ci-runner-2-docker dp-ci-runner-3-docker dp-ci-runner-4-docker} " in
+  case " ${STUB_RUNNER_VOLUMES-dp-ci-runner-1-docker dp-ci-runner-2-docker dp-ci-runner-3-docker dp-ci-runner-4-docker dp-ci-runner-5-docker} " in
     *" ${3:-} "*) exit 0 ;;
   esac
   exit 1
@@ -96,11 +96,11 @@ refused() {
 
 # ---- 1. no file, the environment first, a file others may read ----
 rm -f "$RELEASE_REHEARSAL_CONF"
-check "no file: the defaults (together, 5 GB per server, runners of 32 GB, VM a alone in 16.6.2's order, 24 GB per VM, Docker 16 GB in it, 12 GB for the CI container, 16 GB free)" same \
+check "no file: the defaults (together, 5 GB per server, runners of 24 GB, VM a alone in 16.6.2's order, 24 GB per VM, Docker 16 GB in it, 12 GB for the CI container, 16 GB free)" same \
 "RELEASE_STEPS=together
 RELEASE_SERVER_GB=5
 RELEASE_RUNNERS=yes
-RELEASE_RUNNER_LIMIT_GB=32
+RELEASE_RUNNER_LIMIT_GB=24
 RELEASE_WINDOWS_VMS=a
 WIN_VM_MEMORY_GB=24
 WIN_VM_DOCKER_MEMORY_GB=16
@@ -183,23 +183,23 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
 check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=1 M=4 needs 82 GB (2 host test servers x 5 GB (runner 1 and this host's engine), VMs b c d to start x 24 GB), 60 GB are available now: -22 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=1 M=4 needs 82 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner), VMs b c d to start x 24 GB), 60 GB are available now: -22 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   machines check 1 4 --press
 check "press: only the VMs a round starts count (b c d running: 10 GB needed)" has \
   "needs 10 GB of 60 GB available, 50 GB stay free (rule 16)" \
   "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
 memory_gb 100
 check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 82 GB of 100 GB available, 18 GB stay free (rule 16); /var 400 GB free, the runners take about 4 GB, 396 GB stay free (rule 50)" \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 82 GB of 100 GB available, 18 GB stay free (rule 16); /var 400 GB free, the runners take about 8 GB, 392 GB stay free (rule 50)" \
   "$(machines check 1 4 --press)"
 check "press: N=4 M=1, the memory rule names the runners: refused, with the numbers" refused \
-  "memory: N=4 M=1 needs 25 GB (5 host test servers x 5 GB (runners 1 to 4 and this host's engine)), 40 GB are available now: 15 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=4 M=1 needs 25 GB (5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner)), 40 GB are available now: 15 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   bash -c 'printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$1/meminfo-40"; RELEASE_MEMINFO="$1/meminfo-40" bash "$2" check 4 1 --press' _ "$SCRATCH" "$MACHINES"
 check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused, with the numbers" refused \
-  "disk: N=4: /var has 120 GB free, the runners take about 88 GB there (runners 3 4 with no volume yet x 40 GB, runners 1 2 with a volume x 4 GB): 32 GB would stay free, under the 50 GB a round keeps free" \
-  env STUB_VAR_FREE_GB=120 STUB_RUNNER_VOLUMES="dp-ci-runner-1-docker dp-ci-runner-2-docker" bash "$MACHINES" check 4 1 --press
+  "disk: N=4: /var has 120 GB free, the runners take about 92 GB there (runners 3 4 with no volume yet x 40 GB, runners 1 2 5 with a volume x 4 GB): 28 GB would stay free, under the 50 GB a round keeps free" \
+  env STUB_VAR_FREE_GB=120 STUB_RUNNER_VOLUMES="dp-ci-runner-1-docker dp-ci-runner-2-docker dp-ci-runner-5-docker" bash "$MACHINES" check 4 1 --press
 check "press: N=4, every runner's volume there, /var 120 GB free: OK, with the numbers" has \
-  "/var 120 GB free, the runners take about 16 GB, 104 GB stay free (rule 50)" "$(STUB_VAR_FREE_GB=120 machines check 4 1 --press)"
+  "/var 120 GB free, the runners take about 20 GB, 100 GB stay free (rule 50)" "$(STUB_VAR_FREE_GB=120 machines check 4 1 --press)"
 check "press: RELEASE_RUNNERS=no: the disk rule counts no runner" has \
   "memory: needs 10 GB of 100 GB available, 90 GB stay free (rule 16); /var 400 GB free (rule 50)" \
   "$(STUB_RUNNER_VOLUMES="" RELEASE_RUNNERS=no machines check 1 1 --press)"
@@ -207,7 +207,7 @@ check "press: N=4 RELEASE_RUNNERS=no with 100 GB available: refused, one Docker 
   "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine" \
   env RELEASE_RUNNERS=no bash "$MACHINES" check 4 4 --press
 check "press: /var with 20 GB free: refused" refused \
-  "disk: N=1: /var has 20 GB free, the runners take about 4 GB there (runner 1 with a volume x 4 GB): 16 GB would stay free, under the 50 GB a round keeps free" \
+  "disk: N=1: /var has 20 GB free, the runners take about 8 GB there (runners 1 5 with a volume x 4 GB): 12 GB would stay free, under the 50 GB a round keeps free" \
   env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
 check "press: /var with 20 GB free, RELEASE_RUNNERS=no: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" \
   env STUB_VAR_FREE_GB=20 RELEASE_RUNNERS=no bash "$MACHINES" check 1 1 --press
@@ -332,7 +332,7 @@ check "schedule 4 4: the four runners from the build's end, each its list after 
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
 check "  the memory the memory rule counts, the runners named" has \
-  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and this host's engine); VMs the round starts: b c d x 24 GB = 72 GB" "$out"
+  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and the host lanes' runner); VMs the round starts: b c d x 24 GB = 72 GB" "$out"
 out=$(RELEASE_RUNNERS=no schedule 1 1 docker-server)
 check "schedule 1 1, RELEASE_RUNNERS=no: this host's parts one at a time (one engine), the full set last: about 12 h 10" bash -c \
   '[ "$2" = "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1:49-12:09" ] &&

@@ -211,8 +211,8 @@ check "start: the containers of a runner's last run removed from its engine, and
   "$(grep -c '^r2 docker rm -f rb-rundeck datapallas-server$' "$STUB/calls") $(printf '%s\n' "$START2_OUT" | grep -c '^RUNNER  2: 2 containers of its last run removed$') $(grep -c '^r3 docker rm' "$STUB/calls")"
 for n in 1 2 3 4; do
   run_line=$(docker_runs_of "$n")
-  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 32 GB" same \
-    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 32g --memory-swap 32g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
+  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 24 GB" same \
+    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 24g --memory-swap 24g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
   check "runner $n: its volume, socket folder, checkout and log folder, each at the same path inside" bash -c '
     l="$1"; s="$2/$3"; h="$4/$3"; g="$5/runners/$3"
     case "$l" in *"-v dp-ci-runner-$3-docker:/var/lib/docker "*) ;; *) exit 1 ;; esac
@@ -232,8 +232,8 @@ check "start: the four parts marked, in order (ENGINE, CHECKOUT, CACHES, IMAGES)
   "RUNNER 1 ENGINE START|RUNNER 1 ENGINE END|RUNNER 1 CHECKOUT START|RUNNER 1 CHECKOUT END|RUNNER 1 CACHES START|RUNNER 1 CACHES END|RUNNER 1 IMAGES START|RUNNER 1 IMAGES END" \
   "$(printf '%s\n' "$START_OUT" | sed -n 's/^######## \(RUNNER 1 [A-Z]*\) \(START\|END\).*/\1 \2/p' | paste -sd'|')"
 check "start: the checkout copied, on the same commit" same "${PIN:0:8}" "$(git -C "$E2E_RUNNERS_HOME/1/reportburster" rev-parse --short=8 HEAD)"
-OUT=$(bash "$RUNNERS" start 5 2>&1); RC=$?
-check "a 5th runner: refused, exit 2, nothing started" same "2 1 0" "$RC $(printf '%s\n' "$OUT" | grep -c '^REFUSED runner 5: at most 4 runners') $(grep -c 'dp-ci-runner-5' "$STUB/calls")"
+OUT=$(bash "$RUNNERS" start 6 2>&1); RC=$?
+check "a 6th runner: refused, exit 2, nothing started" same "2 1 0" "$RC $(printf '%s\n' "$OUT" | grep -c '^REFUSED runner 6: at most 5 runners') $(grep -c 'dp-ci-runner-6' "$STUB/calls")"
 bash "$RUNNERS" stop 4 >/dev/null 2>&1
 sed -i '/^docker:28.3.1-dind /d' "$STUB/images-host"; touch "$STUB/silent"   # this host lacks the dind image; no engine answers
 OUT=$(E2E_RUNNER_ENGINE_WAIT_SECS=2 bash "$RUNNERS" start 4 2>&1); RC=$?
@@ -338,6 +338,19 @@ check "a container that writes its log late: the lane is followed to its end (16
   "$RC $(grep -c 'no log to follow' <<< "$OUT")"
 OUT=$(E2E_SPEC='/x\.spec\.ts$' bash "$RUNNERS" run 1 2>&1); RC=$?
 check "run with E2E_SPEC (a targeted run): refused, exit 2" same "2 1" "$RC $(printf '%s\n' "$OUT" | grep -c '^REFUSED runner 1: E2E_SPEC/E2E_GREP make a targeted run')"
+
+echo "---- 4b. the host lanes' runner ----"
+: > "$STUB/calls"
+OUT=$(E2E_TARGET=docker-server E2E_SPEC='/auth\.spec\.ts$' bash "$RUNNERS" host-lane 2>&1); RC=$?
+check "host-lane, no runner 5 yet: it starts it, runs the lane there with its E2E_SPEC, followed to a green end" same "0 1 1 PIPELINE_RESULT=SUCCESS" \
+  "$RC $(grep -c '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls") $(grep -c '^r5 docker run -d --rm --name dp-ci ' "$STUB/calls") $(printf '%s\n' "$OUT" | tail -1)"
+check "  runner 5 has the full set's ceiling" has "--memory 24g --memory-swap 24g" "$(grep '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls")"
+: > "$STUB/calls"
+OUT=$(E2E_TARGET=docker-server E2E_SPEC=light bash "$RUNNERS" host-lane 2>&1); RC=$?
+check "  the next lane finds it: no second start, the lane in its engine" same "0 0 1" \
+  "$RC $(grep -c '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls") $(grep -c '^r5 docker run -d --rm --name dp-ci ' "$STUB/calls")"
+check "  host-lane-log-dir: the runner's own log folder" same "$LOG_DIR/runners/5" "$(bash "$RUNNERS" host-lane-log-dir)"
+bash "$RUNNERS" stop 5 >/dev/null 2>&1
 
 echo "---- 5. the round's rotation date, the full lane's retries and limits, in every runner ----"
 echo "datapallas-ci sha256:ci1" >> "$STUB/images-r3"; : > "$STUB/calls"

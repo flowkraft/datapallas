@@ -2,9 +2,11 @@
 # The runners: Docker engines of their own on this host (Docker in Docker), one per job of a split full set. One Docker
 # engine runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the
 # network), so each job runs in its own engine, where those names, ports and the localhost the tests read are its own.
-# No product file and no test changes. This host's engine is runner 0 and stays as it is.
+# No product file and no test changes. Runners 1 to 4 take the full set's shares; the host lanes' runner (HOST_LANES_RUNNER,
+# release-machines.sh) takes step 1's auth file and step 2's Linux proof, so a round keeps its apps off this host's engine,
+# which the host's own apps share. This host's engine is runner 0: dp-ci for the build, and every lane with RELEASE_RUNNERS=no.
 #
-# A runner n (1 to 4) is a privileged container dp-ci-runner-<n> of the image docker:<this host's engine version>-dind,
+# A runner n (1 to 5) is a privileged container dp-ci-runner-<n> of the image docker:<this host's engine version>-dind,
 # started with plain `docker run` (never in a compose stack: the nightly backup stops and starts those) and removed when
 # it stops. What it keeps between rounds, as a VM keeps its images:
 #   its image store       the named volume dp-ci-runner-<n>-docker (removing it resets the runner: the next start
@@ -38,6 +40,9 @@
 #   stop [<n>...]   each runner's CI container (dp-ci in its engine) stopped, so its lane's log ends, then the runner
 #                   stopped and removed; its volume, checkout and log folder kept [every runner there is]
 #   status          one line per runner 1 to 4: running or not, its engine, its CI container, its volume, its checkout
+#   host-lane       a lane of the host lanes' runner, as the environment says (E2E_SPEC: the auth file, the light set): the
+#                   runner started when it is not there, kept for the next lane, then as `run`
+#   host-lane-log-dir   that runner's log folder
 #   run <n>         the e2e lane in runner n, followed to its end (asbl/ci/jenkins/follow-ci.sh run ... dp-ci.sh e2e, from
 #                   the runner's checkout, DOCKER_HOST at its socket, E2E_RUNNER=<n>, E2E_RUNNER_LOG_DIR); the lane's
 #                   settings come from the environment as for dp-ci.sh e2e (E2E_TARGET, E2E_RETRIES, E2E_TIMEOUT_SECS,
@@ -58,14 +63,13 @@
 #                   runners' (full-set-runners.py merge), or with 1 runner its own, linked under that name; and the link
 #                   <LOG_DIR>/runners/full-set-latest.log to it (release-state.sh record-step1 reads it: this host's
 #                   latest.log is its own lanes'). Prints E2E_MERGED_LOG=<log> and E2E_JSON_REPORT=<report>. The settings
-#                   of `run`, one RELEASE_PIN and one E2E_ROTATION_DATE for every runner. This host's own lanes write
-#                   this checkout and the caches: a caller starts them once each runner's "RUNNER <n> CACHES" mark ended
+#                   of `run`, one RELEASE_PIN and one E2E_ROTATION_DATE for every runner
 #
 # SETTINGS (environment)
 #   E2E_RUNNERS_HOME [/var/kraft-internalsystems/projects/dp-ci-runners]   each runner's checkout folder <home>/<n>
 #   E2E_RUNNER_SOCKET_DIR [/run/dp-ci-runners]   each runner's socket folder <dir>/<n>
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci]   this host's; a runner's is <LOG_DIR>/runners/<n>
-#   RELEASE_RUNNER_LIMIT_GB [32]   each runner's memory ceiling (machines file key). It reserves nothing, a runner takes
+#   RELEASE_RUNNER_LIMIT_GB [24]   each runner's memory ceiling (machines file key). It reserves nothing, a runner takes
 #                                  what it needs; it only stops a runaway from taking the memory of other apps. Keep it
 #                                  well above the need: at 10 GB the full set hit it at the Rundeck test and the runner
 #                                  stalled for hours with no failure, on 16.6.3's first full set in a runner
@@ -90,12 +94,14 @@ set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 2
 REPO=$PWD
 . asbl/ci/marks.sh
+. asbl/ci/release-machines.sh   # HOST_LANES_RUNNER
 
-RUNNERS_MAX=4
+RUNNERS_MAX=5
+FULL_SET_RUNNERS_MAX=4
 RUNNERS_HOME="${E2E_RUNNERS_HOME:-/var/kraft-internalsystems/projects/dp-ci-runners}"
 SOCKET_DIR="${E2E_RUNNER_SOCKET_DIR:-/run/dp-ci-runners}"
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
-LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-32}"
+LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-24}"
 ENGINE_WAIT_SECS="${E2E_RUNNER_ENGINE_WAIT_SECS:-300}"
 CI_IMAGE=datapallas-ci
 SERVER_IMAGE_REPO=flowkraft/datapallas-server
@@ -322,20 +328,34 @@ status_cmd() {
 
 # ---- run ----
 run_cmd() {
-  local n="${1:-}" checkout
+  local n="${1:-}"
   valid_runner "$n" || { echo "usage: $0 run <n> (1 to $RUNNERS_MAX)"; return 2; }
   # a runner runs a share of the full set, with the full set's retries and limits: E2E_SPEC or E2E_GREP would make it a
   # targeted run (no retries, a 20 h limit)
   [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ] ||
     { echo "REFUSED runner $n: E2E_SPEC/E2E_GREP make a targeted run; a runner's share of the full set is E2E_RUNNER_FILES"; return 2; }
+  lane_in_runner "$n"
+}
+# lane_in_runner <n>: the e2e lane in runner n, as the environment says, followed to its end
+lane_in_runner() {
+  local n="$1" checkout
   runner_exists "$n" && engine_answers "$n" || { echo "REFUSED runner $n is not running, or its engine does not answer: bash $0 start $n"; return 2; }
   checkout=$(runner_checkout "$n")
   [ -f "$checkout/asbl/ci/dp-ci.sh" ] || { echo "REFUSED runner $n has no checkout at $checkout: bash $0 start $n"; return 2; }
   export RELEASE_PIN="${RELEASE_PIN:-$(git -C "$checkout" rev-parse HEAD)}"
   export E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-$(date -u +%F)}"
-  echo "RUNNER  $n: the e2e lane on ${RELEASE_PIN:0:8}, rotation date $E2E_ROTATION_DATE, files '${E2E_RUNNER_FILES:-the whole full set}'"
+  echo "RUNNER  $n: the e2e lane on ${RELEASE_PIN:0:8}, rotation date $E2E_ROTATION_DATE, files '${E2E_RUNNER_FILES:-${E2E_SPEC:-the whole full set}}'"
   DOCKER_HOST="unix://$(runner_socket "$n")" E2E_RUNNER="$n" E2E_RUNNER_LOG_DIR="$(runner_log_dir "$n")" \
     FOLLOW_PIDFILE="" bash "$checkout/asbl/ci/jenkins/follow-ci.sh" run bash "$checkout/asbl/ci/dp-ci.sh" e2e
+}
+# host_lane_cmd: a lane of the host lanes' runner: the first one starts it, the next one finds it, the orchestrator stops it.
+# E2E_SPEC is the point here: these lanes are the auth file and the light set, not a share of the full set
+host_lane_cmd() {
+  mkdir -p "$(runner_log_dir "$HOST_LANES_RUNNER")" || return 1
+  if ! runner_exists "$HOST_LANES_RUNNER"; then
+    start_runner "$HOST_LANES_RUNNER" || { echo "FAILED: the host lanes' runner did not start (above)"; stop_cmd "$HOST_LANES_RUNNER"; return 1; }
+  fi
+  lane_in_runner "$HOST_LANES_RUNNER"
 }
 
 # ---- full-set: step 1's full set in N runners, as one lane ----
@@ -367,7 +387,7 @@ full_set_runner() {
 }
 full_set_cmd() {
   local jobs="${1:-}" n out stamp commit merged rc pids=() logs=() report link="$LOG_DIR/runners/full-set-latest.log"
-  [[ "$jobs" =~ ^[1-4]$ ]] || { echo "usage: $0 full-set <N> (1 to $RUNNERS_MAX runners)"; return 2; }
+  [[ "$jobs" =~ ^[1-4]$ ]] || { echo "usage: $0 full-set <N> (1 to $FULL_SET_RUNNERS_MAX runners)"; return 2; }
   [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ] ||
     { echo "REFUSED full-set: E2E_SPEC/E2E_GREP make a targeted run, not the full set. Nothing started"; return 2; }
   for n in $(seq 1 "$jobs"); do
@@ -413,8 +433,10 @@ case "${1:-help}" in
   stop)   shift; stop_cmd "$@" ;;
   status) status_cmd ;;
   run)    shift; run_cmd "$@" ;;
+  host-lane) host_lane_cmd ;;
+  host-lane-log-dir) runner_log_dir "$HOST_LANES_RUNNER" ;;
   images) runner_images ;;
   full-set) shift; full_set_cmd "$@" ;;
   help|-h|--help) sed -n '2,/^set -uo pipefail/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' ;;
-  *) echo "usage: $0 start <n>...|stop [<n>...]|status|run <n>|images|full-set <N>|help"; exit 2 ;;
+  *) echo "usage: $0 start <n>...|stop [<n>...]|status|run <n>|host-lane|host-lane-log-dir|images|full-set <N>|help"; exit 2 ;;
 esac

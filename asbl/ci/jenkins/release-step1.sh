@@ -26,6 +26,8 @@
 # INPUTS (the job's parameters, the same names and defaults; seed.groovy's parameter texts say more):
 #   E2E_TARGET [web]   web | electron-linux | docker-server | windows-vm-electron | windows-vm-docker | windows-vm-server
 #   E2E_SPEC, E2E_GREP, E2E_ROTATION_DATE, E2E_RETRIES [empty]   passed on to the lane (dp-ci.sh e2e, dp-ci.sh win ...)
+#   E2E_IN_HOST_LANES_RUNNER [no]   yes: the lane in the host lanes' runner (asbl/ci/e2e-runners.sh host-lane), not on this
+#                      host's engine; the release's orchestrator sets it for the auth file
 #   E2E_RUNNERS [empty]   the lane whole, on this host's engine; 1 to 4: the full set (web or docker-server, E2E_SPEC and
 #                      E2E_GREP empty) in that many runners at once, each a Docker engine of its own (asbl/ci/e2e-runners.sh
 #                      full-set: each runner its list of asbl/ci/full-set-runners.txt, then the merge into the lane's one
@@ -121,6 +123,10 @@ if [ -n "$RUNNERS" ]; then
   [ -z "$E2E_SPEC" ] && [ -z "$E2E_GREP" ] || { echo "FAIL  E2E_RUNNERS runs the full set: E2E_SPEC and E2E_GREP must be empty"; finish 2; }
   LANE=(env "E2E_TARGET=$TARGET" bash asbl/ci/e2e-runners.sh full-set "$RUNNERS")
   RECORD_LOG=("RELEASE_STEP1_LOG=$LOG_DIR/runners/full-set-latest.log")
+fi
+if [ "${E2E_IN_HOST_LANES_RUNNER:-no}" = yes ]; then
+  LANE=(env "E2E_TARGET=$TARGET" bash asbl/ci/e2e-runners.sh host-lane)
+  RECORD_LOG=("RELEASE_STEP1_LOG=$(bash asbl/ci/e2e-runners.sh host-lane-log-dir)/latest.log")
 fi
 # the targets that install what `dp-ci.sh build` makes: what their lane needs, checked in seconds before that build
 case "$TARGET" in

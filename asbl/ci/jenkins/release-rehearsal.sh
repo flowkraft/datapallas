@@ -74,7 +74,7 @@
 #                                                             Docker engine of its own on this host with its list of
 #                                                             asbl/ci/full-set-runners.txt (1: the whole full set in
 #                                                             one runner), all started when the build ends, each capped
-#                                                             at RELEASE_RUNNER_LIMIT_GB [32] of memory; this host's
+#                                                             at RELEASE_RUNNER_LIMIT_GB [24] of memory; this host's
 #                                                             engine meanwhile runs the auth file, then the Linux proof.
 #                                                             RELEASE_RUNNERS=no in the settings file: the full set whole
 #                                                             on this host's engine, as before the runners; N must be 1

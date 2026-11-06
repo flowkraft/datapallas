@@ -301,6 +301,9 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     min), then the images of its list by id (4 min); these two times:
                                     20261105T212249Z-release-orchestrator-execution-1-version-16.6.3. Its memory is capped
                                     at RELEASE_RUNNER_LIMIT_GB. Their lists: asbl/ci/full-set-runners.txt for 4 jobs.
+        ... the host lanes' runner  runner 5, in every round with runners: the auth file, then the Linux proof, so a
+                                    round starts no app on the engine this host's own apps share; only the build runs
+                                    there. Its first lane starts it, and it stops after the Linux proof.
         ... runner 1                2 spec files: canvas-dashboard-demos, explore-data-use-cases.
         ... runner 2                7 spec files: cube-modes-parity, apps-ai-hub, apps-third-party,
                                     canvas-dashboard-demos-low-code, canvas-mechanics, explore-data-smart-defaults,

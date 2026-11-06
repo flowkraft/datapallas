@@ -125,7 +125,7 @@
 #       on 9090), because ufw denies both by default; a detached watcher removes them when dp-ci is gone, however the run
 #       ended. Check: ufw status | grep -c dp-ci-e2e
 #       IN A RUNNER (a Docker engine of its own, asbl/ci/e2e-runners.sh run <n>, which sets these; never by hand):
-#       E2E_RUNNER=<1-4>, DOCKER_HOST=unix://<socket folder>/<n>/docker.sock (that runner's engine; anything else is
+#       E2E_RUNNER=<1-5>, DOCKER_HOST=unix://<socket folder>/<n>/docker.sock (that runner's engine; anything else is
 #       refused), E2E_RUNNER_LOG_DIR (its own log folder: its logs, its build log copy, its app image records) and
 #       E2E_RUNNER_FILES (a regex: its share of the full set; the full set's two exclusions still apply, the mode stays
 #       full). This script then runs from the runner's own copy of the checkout, and only differs where an engine of its
@@ -300,7 +300,7 @@ LOG_DIR=/var/kraft-internalsystems/logs/datapallas-ci
 # first: a runner's lane on this host's engine would meet the host's own e2e set (the same names and ports)
 E2E_RUNNER="${E2E_RUNNER:-}"
 if [ -n "$E2E_RUNNER" ]; then
-  [[ "$E2E_RUNNER" =~ ^[1-4]$ ]] || { echo "FAIL  E2E_RUNNER=$E2E_RUNNER: a runner is 1, 2, 3 or 4 (asbl/ci/e2e-runners.sh)"; exit 2; }
+  [[ "$E2E_RUNNER" =~ ^[1-5]$ ]] || { echo "FAIL  E2E_RUNNER=$E2E_RUNNER: a runner is 1 to 5 (asbl/ci/e2e-runners.sh)"; exit 2; }
   [ -n "${E2E_RUNNER_LOG_DIR:-}" ] || { echo "FAIL  E2E_RUNNER=$E2E_RUNNER without E2E_RUNNER_LOG_DIR: run it through asbl/ci/e2e-runners.sh run $E2E_RUNNER"; exit 2; }
   if [ "${1:-}" != --inside ]; then
     case "${DOCKER_HOST:-}" in

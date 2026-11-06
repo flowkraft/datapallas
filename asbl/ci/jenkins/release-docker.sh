@@ -260,10 +260,16 @@ rehearse() {
   if [ -z "$PART" ] || [ "$PART" = linux ] || [ "$PART" = linux-proof ]; then
   mark_next "DOCKER RELEASE STEP 3/6" "Linux proof, no registry: $zip installed as the self-host page says against $RELEASE_IMAGE_REPO:$tag, the light set ($light), the one-command run"
   # E2E_DOCKER_FROM_URL empty = the build's own zip and image (docker-server never pulls them); retries 1, as the Windows light set has
+  # E2E_IN_HOST_LANES_RUNNER=yes (the orchestrator, with the runners): in the host lanes' runner, whose start copied the image in
+  # and where no nightly cleanup takes it: the image file is this host's fallback, and is not mounted there
+  local proof=(bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e) proof_logs="$LOG_DIR" proof_image="$image_tar"
+  if [ "${E2E_IN_HOST_LANES_RUNNER:-no}" = yes ]; then
+    proof=(bash asbl/ci/e2e-runners.sh host-lane); proof_logs=$(bash asbl/ci/e2e-runners.sh host-lane-log-dir); proof_image=""
+  fi
   t0=$(date +%s)
   if E2E_TARGET=docker-server E2E_SPEC=light E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
-     E2E_BUILD_IMAGE_FILE="$image_tar" FOLLOW_PIDFILE="" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e; then res_linux=PASS; else res_linux=FAIL; fi
-  log=$(newest_log "$LOG_DIR/latest.log" "$t0"); json="${log:+${log%.log}-playwright.json}"
+     E2E_BUILD_IMAGE_FILE="$proof_image" FOLLOW_PIDFILE="" "${proof[@]}"; then res_linux=PASS; else res_linux=FAIL; fi
+  log=$(newest_log "$proof_logs/latest.log" "$t0"); json="${log:+${log%.log}-playwright.json}"
   echo "DOCKER_RELEASE_LINUX_PROOF=$res_linux log=${log:-none} report=${json:-none}"
   $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 3/6" "$res_linux" "Linux proof: the docker zip installed as the self-host page says, the light set ($light), the one-command run" "$log" "$json"
   mark_end "$([ "$res_linux" = PASS ] && echo 0 || echo 1)"
