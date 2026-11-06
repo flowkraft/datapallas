@@ -20,7 +20,8 @@
 #   start <n>...    start those runners, each ready for a lane, in this order (each a marked part, asbl/ci/marks.sh):
 #                     RUNNER <n> ENGINE    the dind image checked to exist (docker manifest inspect, no pull, unless
 #                                          this host has it), the runner started, its engine waited for
-#                                          (E2E_RUNNER_ENGINE_WAIT_SECS); no answer: exit 1, "did not answer"
+#                                          (E2E_RUNNER_ENGINE_WAIT_SECS); no answer: exit 1, "did not answer"; the
+#                                          containers of its last run removed
 #                     RUNNER <n> CHECKOUT  this checkout copied in (rsync --delete; its testground, test-results and
 #                                          playwright-report are the runner's own)
 #                     RUNNER <n> CACHES    the CI container's caches dp-ci-m2, dp-ci-npm, dp-ci-cache (Playwright's
@@ -134,6 +135,19 @@ runner_images() {
 }
 
 # ---- start ----
+# remove_containers_of_last_run <n>: every container left in runner n's engine. The volume keeps them with the images, and
+# the apps' compose files say restart: unless-stopped, so the engine brings them back by itself as it starts: 16.6.3's
+# Abort left Rundeck, the server and the AI Hub in runner 1's volume, to run again before the next round's first test. A
+# runner being started has no lane yet, so all of them are leftovers. Images and the apps' data volumes stay. A failure
+# only warns: the round goes on and collects what follows from it.
+remove_containers_of_last_run() {
+  local n="$1" left
+  left=$(in_runner "$n" docker ps -aq 2>/dev/null)
+  [ -n "$left" ] || return 0
+  # shellcheck disable=SC2086   # one id per word
+  if in_runner "$n" docker rm -f $left >/dev/null 2>&1; then echo "RUNNER  $n: $(wc -w <<< "$left") containers of its last run removed"
+  else echo "WARN    runner $n: the containers of its last run could not all be removed: $(echo $left)"; fi
+}
 start_engine() {
   local n="$1" version dind name
   version=$(docker version --format '{{.Server.Version}}' 2>/dev/null) || { echo "FAIL  this host's Docker engine does not answer"; return 1; }
@@ -167,6 +181,7 @@ start_engine() {
     sleep 2; waited=$((waited + 2))
   done
   echo "RUNNER  $n: $name ($dind) answers on $(runner_socket "$n"), memory limit ${LIMIT_GB} GB"
+  remove_containers_of_last_run "$n"
 }
 copy_checkout() {
   local n="$1" to

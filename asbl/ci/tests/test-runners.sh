@@ -85,6 +85,7 @@ case "${1:-}" in
       names="$names datapallas-dev"   # dp-dev runs on this host's engine
     else
       [ -e "$STUB/ci-${eng#r}" ] && names="$names dp-ci"
+      names="$names $(cat "$STUB/left-${eng#r}" 2>/dev/null)"   # what the runner's last run left in its volume
     fi
     filter=$(arg_after --filter "$@"); filter=${filter#name=^}; filter=${filter%\$}
     for c in $names; do
@@ -131,7 +132,7 @@ case "${1:-}" in
       *"config --format json"*) cat "$STUB/compose-$folder.json" 2>/dev/null || exit 1 ;;
     esac ;;
   stop) [ "$eng" = host ] && rm -f "$STUB/running-${2##*-}" || rm -f "$STUB/ci-${eng#r}" ;;
-  rm) rm -f "$STUB/running-${3##*-}" ;;
+  rm) if [ "$eng" = host ]; then rm -f "$STUB/running-${3##*-}"; else rm -f "$STUB/left-${eng#r}"; fi ;;
   volume) [ -e "$STUB/volume-${3:-}" ] ;;
 esac
 exit 0
@@ -203,8 +204,11 @@ START_OUT=$(RUNNER_STARTED_FILE="$SCRATCH/run/started.txt" RUNNER_PART=lane1-doc
 START_CALLS=$(cat "$STUB/calls")
 OUT=$(RUNNER_STARTED_FILE="$SCRATCH/run/started.txt" RUNNER_PART=lane1-docker-server-full-runner-1 bash "$RUNNERS" start 1 2>&1); RC=$?
 check "start 1 when it is there already: refused, exit 2" same "2 1" "$RC $(printf '%s\n' "$OUT" | grep -c '^REFUSED runner 1: dp-ci-runner-1 is there already')"
+echo "rb-rundeck datapallas-server" > "$STUB/left-2"   # a run stopped by an Abort: its containers stay in the runner's volume
 START2_OUT=$(bash "$RUNNERS" start 2 3 4 2>&1); START2_RC=$?
 check "start 1, then 2 3 4: exit 0 both" same "0 0" "$START_RC $START2_RC"
+check "start: the containers of a runner's last run removed from its engine, and said; a runner with none: no rm" same "1 1 0" \
+  "$(grep -c '^r2 docker rm -f rb-rundeck datapallas-server$' "$STUB/calls") $(printf '%s\n' "$START2_OUT" | grep -c '^RUNNER  2: 2 containers of its last run removed$') $(grep -c '^r3 docker rm' "$STUB/calls")"
 for n in 1 2 3 4; do
   run_line=$(docker_runs_of "$n")
   check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 10 GB" same \
