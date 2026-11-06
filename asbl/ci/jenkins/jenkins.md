@@ -248,17 +248,17 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS  [4 v]   1 (default), 2, 3, 4
   USE_N_NUMBER_OF_WINDOWS_VMS                        [4 v]   1 (default), 2, 3, 4
   ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from the last release runs' marks)
-    Memory  needs +61 GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 12 GB
-            available now 71 GB -> 10 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+    Memory  needs +81 GB: 5 host test servers x 9 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 12 GB
+            available now 72 GB -> -9 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
                                            0h    1h    2h    3h    4h
                                            |-----|-----|-----|-----|-----
     Linux    build + JUnit                 ###                            34 min  (1705 JUnit tests, then the zips and the image)
-    runner 1 full set on docker-server        ####################        3 h 14  (step 1, its list for 4 jobs: 2 spec files; after its start (15 min) and its images (10 min))
-    runner 2 full set on docker-server        ###################         3 h 09  (step 1, its list for 4 jobs: 7 spec files; after its start (15 min) and its images (10 min))
-    runner 3 full set on docker-server        ###################         3 h 01  (step 1, its list for 4 jobs: 8 spec files; after its start (15 min) and its images (10 min))
-    runner 4 full set on docker-server        #################           2 h 44  (step 1, its list for 4 jobs: 36 spec files; after its start (15 min) and its images (10 min))
-    Linux    auth file on docker-server       ..##                        20 min  (step 1: 138 tests; once the runners have the checkout and the caches)
-    Linux    light set on docker-server           #####                   55 min  (step 2, Docker on Linux: 42 tests)
+    runner 1 full set on docker-server        ##################          2 h 55  (step 1, its list for 4 jobs: 2 spec files; after its start (2 min) and its images (4 min))
+    runner 2 full set on docker-server        #################           2 h 50  (step 1, its list for 4 jobs: 7 spec files; after its start (2 min) and its images (4 min))
+    runner 3 full set on docker-server        #################           2 h 42  (step 1, its list for 4 jobs: 8 spec files; after its start (2 min) and its images (4 min))
+    runner 4 full set on docker-server        ###############             2 h 25  (step 1, its list for 4 jobs: 36 spec files; after its start (2 min) and its images (4 min))
+    Linux    auth file on docker-server       .#                          18 min  (step 1: 138 tests; once the runners have the checkout and the caches)
+    Linux    light set on docker-server         ######                    55 min  (step 2, Docker on Linux: 42 tests)
     Win VM a Windows pack                  ########                       1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
     Win VM a Robot UAT                             ####                   41 min  (step 3: 16 tests)
     Win VM b e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)
@@ -297,10 +297,10 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     shipped docker zip and image. Step 0 alternates the full set between web and
                                     docker-server from one release to the next.
         ... in runners              each runner a Docker engine of its own on this host (asbl/ci/e2e-runners.sh), all
-                                    started at the build's end: its engine, this checkout and the CI caches copied in (15
-                                    min), then the images of its list by id (10 min); these two times: default (not
-                                    measured yet: no runner has run). Its memory is capped at RELEASE_RUNNER_LIMIT_GB.
-                                    Their lists: asbl/ci/full-set-runners.txt for 4 jobs.
+                                    started at the build's end: its engine, this checkout and the CI caches copied in (2
+                                    min), then the images of its list by id (4 min); these two times:
+                                    20261105T212249Z-release-orchestrator-execution-1-version-16.6.3. Its memory is capped
+                                    at RELEASE_RUNNER_LIMIT_GB. Their lists: asbl/ci/full-set-runners.txt for 4 jobs.
         ... runner 1                2 spec files: canvas-dashboard-demos, explore-data-use-cases.
         ... runner 2                7 spec files: cube-modes-parity, apps-ai-hub, apps-third-party,
                                     canvas-dashboard-demos-low-code, canvas-mechanics, explore-data-smart-defaults,
@@ -331,7 +331,7 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
                                     DataPallas-Server, DataPallas-Server-Auth, DataPallas.exe-prerequisites,
                                     DataPallas.exe-quickstart, DataPallas.exe-update, datapallas.bat,
                                     different-java-versions.
-    Total   about 4 h 50   (with 1 and 1: about 11 h 20; you gain about 6 h 30)
+    Total   about 4 h 50   (with 1 and 1: about 11 h 00; you gain about 6 h 10)
   ```
 
   - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.
