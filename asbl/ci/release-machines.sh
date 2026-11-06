@@ -18,7 +18,7 @@
 #                                                       lanes' runner at its real peak, each VM to start at its peak, each
 #                                                       VM running at what it can still grow by; a box no round recorded
 #                                                       at its default): it only warns, the owner decides; the disk rule: /var
-#                                                       keeps RELEASE_MIN_FREE_VAR_GB [50] free after what the runners take
+#                                                       keeps MACHINES_MIN_FREE_VAR_GB [50] free after what the runners take
 #                                                       there (MACHINES_RUNNER_FIRST_GB [40] for a runner with no image
 #                                                       volume yet, MACHINES_RUNNER_ROUND_GB [4] for one whose volume is
 #                                                       there) (release-rehearsal.sh start; not a dry round: it starts
@@ -63,7 +63,6 @@
 #   VM_LANES_<M>_<name>         the lanes VM <name> runs, in order, when the round uses M VMs; missing: the default
 #                               layout of that VM's place in RELEASE_WINDOWS_VMS (DEFAULT_LAYOUT_<M>, below)
 #   VM_DOMAIN_<name>            the VM's libvirt name [a: win10-dev, any other: win10-dev-<name>]
-#   RELEASE_MIN_FREE_VAR_GB [50] the disk rule: what /var keeps free at a press, after what the runners take there
 #   RELEASE_ZRAM_SWAP_GB [0]    the zram swap of a run, in GB (ZRAM SWAP, below): 0 = none
 #   RELEASE_ZRAM_RAM_LIMIT_GB [64] the most of RAM that swap takes
 #   RELEASE_ESTIMATES_FILE      where `release-rehearsal.sh estimate` writes the 16 estimates the job's form reads
@@ -109,8 +108,9 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_MIN_FREE_VAR_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
+MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
 # the zram swap: its one device, zstd because it packs tighter than lz4, used before the disk swap (priority -2)
 MACHINES_ZRAM_DEVICE=/dev/zram0
 MACHINES_ZRAM_COMPRESSION=zstd
@@ -170,7 +170,6 @@ machines_load() {
   WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
   RELEASE_CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
-  RELEASE_MIN_FREE_VAR_GB="${RELEASE_MIN_FREE_VAR_GB:-50}"
   RELEASE_ZRAM_SWAP_GB="${RELEASE_ZRAM_SWAP_GB:-0}"
   RELEASE_ZRAM_RAM_LIMIT_GB="${RELEASE_ZRAM_RAM_LIMIT_GB:-64}"
   RELEASE_ESTIMATES_FILE="${RELEASE_ESTIMATES_FILE:-/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json}"
@@ -493,7 +492,7 @@ machines_check() {
           refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
     *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
   esac
-  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_MIN_FREE_VAR_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB; do
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done
   # a box stays under the box it runs in: a runaway reaches its own ceiling first and ends there
@@ -561,14 +560,14 @@ machines_check() {
     free_var=$(df -BG --output=avail /var 2>/dev/null | tail -1 | tr -dc '0-9')
     disk=$(machines_runner_disk "$n"); disk_gb=${disk%% *}
     if [ -z "$free_var" ]; then refuse_rule "disk: /var's free disk cannot be read (df /var)"
-    elif [ "$disk_gb" = 0 ] && [ "$free_var" -lt "$RELEASE_MIN_FREE_VAR_GB" ]; then
-      refuse_rule "disk: /var has $free_var GB free, under the $RELEASE_MIN_FREE_VAR_GB GB a round keeps free"
-    elif [ $((free_var - disk_gb)) -lt "$RELEASE_MIN_FREE_VAR_GB" ]; then
-      refuse_rule "disk: N=$n: /var has $free_var GB free, the runners take about $disk_gb GB there (${disk#* }): $((free_var - disk_gb)) GB would stay free, under the $RELEASE_MIN_FREE_VAR_GB GB a round keeps free"
+    elif [ "$disk_gb" = 0 ] && [ "$free_var" -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: /var has $free_var GB free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
+    elif [ $((free_var - disk_gb)) -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: N=$n: /var has $free_var GB free, the runners take about $disk_gb GB there (${disk#* }): $((free_var - disk_gb)) GB would stay free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
     fi
   fi
   [ "$refused" = 0 ] || return 2
-  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free%s (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$([ "$disk_gb" = 0 ] || printf ', the runners take about %s GB, %s GB stay free' "$disk_gb" "$((free_var - disk_gb))")" "$RELEASE_MIN_FREE_VAR_GB")"
+  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free%s (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$([ "$disk_gb" = 0 ] || printf ', the runners take about %s GB, %s GB stay free' "$disk_gb" "$((free_var - disk_gb))")" "$MACHINES_MIN_FREE_VAR_GB")"
 }
 
 # machines_full_target: the full set's target of the version to release next (release-state.sh full-lane --choose, dry).

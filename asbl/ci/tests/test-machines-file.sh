@@ -108,7 +108,6 @@ WIN_VM_DEFAULT_PEAK_GB=12
 WIN_VM_DOCKER_MEMORY_GB=16
 RELEASE_CI_CONTAINER_LIMIT_GB=12
 RELEASE_MIN_FREE_GB=16
-RELEASE_MIN_FREE_VAR_GB=50
 RELEASE_ZRAM_SWAP_GB=0
 RELEASE_ZRAM_RAM_LIMIT_GB=64
 RELEASE_ESTIMATES_FILE=/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json
@@ -222,12 +221,6 @@ check "press: /var with 20 GB free: refused" refused \
   env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
 check "press: /var with 20 GB free, RELEASE_RUNNERS=no: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" \
   env STUB_VAR_FREE_GB=20 RELEASE_RUNNERS=no bash "$MACHINES" check 1 1 --press
-check "press: the disk rule is a setting: RELEASE_MIN_FREE_VAR_GB=10, the same /var passes" \
-  bash -c 'grep -q "^MACHINES OK" <<< "$1"' _ "$(env STUB_VAR_FREE_GB=20 RELEASE_MIN_FREE_VAR_GB=10 bash "$MACHINES" check 1 1 --press 2>&1)"
-check "press: RELEASE_MIN_FREE_VAR_GB=30: refused, under the setting's figure" refused \
-  "12 GB would stay free, under the 30 GB a round keeps free" env STUB_VAR_FREE_GB=20 RELEASE_MIN_FREE_VAR_GB=30 bash "$MACHINES" check 1 1 --press
-check "a disk rule that is no number: refused" refused "RELEASE_MIN_FREE_VAR_GB=lots: it must be a whole number of GB" \
-  env RELEASE_MIN_FREE_VAR_GB=lots bash "$MACHINES" check 1 1
 check "a zram swap that is no number: refused" refused "RELEASE_ZRAM_SWAP_GB=big: it must be a whole number of GB" \
   env RELEASE_ZRAM_SWAP_GB=big bash "$MACHINES" check 1 1
 
