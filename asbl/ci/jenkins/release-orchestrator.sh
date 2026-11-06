@@ -124,7 +124,7 @@
 #   DRY_RUN_RED="<part>..." [empty]   a dry run only: the parts that come out red, to see what still runs after them
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs], RELEASE_STATE_DIR,
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
-#   MEMORY_EVERY [300]     seconds between two samples of memory.log
+#   MEMORY_EVERY [60]      seconds between two samples of memory.log: its peaks are what the memory rule counts next time
 #   RELEASE_CGROUP_DIR [/sys/fs/cgroup/system.slice]   where this host's containers' memory counters are
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
@@ -203,7 +203,7 @@ WIN_PID=$(win_vm_pidfile a)   # win-e2e.sh's pid file of VM a, which runs every 
 # the docker-server bundle a Linux e2e on E2E_TARGET=docker-server brings up in this checkout (dp-ci.sh docker_server_up)
 DOCKER_SERVER_BUNDLE="$PWD/frend/reporting/testground/docker-server/DataPallas"
 SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
-MEMORY_EVERY="${MEMORY_EVERY:-300}"
+MEMORY_EVERY="${MEMORY_EVERY:-60}"
 
 # what_part_starts <part>: the things that part starts and that outlive a stop of this script, one "<kind> TAB <name> TAB
 # <what>" line each (the kinds of started.txt); a part that starts nothing outside this script's processes prints nothing
@@ -317,6 +317,13 @@ vm_memory_line() {
     *) printf '%s\t%s\tmemory\tnot answering%s\n' "$now" "$machine" "${answer:+: $answer}" ;;
   esac
 }
+# vm_host_memory_line <VM name> <UTC>: what the VM holds of this host (machine host, vm <name>, rss_kb=): Windows' own figure
+# leaves out its file cache, which stays in this host's memory; a VM that is off gives no line
+vm_host_memory_line() {
+  local rss
+  rss=$(virsh dommemstat "$(machines_domain_of "$1")" 2>/dev/null | awk '$1 == "rss" { print $2 }')
+  [ -z "$rss" ] || printf '%s\thost\tvm %s\trss_kb=%s\n' "$2" "$1" "$rss"
+}
 # sample_memory_once <run folder>: one sample appended to its memory.log: this host's memory and CPU load (the runners and
 # the VMs share its CPUs, which the memory rule does not count), the run's containers (a runner whole: its engine and all
 # it runs), and the memory of each VM of the round (SAMPLE_VMS, else the run's RUN_VMS, else VM a), asked at once
@@ -335,6 +342,7 @@ sample_memory_once() {
     report_caps_reached "$dir"
     [ "${#vm_pids[@]}" = 0 ] || wait "${vm_pids[@]}"
     for vm_name in $sample_vms; do cat "$dir/.memory-$vm_name.line" 2>/dev/null; rm -f "$dir/.memory-$vm_name.line"; done
+    for vm_name in $sample_vms; do vm_host_memory_line "$vm_name" "$now"; done
   } >> "$dir/memory.log"
 }
 
@@ -762,6 +770,7 @@ finish() {  # finish <rc>: the summary with the flaky tests, result.txt and flak
   echo "SUMMARY execution $EXECUTION on ${PIN:+${PIN:0:8}}$([ "$DRY" = yes ] && echo ' (dry run)'):"
   for s in "${SUMMARY[@]}"; do echo "$s"; done
   [ ! -s "$PARTS/caps-reached.log" ] || { echo "MEMORY  ceilings reached in this run:"; cut -f2- "$PARTS/caps-reached.log"; }
+  [ ! -s "$PARTS/memory.log" ] || echo "MEMORY  peaks of this run: $(python3 -I asbl/ci/release-estimate.py run-peaks --runs "$PARTS" 2>/dev/null)"
   parts=$(result_part_lines)
   write_run_files "$1" "$parts"
   flaky_count=$(grep -c . "$PARTS/flaky.txt")
@@ -1022,7 +1031,7 @@ vm_up() {
     red_in_dry_run "vm-$1" || return 0
     VM_WHY="VM $1 ($dom) did not start (DRY_RUN_RED)"; echo "$VM_WHY"; return 1
   fi
-  machines_vm_start "$1" | tee "$PARTS/vm-$1.log"; rc=${PIPESTATUS[0]}
+  machines_vm_start_one_at_a_time "$PARTS/.vm-start.lock" "$1" | tee "$PARTS/vm-$1.log"; rc=${PIPESTATUS[0]}
   VM_WHY=$(tail -1 "$PARTS/vm-$1.log")
   [ "$rc" != 0 ] || machines_vm_docker_wait "$1" | tee -a "$PARTS/vm-$1.log"
   return "$rc"

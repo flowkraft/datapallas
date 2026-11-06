@@ -65,6 +65,7 @@ cat > "$STUBS/virsh" <<'STUB'
 case "${1:-}" in
   domstate) echo running ;;
   dumpxml)  printf "<domain>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n" ;;
+  dommemstat) printf 'actual 25165824\nrss 14680064\n' ;;
   *)        exit 1 ;;
 esac
 STUB
@@ -173,6 +174,8 @@ check "sampler: docker stats --no-stream called once" same 1 "$(grep -c '^docker
 check "sampler: the VM's memory over ssh (dp-ci.sh win ps)" same \
   "$(printf 'windows-vm\tmemory\t')committed=8589934592 commit_peak=12884901888 commit_limit=21474836480 physical_total=17179869184 physical_available=4294967296" \
   "$(grep -P '\twindows-vm\t' "$SAMPLE/memory.log" | cut -f2-)"
+check "sampler: what the VM holds of this host, beside what Windows says it uses" same \
+  "$(printf 'host\tvm a\trss_kb=14680064')" "$(grep -P '\tvm a\t' "$SAMPLE/memory.log" | cut -f2-)"
 check "sampler: ssh ran PowerShell on the VM" eval 'grep -q "^ssh .* ci@vm.invalid powershell -NoProfile -NonInteractive -EncodedCommand" "$STUB_CALLS"'
 STUB_SSH_DOWN=1 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
 check "sampler: a VM that does not answer is said, and the sample goes on" same \

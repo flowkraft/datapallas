@@ -85,7 +85,8 @@
 #     named, the layout's rules; a real round also what the host must have now (check <N> <M> --press): each added VM's
 #     settings file, each VM in libvirt, the memory rule with the host's available memory (N + 1 host test servers: each
 #     runner and the host lanes' runner, each VM to start, and what each VM running can grow by), /var's free disk after what the runners take there (their
-#     image volumes and checkouts). Refused: exit 2, one REFUSED line per broken rule, with its numbers
+#     image volumes and checkouts). Refused: exit 2, one REFUSED line per broken rule, with its numbers; the memory rule
+#     only warns, with its numbers, and the round starts: it counts real peaks, and the choice is the owner's
 #   Not parameters: ROUND_STARTED_BY, who starts it (required; the job reads it from the build's cause); MODE and UPLOAD
 #   (always a rehearsal with no upload); the retries (always 1); the test switches.
 #

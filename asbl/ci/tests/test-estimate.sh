@@ -18,7 +18,7 @@
 #      1 and 1 as before the runners (this host's parts in a row, the full set last);
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
 #      left, a warning with 1 GB less, "unknown" without the file;
-#   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 56 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
+#   5. WIN_VM_MEMORY_GB=10 holds a VM's count at 10 GB; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
 #      yet" and not drawn;
 #   6. the form's Groovy script, run by the Groovy of this host's Jenkins image in a throwaway container (no network,
 #      the scratch folder read-only), draws exactly what the shell draws, for the 16 choices and the cases of 4 and 5,
@@ -70,7 +70,7 @@ print(p[sys.argv[-1]])' "$@"; }   # json_field <file> [<N> <M>] <field>
 
 [ -d "$RUNS" ] || { echo "FAIL  no run folders in $RUNS (TEST_ESTIMATE_RUNS)"; exit 1; }
 cp asbl/ci/release-layout.example.conf "$SCRATCH/conf" && chmod 600 "$SCRATCH/conf" || exit 2
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
 export RELEASE_REHEARSAL_CONF="$SCRATCH/conf" RUN_RECORD_DIR="$RUNS" RELEASE_MEMINFO="$SCRATCH/meminfo"
 export RELEASE_ESTIMATES_FILE="$SCRATCH/estimates/release-estimates.json"
 JSON="$RELEASE_ESTIMATES_FILE"
@@ -190,10 +190,11 @@ for (n, m), p in sorted(pairs.items()):
     if p["total_line"] != "Total   about %s   %s" % (about(total), gain):
         bad["gain"].append("%s: %s, expected about %s %s" % (tag, p["total_line"], about(total), gain))
     # the memory: N + 1 host test servers (each runner and the host lanes' runner), VM a's growth, M - 1 VMs
-    need = (n + 1) * data["server_gb"] + (data["vm_gb"] - data["vm_idle_gb"]) + (m - 1) * data["vm_gb"]
+    counted = data["counted"]
+    need = n * counted["runner"] + counted["host-lanes"] + (counted["vm"] - data["vm_idle_gb"]) + (m - 1) * counted["vm"]
     engines = {1: "runner 1", 2: "runners 1, 2"}.get(n, "runners 1 to %d" % n)
-    if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB (%s and the host lanes' runner); "
-                                                             % (n + 1, data["server_gb"], engines)):
+    if p["need_gb"] != need or not p["need_text"].startswith("%s at %d GB" % (engines, counted["runner"])) or \
+            "the host lanes' runner at %d GB" % counted["host-lanes"] not in p["need_text"]:
         bad["memory"].append("%s: needs %s (%s), expected %d" % (tag, p["need_gb"], p["need_text"], need))
     # refused at the press: none (N above 1 runs in runners)
     if p["refused"]:
@@ -204,7 +205,7 @@ for (n, m), p in sorted(pairs.items()):
     expected = (["REFUSED at the press: " + r for r in p["refused"]] +
                 ("Memory  needs +%d GB: %s" % (need, p["need_text"])).split("\n") +
                 ["        available now 100 GB -> %d GB would stay free%s" % (
-                     available, "    WARNING: under the %d GB rule (the press refuses it)" % data["min_free_gb"]
+                     available, "    REFUSED by memory: under the %d GB rule, but you can still press" % data["min_free_gb"]
                      if available < data["min_free_gb"] else "")] +
                 chart + [p["total_line"]])
     if block[:-1] != expected or not block[-1].startswith("From    the estimate of " + data["written"]) \
@@ -216,7 +217,7 @@ check("each part's times are the schedule's (release-machines.sh machines_schedu
 check("each bar starts and ends at its part's times, to half a column, for the 16", bad["bars"])
 check("the total is the last end (also the chart's last column), for the 16", bad["total"])
 check("the gain is against 1 and 1 (about %s), for the 16" % about(base), bad["gain"])
-check("the memory: N + 1 host test servers x %d GB (the runners and the host lanes' runner), VM a's growth and M - 1 VMs x %d GB, for the 16"
+check("the memory: each runner and the host lanes' runner at what it counts (default %d GB), VM a's growth and M - 1 VMs x %d GB, for the 16"
       % (data["server_gb"], data["vm_gb"]), bad["memory"])
 check("none REFUSED at the press (N above 1 runs in runners)", bad["refused"])
 check("each block: the refusals, the memory against 100 GB, the chart, the total, where from", bad["block"])
@@ -357,16 +358,34 @@ RELEASE_ESTIMATES_FROM="$JSON" RELEASE_MEMINFO="$SCRATCH/no-meminfo" bash "$ROUN
 check "4 and 4 with exactly ${min_free} GB left: no warning" \
   bash -c 'grep -qx "        available now $2 GB -> $3 GB would stay free" "$1"' _ "$SCRATCH/shell-edge.txt" $((need + min_free)) "$min_free"
 check "4 and 4 with $((min_free - 1)) GB left: the warning" \
-  has "available now $((need + min_free - 1)) GB -> $((min_free - 1)) GB would stay free    WARNING: under the $min_free GB rule (the press refuses it)" "$(cat "$SCRATCH/shell-low.txt")"
+  has "available now $((need + min_free - 1)) GB -> $((min_free - 1)) GB would stay free    REFUSED by memory: under the $min_free GB rule, but you can still press" "$(cat "$SCRATCH/shell-low.txt")"
 check "no /proc/meminfo: the available memory unknown, the rest drawn" \
   bash -c 'grep -qxF "        available now: unknown ($2 could not be read)" "$1" && grep -q "^Total   about" "$1"' _ "$SCRATCH/shell-unknown.txt" "$SCRATCH/no-meminfo"
 
+# ---- the memory peaks: real ones when a round recorded them, the defaults until then ----
+PEAKS="$SCRATCH/peak-runs"; mkdir -p "$PEAKS"
+peak_run() { mkdir -p "$PEAKS/$1-release-orchestrator-execution-1-version-9.9.9${3:-}"; printf '%b' "$2" > "$PEAKS/$1-release-orchestrator-execution-1-version-9.9.9${3:-}/memory.log"; }   # <stamp> <lines> [<dry suffix>]
+peaks() { python3 -I asbl/ci/release-estimate.py peaks --runs "$PEAKS" --server-gb 9 --vm-gb "${1:-24}" --vm-default-gb 12; }
+check "no round recorded anything: the defaults" same "9 9 12" "$(peaks)"
+peak_run 20261101T000000Z '2026-11-01T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=512MiB / 10GiB mem_percent=5%\n2026-11-01T00:05:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=9.2GiB / 10GiB mem_percent=92%\n2026-11-01T00:05:00Z\twindows-vm\tmemory\tcommitted=1 commit_peak=1 commit_limit=1 physical_total=12884901888 physical_available=1610612736\n'
+check "a round before the host's VM lines: a runner's highest sample, rounded up; a VM at what Windows used" same "10 9 11" "$(peaks)"
+peak_run 20261102T000000Z '2026-11-02T00:00:00Z\thost\tvm a\trss_kb=25165824\n2026-11-02T00:30:00Z\thost\tvm a\trss_kb=14680064\n2026-11-02T00:30:00Z\thost\tcontainer dp-ci-runner-5\tcpu=1% mem=700MiB / 24GiB mem_percent=3%\n2026-11-02T00:30:00Z\twindows-vm\tmemory\tcommitted=1 commit_peak=1 commit_limit=1 physical_total=25769803776 physical_available=17179869184\n'
+check "a VM at what it held of this host, past its boot; the host lanes' runner on its own" same "10 1 14" "$(peaks)"
+check "  a VM never counts above the ceiling it has now" same "10 1 10" "$(peaks 10)"
+peak_run 20261102T120000Z '2026-11-02T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=30GiB / 32GiB mem_percent=93%\n' -dry-run
+check "  a dry run counts for nothing" same "10 1 14" "$(peaks)"
+for day in 03 04 05 06 07; do peak_run "202611${day}T000000Z" "2026-11-${day}T00:00:00Z\thost\tcontainer dp-ci-runner-2\tcpu=1% mem=3GiB / 24GiB mem_percent=12%\n"; done
+check "  five newer rounds of a runner: the old peak stops counting; the others keep theirs" same "3 1 14" "$(peaks)"
+check "one run's own peaks, for its SUMMARY" same "the host lanes' runner 0.7 GB; the VMs 14.0 GB" \
+  "$(python3 -I asbl/ci/release-estimate.py run-peaks --runs "$PEAKS/20261102T000000Z-release-orchestrator-execution-1-version-9.9.9")"
+
 # ---- 5. WIN_VM_MEMORY_GB=10; two VMs named ----
 WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate > /dev/null
-check "WIN_VM_MEMORY_GB=10: 4 and 4 need 56 GB less ($need GB with 24)" \
-  same $((need - 56)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
+check "WIN_VM_MEMORY_GB=10: a VM counts at 10 GB, whatever its peak" same 10 \
+  "$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["counted"]["vm"])' "$SCRATCH/estimates-vm10.json")"
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate 4 4 > "$SCRATCH/shell-vm10.txt"
-check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 56)) GB: 5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner); VM a can grow by 4 GB (up to 10 GB, about 6 GB idle); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "WIN_VM_MEMORY_GB=10: the block says it" has "VM a can grow by 4 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "  and the VMs to start" has "; VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 check "the memory line's second line: the ceilings" has "        ceilings: a runner up to 24 GB, dp-ci in it up to 12 GB; a VM up to 10 GB, Docker in it up to 16 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 RELEASE_WINDOWS_VMS="a b" RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate > /dev/null
 check "RELEASE_WINDOWS_VMS=\"a b\": 3 and 4 VMs not created yet, refused and not drawn; 1 and 2 VMs drawn" python3 -I -c 'import json, sys
@@ -378,7 +397,7 @@ RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 3 >
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 2 > "$SCRATCH/shell-ab-1-2.txt"
 check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with its memory" \
   bash -c 'grep -q "^REFUSED at the press: USE_N_NUMBER_OF_WINDOWS_VMS=3, .*not created yet" "$1" &&
-    grep -qx "Memory  needs +76 GB: 2 host test servers x 5 GB (runner 1 and the host lanes'"'"' runner); VM a can grow by 18 GB (up to 24 GB, about 6 GB idle); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
+    grep -qE "^Memory  needs \+[0-9]+ GB: .*; 2 VMs at [0-9]+ GB \(1 of them not created yet\)$" "$1" &&
     grep -q "^Total   not estimated" "$1"' _ "$SCRATCH/shell-ab-1-3.txt"
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \

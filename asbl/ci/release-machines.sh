@@ -14,10 +14,10 @@
 #                                                       its numbers. Every start of the orchestrator and of a round asks it
 #   bash asbl/ci/release-machines.sh check <N> <M> --press   the same, plus what the host must have now for a real round:
 #                                                       each added VM's settings file, each VM in libvirt, the memory rule
-#                                                       with the host's available memory now (N + 1 host test servers at
-#                                                       RELEASE_SERVER_GB: with the runners, each runner and the host
-#                                                       lanes' runner; each VM to start at WIN_VM_MEMORY_GB; each VM
-#                                                       running at what it can still grow by), the disk rule: /var
+#                                                       with the host's available memory now (each runner and the host
+#                                                       lanes' runner at its real peak, each VM to start at its peak, each
+#                                                       VM running at what it can still grow by; a box no round recorded
+#                                                       at its default): it only warns, the owner decides; the disk rule: /var
 #                                                       keeps MACHINES_MIN_FREE_VAR_GB [50] free after what the runners take
 #                                                       there (MACHINES_RUNNER_FIRST_GB [40] for a runner with no image
 #                                                       volume yet, MACHINES_RUNNER_ROUND_GB [4] for one whose volume is
@@ -44,7 +44,7 @@
 #                               another, the VM's beside them); in-order: 16.6.2's order (step 1, then steps 2 and 3),
 #                               the off switch of every speedup (with N = M = 1 only)
 #   RELEASE_SERVER_GB [5]       one host test server's memory (its server, its database containers, the browser); a
-#                               runner counts as one
+#                               runner counts as one until a round recorded a runner's peak (memory.log)
 #   RELEASE_RUNNERS [yes]       yes: with the steps together, step 1's full set runs in runners (N of them, 1 the
 #                               default), each a Docker engine of its own; no: on this host's engine, as before the
 #                               runners (the fallback when a runner fails for its own reason; N must be 1)
@@ -53,10 +53,12 @@
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
 #   WIN_VM_MEMORY_GB [24]       one memory for every Windows VM, set on each before a round (virsh --config): a ceiling,
 #                               see THE VMS' MEMORY below
+#   WIN_VM_DEFAULT_PEAK_GB [12] what the memory rule counts a VM at until a round recorded a VM's peak: the most a VM used
+#                               in the last real round was 10.5 GB, in a VM of 12 GB with Docker held to 6.2 GB
 #   WIN_VM_DOCKER_MEMORY_GB [16]   the most Docker takes inside each VM, under WIN_VM_MEMORY_GB (.wslconfig memory=,
 #                               written by vm-memory-setup)
 #   RELEASE_CI_CONTAINER_LIMIT_GB [12]   the CI's own container dp-ci: see THE MEMORY CEILINGS below
-#   RELEASE_MIN_FREE_GB [16]    host memory that must stay free: the form warns, the press refuses
+#   RELEASE_MIN_FREE_GB [16]    host memory that should stay free: the form and the press say so, they do not stop a round
 #   VM_LANES_<M>_<name>         the lanes VM <name> runs, in order, when the round uses M VMs; missing: the default
 #                               layout of that VM's place in RELEASE_WINDOWS_VMS (DEFAULT_LAYOUT_<M>, below)
 #   VM_DOMAIN_<name>            the VM's libvirt name [a: win10-dev, any other: win10-dev-<name>]
@@ -68,8 +70,9 @@
 # package empties asbl\dist).
 # A ROUND'S VMS (the orchestrator, real runs; virsh on this host): before the round, each VM it uses gets
 # WIN_VM_MEMORY_GB as its defined memory when it differs (--config: a running VM takes it at its next start); a VM that
-# is off is started, and waited for until it answers over SSH (dp-ci.sh win ssh ver, VM_SSH_WAIT_SECS [900] at most,
-# every VM_POLL_SECS [15]), else its lanes are red; a VM the round started is shut down after its last lane (virsh
+# is off is started, one at a time (machines_vm_start_one_at_a_time: a VM holds all its memory while it boots), and waited
+# for until it answers over SSH (dp-ci.sh win ssh ver, VM_SSH_WAIT_SECS [900] at most, every VM_POLL_SECS [15]), else its
+# lanes are red; a VM the round started is shut down after its last lane (virsh
 # shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); a VM that was running is left running.
 # THE MEMORY CEILINGS sit around the apps, never on them: what the tests start (the AI Hub, the DB starter packs, third-party
 # apps) runs as the e2e proved it, with no limit of its own, inside a box that has one. Each is a ceiling, not a reservation:
@@ -96,7 +99,7 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
 MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
 # the /var disk a runner takes in a round (its image store, the volume dp-ci-runner-<n>-docker, and its checkout copy under
@@ -149,6 +152,7 @@ machines_load() {
   RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-24}"
   RELEASE_WINDOWS_VMS="${RELEASE_WINDOWS_VMS:-a}"
   WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-24}"
+  WIN_VM_DEFAULT_PEAK_GB="${WIN_VM_DEFAULT_PEAK_GB:-12}"
   WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
   RELEASE_CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
@@ -309,6 +313,38 @@ machines_vm_start() {
   done
   echo "VM      $1 ($dom): answers over SSH, after about $waited s"
 }
+# A VM just started holds all its memory: Windows writes zeros over it within 2 min, and KSM folds them back in the minutes
+# after (23 GB to 9 GB in 5 min, 2026-11-06). A VM under this is past that.
+MACHINES_VM_BOOT_DONE_GB=12
+# machines_vm_boot_memory_wait <name>: wait until a VM just started gave the memory of its boot back: first until it is seen
+# holding it (VM_BOOT_RISE_SECS [180] at most: it may be past it already), then until it holds under
+# MACHINES_VM_BOOT_DONE_GB (VM_BOOT_MEMORY_WAIT_SECS [900] in all). Never red: the VM itself is up.
+machines_vm_boot_memory_wait() {
+  local dom gb waited=0 wait="${VM_BOOT_MEMORY_WAIT_SECS:-900}" rise="${VM_BOOT_RISE_SECS:-180}" every="${VM_POLL_SECS:-15}" holding=no
+  dom=$(machines_domain_of "$1")
+  until [ "$waited" -ge "$wait" ]; do
+    gb=$(virsh dommemstat "$dom" 2>/dev/null | awk '$1 == "rss" { print int($2 / 1048576) }')
+    [ -n "$gb" ] || return 0
+    if [ "$gb" -ge "$MACHINES_VM_BOOT_DONE_GB" ]; then holding=yes
+    elif [ "$holding" = yes ] || [ "$waited" -ge "$rise" ]; then
+      echo "VM      $1 ($dom): gave its boot's memory back (it holds $gb GB), after about $waited s"; return 0
+    fi
+    sleep "$every"; waited=$((waited + every))
+  done
+  echo "WARN    VM $1 ($dom): still holds $gb GB $(machines_duration "$wait") after it answered: the next VM starts anyway"
+}
+# machines_vm_start_one_at_a_time <lock file> <name>: machines_vm_start, the round's other VMs waiting until this one gave
+# its boot's memory back: at once they would all hold all of theirs (3 x 24 GB of about 74 GB available), the build running,
+# with one KSM thread folding them. Costs no time: a VM's first part waits for the pack, about an hour in. Exit: machines_vm_start's
+machines_vm_start_one_at_a_time() {
+  local lock rc
+  exec {lock}>"$1"
+  flock -n "$lock" || { echo "VM      $2: waits its turn, the VMs boot one at a time"; flock "$lock"; }
+  machines_vm_start "$2"; rc=$?
+  [ "$rc" != 0 ] || machines_vm_boot_memory_wait "$2"
+  exec {lock}>&-
+  return "$rc"
+}
 # machines_vm_docker_wait <name>: wait until Docker answers on a VM just started: Docker Desktop comes up after the logon,
 # a minute or two after SSH, and a lane asks for it at its very top. Never red by itself: the lane's own check says it.
 machines_vm_docker_wait() {
@@ -340,10 +376,12 @@ machines_available_gb() { awk '/^MemAvailable:/ { printf "%d", $2 / 1048576 }' "
 machines_servers_for() { echo $(($1 + 1)); }   # the host test servers of a choice: N subsets + step 2's (the plan's rule)
 # machines_runners_used: yes when step 1's full set runs in runners (RELEASE_RUNNERS=yes with the steps together)
 machines_runners_used() { [ "$RELEASE_RUNNERS" = yes ] && [ "$RELEASE_STEPS" = together ] && echo yes || echo no; }
-# machines_vm_growth_gb: what a running VM can still take from the host during a round: from idle up to its ceiling
-machines_vm_growth_gb() {
-  local growth=$((WIN_VM_MEMORY_GB - MACHINES_VM_IDLE_GB))
-  [ "$growth" -gt 0 ] && echo "$growth" || echo 0
+# machines_memory_counted: what the memory rule counts: "<runner GB> <host lanes' runner GB> <VM GB>", each kind's real peak
+# from the last rounds' memory.log, else its default (asbl/ci/release-estimate.py peaks, the form's calculation too)
+machines_memory_counted() {
+  python3 -I asbl/ci/release-estimate.py peaks --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
+    --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vm-default-gb "$WIN_VM_DEFAULT_PEAK_GB" 2>/dev/null ||
+    echo "$RELEASE_SERVER_GB $RELEASE_SERVER_GB $WIN_VM_DEFAULT_PEAK_GB"
 }
 # machines_ceilings_text: a round's memory ceilings, as the job's form says them under its memory line
 machines_ceilings_text() {
@@ -379,7 +417,7 @@ machines_runner_disk() {
 # its numbers) and returns 2, or prints MACHINES OK and returns 0
 machines_check() {
   local n="$1" m="$2" press="${3:-}" refused=0 vms v lanes lane count place robot_place light_place electron_place
-  local key value need available free_var starts="" growing="" servers disk disk_gb=0 ceilings inner outer
+  local key value need available free_var starts="" growing="" servers servers_text runner_gb lanes_gb vm_gb growth disk disk_gb=0 ceilings inner outer
   refuse_rule() { echo "REFUSED $*"; refused=1; }
   case "$n" in 1|2|3|4) ;; *) refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: it must be 1, 2, 3 or 4" ;; esac
   case "$m" in 1|2|3|4) ;; *) refuse_rule "USE_N_NUMBER_OF_WINDOWS_VMS=$m: it must be 1, 2, 3 or 4" ;; esac
@@ -396,7 +434,7 @@ machines_check() {
           refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
     *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
   esac
-  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB; do
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done
   # a box stays under the box it runs in: a runaway reaches its own ceiling first and ends there
@@ -435,10 +473,10 @@ machines_check() {
   done
   if [ "$press" = --press ]; then
     # what the host must have now: each added VM's settings file (VM a's win-ci.env is release-publish.sh preflight
-    # docker's, at the same start) and each VM in libvirt; the memory rule: the host test servers (with the runners: each
-    # runner and the host lanes' runner, each one host test server), plus each VM this round would start at its ceiling
-    # and what each VM running now can still grow by (machines_vm_growth_gb), against what is
-    # available now; the disk rule: /var's free disk, less what the runners take there (machines_runner_disk)
+    # docker's, at the same start) and each VM in libvirt; the memory rule: each runner and the host lanes' runner, each VM
+    # this round would start, and what each VM running now can still grow by, all at real peaks (machines_memory_counted),
+    # against what is available now. It only warns: owner, 2026-11-06, the peaks make it worth reading and the choice stays
+    # theirs. The disk rule: /var's free disk, less what the runners take there (machines_runner_disk)
     for v in $vms; do
       [ "$v" = a ] || [ -e "$(machines_conf_of "$v")" ] || refuse_rule "VM $v has no settings file $(machines_conf_of "$v")"
       case "$(machines_vm_state "$v")" in
@@ -448,11 +486,18 @@ machines_check() {
       esac
     done
     servers=$(machines_servers_for "$n")
-    need=$((servers * RELEASE_SERVER_GB + $(wc -w <<< "$growing") * $(machines_vm_growth_gb) + $(wc -w <<< "$starts") * WIN_VM_MEMORY_GB))
+    read -r runner_gb lanes_gb vm_gb <<< "$(machines_memory_counted)"
+    growth=$((vm_gb - MACHINES_VM_IDLE_GB)); [ "$growth" -gt 0 ] || growth=0
+    if [ "$RELEASE_RUNNERS" = no ] || [ "$RELEASE_STEPS" != together ]; then
+      need=$((servers * RELEASE_SERVER_GB)); servers_text="$servers host test servers x $RELEASE_SERVER_GB GB"
+    else
+      need=$((n * runner_gb + lanes_gb)); servers_text="$n x a runner at $runner_gb GB, the host lanes' runner at $lanes_gb GB"
+    fi
+    need=$((need + $(wc -w <<< "$growing") * growth + $(wc -w <<< "$starts") * vm_gb))
     available=$(machines_available_gb)
     if [ -z "$available" ]; then refuse_rule "the host's available memory cannot be read (${RELEASE_MEMINFO:-/proc/meminfo})"
     elif [ $((available - need)) -lt "$RELEASE_MIN_FREE_GB" ]; then
-      refuse_rule "memory: N=$n M=$m needs $need GB ($servers host test servers x $RELEASE_SERVER_GB GB$(machines_servers_text "$n")${growing:+, VMs$growing running, each can grow by $(machines_vm_growth_gb) GB}${starts:+, VMs$starts to start x $WIN_VM_MEMORY_GB GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB"
+      echo "WARN    memory: N=$n M=$m needs $need GB ($servers_text${growing:+, VMs$growing running, each can grow by $growth GB}${starts:+, VMs$starts to start x $vm_gb GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB; the round starts anyway"
     fi
     free_var=$(df -BG --output=avail /var 2>/dev/null | tail -1 | tr -dc '0-9')
     disk=$(machines_runner_disk "$n"); disk_gb=${disk%% *}
@@ -493,7 +538,8 @@ machines_schedule() {
   [ -n "$target" ] || target=$(machines_full_target)
   python3 -I asbl/ci/release-estimate.py schedule --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
     --target "$target" --jobs "$n" --vms "$vms" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
-    --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vm-idle-gb "$MACHINES_VM_IDLE_GB" --vms-off "${off# }"
+    --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vm-default-gb "$WIN_VM_DEFAULT_PEAK_GB" \
+    --vm-idle-gb "$MACHINES_VM_IDLE_GB" --vms-off "${off# }"
 }
 
 # machines_estimates [<full target>]: the 16 Advanced choices, N and M from 1 to 4, as JSON on stdout (asbl/ci/release-
@@ -515,7 +561,8 @@ machines_estimates() {
   python3 -I asbl/ci/release-estimate.py estimates --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
     --target "$target" --vms-named "$RELEASE_WINDOWS_VMS" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
     --server-gb "$RELEASE_SERVER_GB" \
-    --vm-gb "$WIN_VM_MEMORY_GB" --vm-idle-gb "$MACHINES_VM_IDLE_GB" --min-free-gb "$RELEASE_MIN_FREE_GB" \
+    --vm-gb "$WIN_VM_MEMORY_GB" --vm-default-gb "$WIN_VM_DEFAULT_PEAK_GB" --vm-idle-gb "$MACHINES_VM_IDLE_GB" \
+    --min-free-gb "$RELEASE_MIN_FREE_GB" \
     --ceilings "$(machines_ceilings_text)"
 }
 

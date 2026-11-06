@@ -23,10 +23,18 @@ Playwright JSON reports, and writes nothing.
       writes it to RELEASE_ESTIMATES_FILE, which the job's form reads): for each, the parts with their times, the Gantt
       chart's lines, the total and the gain against 1 and 1, the memory it needs, and why the press refuses it (the
       rules of release-machines.sh check, given by --refused)
+  release-estimate.py peaks --runs <RUN_RECORD_DIR> [--server-gb G] [--vm-gb G] [--vm-default-gb G]
+      what the memory rule counts: "<runner GB> <host lanes' runner GB> <VM GB>" (release-machines.sh's press check)
+  release-estimate.py run-peaks --runs <one run's folder>
+      that run's own peaks, in a line of its SUMMARY
   release-estimate.py block    --estimates <that JSON> --jobs N --vms M [--meminfo /proc/meminfo]
       the block the job's form draws under the two choices: what the press refuses, the memory line (the host's
       available memory now), the Gantt chart, the total and the gain. asbl/ci/jenkins/release-estimate-block.groovy
       draws the same text from the same JSON in the form (keep the two in step: asbl/ci/tests/test-estimate.sh)
+
+Where the memory comes from: the same run folders' memory.log. The memory rule counts each kind of box (a runner, the host
+lanes' runner, a VM) at the highest it really reached over the newest MEMORY_PEAK_ROUNDS rounds that sampled it, and at its
+default (--server-gb, --vm-default-gb) until one did. A VM's figure is what it held of this host, past its boot.
 
 Where the times come from: the real (not dry-run) orchestrator run folders under --runs (<UTC>-release-orchestrator-*),
 newest first; each lane takes its time from the newest run in which it passed (its exit code 0), as the PART lines of
@@ -68,7 +76,13 @@ import sys
 from datetime import datetime, timezone
 
 # Where the auth file and the Linux proof run, with the runners (HOST_LANES_RUNNER, asbl/ci/release-machines.sh)
-HOST_LANES_MACHINE = "runner 5"
+HOST_LANES_RUNNER = 5
+HOST_LANES_MACHINE = "runner %d" % HOST_LANES_RUNNER
+# The memory rule's real peaks: over this many rounds of each kind of box, so a stack that shrank stops counting
+MEMORY_PEAK_ROUNDS = 5
+# A VM holds all its memory while it boots, until KSM folds it back (about 6 min, measured 2026-11-06): that is not a need
+VM_BOOT_MINUTES = 20
+MEMORY_PEAK_NAMES = (("runner", "the runners"), ("host-lanes", "the host lanes' runner"), ("vm", "the VMs"))
 # The 16.6.2 release's lane times (round 20261103T231939Z, plan 16.6.3 TODO 1), used for a lane no run has passed yet.
 # runner-start (a runner's engine, this checkout and the CI caches copied in) and
 # runner-images (its images copied by id) are not measured: no runner ran before the 16.6.3 release. They are a first
@@ -790,7 +804,9 @@ def estimates(args):
         key, _, why = item.partition("=")
         n_text, _, m_text = key.partition(":")
         refused.setdefault((int(n_text), int(m_text)), []).append(why)
-    server_gb, vm_gb, idle_gb = int(args.server_gb), int(args.vm_gb), int(args.vm_idle_gb)
+    server_gb, idle_gb = int(args.server_gb), int(args.vm_idle_gb)
+    counted = memory_counted(args)
+    vm_gb = counted["vm"][0]
     vm_growth = max(vm_gb - idle_gb, 0)
     use_runners = args.runners == "yes" and args.steps == "together"
     pairs, base = [], None
@@ -798,10 +814,11 @@ def estimates(args):
         for m in range(1, 5):
             vms = named[:m]
             missing = m - len(vms)
-            servers = n + 1   # the memory rule counts N + 1 host test servers, as release-machines.sh's check does
+            servers_gb, servers_text = servers_need(n, use_runners, counted, server_gb)
             started = vms[1:]   # the VMs a round starts: every VM but the first, which runs for the dev gates
             # the first VM runs already: what it holds now is out of the available memory, what it can grow by is not
-            vm_text = "VM %s can grow by %d GB (up to %d GB, about %d GB idle)" % (vms[0], vm_growth, vm_gb, idle_gb)
+            vm_text = "VM %s can grow by %d GB (%s: %d GB, about %d GB idle)" % (vms[0], vm_growth, seen(counted["vm"]),
+                                                                                  vm_gb, idle_gb)
             if missing:
                 vm_text += "; %d VM%s at %d GB (%s not created yet)" % (m - 1, "" if m == 2 else "s", vm_gb,
                                                                         "%d of them" % missing if m > 2 else "it is")
@@ -809,10 +826,8 @@ def estimates(args):
                 vm_text += "; VM%s %s at %d GB" % ("" if m == 2 else "s", ", ".join(started), vm_gb)
             entry = {
                 "jobs": n, "vms": m, "refused": refused.get((n, m), []),
-                "need_gb": servers * server_gb + vm_growth + (m - 1) * vm_gb,
-                "need_text": "%d host test servers x %d GB%s; %s" % (servers, server_gb, engines_text(n, use_runners),
-                                                                    vm_text)
-                             + ("\n        " + args.ceilings if args.ceilings else ""),
+                "need_gb": servers_gb + vm_growth + (m - 1) * vm_gb,
+                "need_text": "%s; %s" % (servers_text, vm_text) + ("\n        " + args.ceilings if args.ceilings else ""),
             }
             why_not = ""
             if missing or any(v not in layouts.get(m, {}) for v in vms):
@@ -847,21 +862,83 @@ def estimates(args):
             pairs.append(entry)
     where = sorted({src for _, src in lanes.values()})
     written = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    peak_runs = sorted({count[1] for count in counted.values() if count[1]})
     return {
-        "written": written, "steps": args.steps, "target": args.target, "server_gb": server_gb, "vm_gb": vm_gb,
-        "vm_idle_gb": idle_gb,
+        "written": written, "steps": args.steps, "target": args.target, "server_gb": server_gb, "vm_gb": int(args.vm_gb),
+        "vm_idle_gb": idle_gb, "counted": {kind: count[0] for kind, count in counted.items()},
         "min_free_gb": int(args.min_free_gb), "vms_named": named, "pairs": pairs,
         "from_line": "From    the estimate of %s (release-rehearsal.sh estimate): the lane times of %s; the time per "
-                     "file of %s" % (written, ", ".join(where), full_info["from"] if full_info else "none"),
+                     "file of %s; the memory peaks of %s" % (written, ", ".join(where), full_info["from"] if full_info else "none",
+                                                             ", ".join(peak_runs) or "no round yet"),
     }
 
 
-def engines_text(n, runners):
-    """what the memory rule's N + 1 host test servers are, with the runners: " (runner 1 and the host lanes' runner)" """
+def memory_peaks_of_run(folder):
+    """one run's memory.log, its highest in GiB per kind of box it sampled: runner, host-lanes, vm. A VM's is what it held
+    of this host (Windows' own figure leaves out its file cache, which stays here), past its boot; before those lines
+    were written, what Windows says it used"""
+    peaks, start, held, windows = {}, None, 0.0, 0.0
+    for line in read_text(os.path.join(folder, "memory.log")).splitlines():
+        fields = line.split("\t")
+        if len(fields) < 4:
+            continue
+        when, machine, what, value = fields[:4]
+        try:
+            at = parse_utc(when)
+        except ValueError:
+            continue
+        start = start or at
+        runner = re.match(r"container dp-ci-runner-(\d+)$", what)
+        used = re.search(r"\bmem=([\d.]+)(GiB|MiB|KiB|B)\b", value)
+        rss = re.search(r"\brss_kb=(\d+)", value)
+        physical = re.search(r"\bphysical_total=(\d+) physical_available=(\d+)", value)
+        if machine == "host" and runner and used:
+            kind = "host-lanes" if int(runner.group(1)) == HOST_LANES_RUNNER else "runner"
+            gib = float(used.group(1)) / {"GiB": 1, "MiB": 2 ** 10, "KiB": 2 ** 20, "B": 2 ** 30}[used.group(2)]
+            peaks[kind] = max(peaks.get(kind, 0.0), gib)
+        elif machine == "host" and what.startswith("vm ") and rss:
+            if (at - start).total_seconds() >= VM_BOOT_MINUTES * 60:
+                held = max(held, int(rss.group(1)) / 2.0 ** 20)
+        elif machine.startswith("windows-vm") and what == "memory" and physical:
+            windows = max(windows, (int(physical.group(1)) - int(physical.group(2))) / 2.0 ** 30)
+    if held or windows:
+        peaks["vm"] = held or windows
+    return peaks
+
+
+def memory_peaks(runs):
+    """each kind of box's real peak: (whole GB, rounded up; its run), over the newest MEMORY_PEAK_ROUNDS that sampled it"""
+    best, rounds = {}, {}
+    for folder in real_run_folders(runs):
+        for kind, peak in memory_peaks_of_run(folder).items():
+            rounds[kind] = rounds.get(kind, 0) + 1
+            if rounds[kind] <= MEMORY_PEAK_ROUNDS and peak > best.get(kind, (0, ""))[0]:
+                best[kind] = (peak, os.path.basename(folder))
+    return {kind: (int(math.ceil(peak)), run) for kind, (peak, run) in best.items()}
+
+
+def memory_counted(args):
+    """what the memory rule counts per kind of box: (GB, the run of its real peak, or None: its default). A VM never counts
+    above the ceiling it has now"""
+    peaks = memory_peaks(args.runs)
+    defaults = {"runner": int(args.server_gb), "host-lanes": int(args.server_gb), "vm": int(args.vm_default_gb)}
+    counted = {kind: peaks.get(kind, (gb, None)) for kind, gb in defaults.items()}
+    counted["vm"] = (min(counted["vm"][0], int(args.vm_gb)), counted["vm"][1])
+    return counted
+
+
+def seen(count):
+    return "peak seen" if count[1] else "no peak yet, default"
+
+
+def servers_need(n, runners, counted, server_gb):
+    """the memory rule's host test servers, as (GB, text): with the runners each at what it counts"""
     if not runners:
-        return ""
-    return " (%s and the host lanes' runner)" % ("runner 1" if n == 1 else "runners 1, 2" if n == 2 else
-                                             "runners 1 to %d" % n)
+        return (n + 1) * server_gb, "%d host test servers x %d GB" % (n + 1, server_gb)
+    runner, lanes = counted["runner"], counted["host-lanes"]
+    names = "runner 1" if n == 1 else "runners 1, 2" if n == 2 else "runners 1 to %d" % n
+    return n * runner[0] + lanes[0], "%s at %d GB%s (%s), the host lanes' runner at %d GB (%s)" % (
+        names, runner[0], "" if n == 1 else " each", seen(runner), lanes[0], seen(lanes))
 
 
 def available_gb(meminfo):
@@ -884,7 +961,7 @@ def block(data, n, m, meminfo):
             lines.append("        available now: unknown (%s could not be read)" % meminfo)
         else:
             left = available - pair["need_gb"]
-            warn = "    WARNING: under the %d GB rule (the press refuses it)" % data["min_free_gb"] if left < data["min_free_gb"] else ""
+            warn = "    REFUSED by memory: under the %d GB rule, but you can still press" % data["min_free_gb"] if left < data["min_free_gb"] else ""
             lines.append("        available now %d GB -> %d GB would stay free%s" % (available, left, warn))
         lines += pair["chart"]
         lines.append(pair["total_line"])
@@ -894,7 +971,7 @@ def block(data, n, m, meminfo):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("what", choices=("lanes", "files", "schedule", "estimates", "block"))
+    ap.add_argument("what", choices=("lanes", "files", "schedule", "estimates", "block", "peaks", "run-peaks"))
     ap.add_argument("--runs", help="every subcommand but block: the run folders whose marks give the times")
     ap.add_argument("--target", default="docker-server", choices=("web", "docker-server"))
     ap.add_argument("--jobs", type=int, default=1)
@@ -906,6 +983,7 @@ def main():
     ap.add_argument("--server-gb", type=float, default=5)
     ap.add_argument("--vm-gb", type=float, default=24)
     ap.add_argument("--vm-idle-gb", type=float, default=6, help="what a VM holds of the host when idle (MACHINES_VM_IDLE_GB)")
+    ap.add_argument("--vm-default-gb", type=float, default=12, help="a VM until a round recorded its peak (WIN_VM_DEFAULT_PEAK_GB)")
     ap.add_argument("--ceilings", default="", help="estimates: the round's memory ceilings, drawn under the memory line")
     ap.add_argument("--vms-off", default=None, help="the VMs the round would start (default: every VM but the first)")
     ap.add_argument("--vms-named", default="a", help="estimates: the VMs that exist (RELEASE_WINDOWS_VMS)")
@@ -928,6 +1006,14 @@ def main():
         ap.error("--runs is required")
     if args.what == "estimates":
         print(json.dumps(estimates(args), indent=1, sort_keys=True))
+        return 0
+    if args.what == "peaks":
+        counted = memory_counted(args)
+        print(counted["runner"][0], counted["host-lanes"][0], counted["vm"][0])
+        return 0
+    if args.what == "run-peaks":
+        peaks = memory_peaks_of_run(args.runs)
+        print("; ".join("%s %.1f GB" % (name, peaks[kind]) for kind, name in MEMORY_PEAK_NAMES if kind in peaks))
         return 0
     lanes = lane_minutes(args.runs)
     if args.what == "lanes":
@@ -958,7 +1044,9 @@ def main():
     total = max(end for _, _, _, end, _ in rows)
     last = max(rows, key=lambda r: r[3])
     off = vms[1:] if args.vms_off is None else args.vms_off.split()
-    servers = args.jobs + 1   # the memory rule counts N + 1 host test servers, as release-machines.sh's check does
+    counted = memory_counted(args)
+    servers_gb, servers_text = servers_need(args.jobs, use_runners, counted, int(args.server_gb))
+    vm_gb = counted["vm"][0]
     if use_runners:
         where = ("whole, in runner 1" if args.jobs == 1 else "in %d runners at once" % args.jobs) + \
                 ", from the build's end"
@@ -971,11 +1059,10 @@ def main():
                                                                "  (" + note + ")" if note else ""))
     print("TOTAL     about %s (the last part to end: %s %s)" % (about(total), last[0], last[1]))
     running = [v for v in vms if v not in off]
-    print("MEMORY    %d host test server%s x %g GB = %g GB%s; VMs the round starts: %s; VMs running: %s"
-          % (servers, "" if servers == 1 else "s", args.server_gb, servers * args.server_gb,
-             engines_text(args.jobs, use_runners),
-             ("%s x %g GB = %g GB" % (" ".join(off), args.vm_gb, len(off) * args.vm_gb)) if off else "none",
-             ("%s, each can grow by %g GB" % (" ".join(running), max(args.vm_gb - args.vm_idle_gb, 0))) if running else "none"))
+    print("MEMORY    %s = %d GB; VMs the round starts: %s; VMs running: %s"
+          % (servers_text, servers_gb,
+             ("%s x %d GB = %d GB" % (" ".join(off), vm_gb, len(off) * vm_gb)) if off else "none",
+             ("%s, each can grow by %d GB" % (" ".join(running), max(vm_gb - int(args.vm_idle_gb), 0))) if running else "none"))
     # the copy's two times are named only when a VM copies the pack's e2e package (more VMs): with one VM the line reads
     # as before the copy
     copying = any(part == PART_NAMES["package-copy"] for _, part, _, _, _ in rows)

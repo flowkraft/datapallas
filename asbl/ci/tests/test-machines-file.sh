@@ -78,7 +78,8 @@ for v in a b c d; do : > "$SCRATCH/vm-conf/win-ci-$v.env"; done; : > "$WIN_CI_CO
 export STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off win10-dev-c=shut-off win10-dev-d=shut-off"
 memory_gb() { printf 'MemTotal:       131072000 kB\nMemAvailable:   %s kB\n' $(($1 * 1048576)) > "$RELEASE_MEMINFO"; }
 memory_gb 100
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
+export RUN_RECORD_DIR="$SCRATCH/no-rounds-yet"   # the memory rule's defaults: this file's own cases name their runs
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
 for key in $(compgen -v | grep -E '^(VM_LANES_|VM_DOMAIN_)'); do unset "$key"; done
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
@@ -103,6 +104,7 @@ RELEASE_RUNNERS=yes
 RELEASE_RUNNER_LIMIT_GB=24
 RELEASE_WINDOWS_VMS=a
 WIN_VM_MEMORY_GB=24
+WIN_VM_DEFAULT_PEAK_GB=12
 WIN_VM_DOCKER_MEMORY_GB=16
 RELEASE_CI_CONTAINER_LIMIT_GB=12
 RELEASE_MIN_FREE_GB=16
@@ -182,28 +184,32 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 : > "$SCRATCH/vm-conf/win-ci-b.env"
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
-check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=1 M=4 needs 100 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner), VMs a running, each can grow by 18 GB, VMs b c d to start x 24 GB), 60 GB are available now: -40 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
-  machines check 1 4 --press
-memory_gb 100
-check "press: a running VM counts what it can grow by, not its ceiling (a b c d running: 82 GB needed)" has \
-  "needs 82 GB of 100 GB available, 18 GB stay free (rule 16)" \
-  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
-memory_gb 120
-check "press: N=1 M=4 with 120 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 100 GB of 120 GB available, 20 GB stay free (rule 16); /var 400 GB free, the runners take about 8 GB, 392 GB stay free (rule 50)" \
+memory_gb 40
+check "press: N=1 M=4 with 40 GB available, VMs b c d off: it warns with the numbers, and the check passes" has \
+  "WARN    memory: N=1 M=4 needs 52 GB (1 x a runner at 5 GB, the host lanes' runner at 5 GB, VMs a running, each can grow by 6 GB, VMs b c d to start x 12 GB), 40 GB are available now: -12 GB would stay free, under RELEASE_MIN_FREE_GB=16; the round starts anyway" \
   "$(machines check 1 4 --press)"
+check "  exit 0, the check's line after it" bash -c 'out=$(bash "$1" check 1 4 --press 2>&1) && grep -q "^MACHINES OK " <<< "$out"' _ "$MACHINES"
 memory_gb 100
-check "press: N=4 M=1, the memory rule names the runners: refused, with the numbers" refused \
-  "memory: N=4 M=1 needs 43 GB (5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner), VMs a running, each can grow by 18 GB), 40 GB are available now: -3 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
-  bash -c 'printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$1/meminfo-40"; RELEASE_MEMINFO="$1/meminfo-40" bash "$2" check 4 1 --press' _ "$SCRATCH" "$MACHINES"
+check "press: a running VM counts what it can grow by (a b c d running: 34 GB needed)" has \
+  "needs 34 GB of 100 GB available, 66 GB stay free (rule 16)" \
+  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
+check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 52 GB of 100 GB available, 48 GB stay free (rule 16); /var 400 GB free, the runners take about 8 GB, 392 GB stay free (rule 50)" \
+  "$(machines check 1 4 --press)"
+check "press: N=4 M=1, the warning counts the runners" has \
+  "WARN    memory: N=4 M=1 needs 31 GB (4 x a runner at 5 GB, the host lanes' runner at 5 GB, VMs a running, each can grow by 6 GB), 40 GB are available now: 9 GB would stay free, under RELEASE_MIN_FREE_GB=16; the round starts anyway" \
+  "$(printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$SCRATCH/meminfo-40"; RELEASE_MEMINFO="$SCRATCH/meminfo-40" bash "$MACHINES" check 4 1 --press 2>&1)"
+mkdir -p "$SCRATCH/peak-runs/20261105T000000Z-release-orchestrator-execution-1-version-9.9.9"
+printf '2026-11-05T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1%% mem=10GiB / 24GiB mem_percent=41%%\n2026-11-05T00:30:00Z\thost\tvm a\trss_kb=11534336\n' > "$SCRATCH/peak-runs/20261105T000000Z-release-orchestrator-execution-1-version-9.9.9/memory.log"
+check "press: a recorded round: the real peaks, the default only where none was recorded (10 + 5 + 11 - 6)" has \
+  "memory: needs 20 GB of 100 GB available" "$(RUN_RECORD_DIR="$SCRATCH/peak-runs" machines check 1 1 --press)"
 check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused, with the numbers" refused \
   "disk: N=4: /var has 120 GB free, the runners take about 92 GB there (runners 3 4 with no volume yet x 40 GB, runners 1 2 5 with a volume x 4 GB): 28 GB would stay free, under the 50 GB a round keeps free" \
   env STUB_VAR_FREE_GB=120 STUB_RUNNER_VOLUMES="dp-ci-runner-1-docker dp-ci-runner-2-docker dp-ci-runner-5-docker" bash "$MACHINES" check 4 1 --press
 check "press: N=4, every runner's volume there, /var 120 GB free: OK, with the numbers" has \
   "/var 120 GB free, the runners take about 20 GB, 100 GB stay free (rule 50)" "$(STUB_VAR_FREE_GB=120 machines check 4 1 --press)"
 check "press: RELEASE_RUNNERS=no: the disk rule counts no runner" has \
-  "memory: needs 28 GB of 100 GB available, 72 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "memory: needs 16 GB of 100 GB available, 84 GB stay free (rule 16); /var 400 GB free (rule 50)" \
   "$(STUB_RUNNER_VOLUMES="" RELEASE_RUNNERS=no machines check 1 1 --press)"
 check "press: N=4 RELEASE_RUNNERS=no with 100 GB available: refused, one Docker engine" refused \
   "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine" \
@@ -338,7 +344,7 @@ check "schedule 4 4: the four runners from the build's end, each its list after 
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
 check "  the memory the memory rule counts, the runners named" has \
-  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and the host lanes' runner); VMs the round starts: b c d x 24 GB = 72 GB" "$out"
+  "MEMORY    runners 1 to 4 at 5 GB each (no peak yet, default), the host lanes' runner at 5 GB (no peak yet, default) = 25 GB; VMs the round starts: b c d x 12 GB = 36 GB" "$out"
 out=$(RELEASE_RUNNERS=no schedule 1 1 docker-server)
 check "schedule 1 1, RELEASE_RUNNERS=no: this host's parts one at a time (one engine), the full set last: about 12 h 10" bash -c \
   '[ "$2" = "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1:49-12:09" ] &&

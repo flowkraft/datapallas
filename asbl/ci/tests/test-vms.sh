@@ -81,6 +81,8 @@ case "${1:-}" in
   setmaxmem) echo "virsh $*" >> "$STUB/virsh-calls"; [ "$(cat "$v/$2.cur" 2>/dev/null || echo 0)" -le "$3" ] || { echo "error: current above max" >&2; exit 1; }; echo "$3" > "$v/$2.mem" ;;
   setmem)   echo "virsh $*" >> "$STUB/virsh-calls"; [ "$3" -le "$(cat "$v/$2.mem")" ] || { echo "error: cannot set memory higher than max memory" >&2; exit 1; }; echo "$3" > "$v/$2.cur" ;;
   start)    echo "virsh $*" >> "$STUB/virsh-calls"; echo running > "$v/$2.state" ;;
+  dommemstat) f="$v/$2.rss"; [ -s "$f" ] || exit 1; kb=$(head -1 "$f"); [ "$(wc -l < "$f")" = 1 ] || sed -i 1d "$f"
+            [ "$kb" -ge 12582912 ] || echo "folded $2" >> "$STUB/virsh-calls"; printf 'actual 25165824\nrss %s\n' "$kb" ;;
   shutdown) echo "virsh $*" >> "$STUB/virsh-calls"; [ -e "$v/$2.hangs" ] || echo "shut off" > "$v/$2.state" ;;
   destroy)  echo "virsh $*" >> "$STUB/virsh-calls"; echo "shut off" > "$v/$2.state" ;;
   *)        echo "virsh $*" >> "$STUB/virsh-calls"; exit 1 ;;
@@ -229,6 +231,36 @@ rm -f "$STUB/no-ssh-vm-d.invalid"
 : > "$STUB/virsh-calls"; out=$(VM_SHUTDOWN_WAIT_SECS=3 VM_POLL_SECS=1 lib machines_vm_shutdown c)
 check "shut down: virsh shutdown, off" bash -c '[ "$(cat "$1")" = "virsh shutdown win10-dev-c" ] && [ "$(cat "$2")" = "shut off" ] && [[ "$3" == *"shut down (virsh shutdown)"* ]]' \
   _ "$STUB/virsh-calls" "$STUB/vms/win10-dev-c.state" "$out"
+# a VM's boot memory: each line of <domain>.rss is one answer of virsh dommemstat, the last one stays
+boot_rss() { local d="$STUB/vms/$1.rss"; shift; printf '%s\n' "$@" > "$d"; }
+HIGH=23068672 LOW=7340032
+out=$(VM_POLL_SECS=1 lib machines_vm_boot_memory_wait c)
+check "boot memory: no figure from virsh: nothing to wait for, nothing said" same "" "$out"
+boot_rss win10-dev-c $HIGH $HIGH $LOW
+out=$(VM_POLL_SECS=1 lib machines_vm_boot_memory_wait c)
+check "boot memory: it held all of it, then gave it back: said, with what it holds" has \
+  "VM      c (win10-dev-c): gave its boot's memory back (it holds 7 GB), after about 2 s" "$out"
+boot_rss win10-dev-c $LOW $LOW $HIGH $LOW
+out=$(VM_POLL_SECS=1 lib machines_vm_boot_memory_wait c)
+check "  still low right after SSH: it waits for the rise first, and for the fall after it" has "after about 3 s" "$out"
+boot_rss win10-dev-c $LOW
+out=$(VM_POLL_SECS=1 VM_BOOT_RISE_SECS=2 lib machines_vm_boot_memory_wait c)
+check "  never seen holding it: free after VM_BOOT_RISE_SECS" has "after about 2 s" "$out"
+boot_rss win10-dev-c $HIGH
+out=$(VM_POLL_SECS=1 VM_BOOT_MEMORY_WAIT_SECS=2 lib machines_vm_boot_memory_wait c); rc=$?
+check "  never gives it back: a warning, never red: the next VM starts" bash -c \
+  '[ "$1" = 0 ] && [[ "$2" == "WARN    VM c (win10-dev-c): still holds 22 GB 2 s after it answered: the next VM starts anyway" ]]' _ "$rc" "$out"
+vm_is win10-dev-c "shut off" 12; vm_is win10-dev-d "shut off" 12; : > "$STUB/virsh-calls"
+boot_rss win10-dev-c $HIGH $HIGH $LOW; boot_rss win10-dev-d $HIGH $HIGH $LOW
+for name in c d; do ( VM_POLL_SECS=1 lib machines_vm_start_one_at_a_time "$STUB/vm-start.lock" "$name" > "$STUB/one-$name.out" ) & done; wait
+check "two VMs asked at once: the second starts after the first gave its boot's memory back" bash -c \
+  'paste -sd"|" "$1" | grep -Eq "^virsh start (win10-dev-[cd])\|folded \1\|virsh start (win10-dev-[cd])\|folded \2$" || { sed "s/^/        /" "$1"; exit 1; }' _ "$STUB/virsh-calls"
+check "  the one that waited says so" same 1 "$(cat "$STUB/one-c.out" "$STUB/one-d.out" | grep -c 'waits its turn, the VMs boot one at a time')"
+vm_is win10-dev-d "shut off" 12; touch "$STUB/no-ssh-vm-d.invalid"
+out=$(VM_SSH_WAIT_SECS=2 VM_POLL_SECS=1 lib machines_vm_start_one_at_a_time "$STUB/vm-start.lock" d); rc=$?
+rm -f "$STUB/no-ssh-vm-d.invalid" "$STUB"/vms/*.rss
+check "  a VM that does not start: exit 1, its reason the last line (its lanes are red), the lock left free" bash -c \
+  '[ "$1" = 1 ] && [ "$(printf "%s\n" "$2" | tail -1)" = "VM d (win10-dev-d) did not start: no SSH answer within 2 s of virsh start" ] && flock -n "$3" true' _ "$rc" "$out" "$STUB/vm-start.lock"
 vm_is win10-dev-c running 12; touch "$STUB/vms/win10-dev-c.hangs"; : > "$STUB/virsh-calls"
 out=$(VM_SHUTDOWN_WAIT_SECS=2 VM_POLL_SECS=1 lib machines_vm_shutdown c)
 check "  a VM that hangs: virsh destroy after VM_SHUTDOWN_WAIT_SECS" bash -c \

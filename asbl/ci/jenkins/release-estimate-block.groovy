@@ -64,7 +64,7 @@ try {
     } else {
       int left = available - (pair.need_gb as int)
       int minFree = data.min_free_gb as int
-      String warn = left < minFree ? '    WARNING: under the ' + minFree + ' GB rule (the press refuses it)' : ''
+      String warn = left < minFree ? '    REFUSED by memory: under the ' + minFree + ' GB rule, but you can still press' : ''
       lines << ('        available now ' + available + ' GB -> ' + left + ' GB would stay free' + warn)
     }
     pair.chart.each { lines << it.toString() }
