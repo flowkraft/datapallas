@@ -19,7 +19,8 @@
 #   proceed    a round waiting for review runs again from scratch, step 1 included (PROCEED_BY=<who> says who)
 #   stop       the round stops, in this order: its process group (the round, its run, the run's parts); then what the
 #              run started that outlives that group, from its started.txt: each entry of a part that had not ended, a
-#              container or compose stack created since its entry (docker stop), the Windows driver of a pid file written
+#              container or compose stack (with the app stacks below its folder) created since its entry (docker stop),
+#              the Windows driver of a pid file written
 #              since (its process group), the VM's steps of that command (dp-ci.sh win stop, on that VM), and last a
 #              Windows VM the run started (virsh shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); then
 #              its fix run (the fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
@@ -707,6 +708,14 @@ stop_pidfile_process_since() {
 }
 # vm_of_entry <name of a vm entry>: the VM it names (windows-vm: VM a; windows-vm-<name>: that VM)
 vm_of_entry() { case "$1" in windows-vm-*) echo "${1#windows-vm-}" ;; *) echo a ;; esac; }
+# containers_of_compose_folder <folder>: the running containers of the compose stack in that folder and of the stacks
+# below it. The bundle's server starts each app from the app's own folder (_apps/flowkraft/_ai-hub), so an exact match on
+# the working dir misses them: the AI Hub of a stopped run stayed up, unhealthy, and failed the next run's first start
+# of it.
+containers_of_compose_folder() {
+  docker ps --format '{{.Names}}|{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null |
+    awk -F'|' -v folder="$1" '$2 == folder || index($2, folder "/") == 1 { print $1 }'
+}
 # stop_what_the_runs_started <round folder>: each unfinished entry, in its started.txt order (a part's Windows driver
 # before its VM steps, so the driver does not react to them); a VM the run started last, once its steps are stopped
 stop_what_the_runs_started() {
@@ -715,7 +724,7 @@ stop_what_the_runs_started() {
     since=$(epoch_of "$utc")
     case "$kind" in
       container) stop_container_created_since "$name" "$since" ;;
-      compose)   for container in $(docker ps --filter "label=com.docker.compose.project.working_dir=$name" --format '{{.Names}}' 2>/dev/null); do
+      compose)   for container in $(containers_of_compose_folder "$name"); do
                    stop_container_created_since "$container" "$since"
                  done ;;
       pidfile)   stop_pidfile_process_since "$name" "$since" ;;

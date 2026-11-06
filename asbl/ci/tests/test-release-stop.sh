@@ -4,7 +4,9 @@
 # part going on the Windows VM with its driver's pid file, an older pid file and the VM's steps; an ended part; a dry-run
 # line), lists its containers through a stub docker, starts a real sleep as the Windows driver (its own session, as
 # win-e2e.sh does), then sleeps as a running part would. The cases:
-#   1. stop while it runs: docker stop for the run's container and compose container only; the driver's process ended,
+#   1. stop while it runs: docker stop for the run's container, its compose container and the stack its server started
+#      below that compose folder only (an older stack there, a folder that only starts with that name: left); the
+#      driver's process ended,
 #      the older pid file's left; the VM's steps of that command stopped (dp-ci.sh win stop, over a stub ssh that names
 #      the step it was sent); the orchestrator ended; everything else left;
 #   1b. the call that runs stop is cut (its output closed after one line, as a forced end of the Jenkins step does): it
@@ -133,7 +135,9 @@ created=$(date -u +%Y-%m-%dT%H:%M:%S.123456789Z); older=$(date -u -d '1 hour ago
 if [ -n "${STUB_RUNNERS:-}" ]; then run_container="dp-ci-runner-2|$created|"; else run_container="dp-ci|$created|"; fi
 printf '%s\n' "ended-part-container|$created|" "$run_container" "bundle-datapallas-1|$created|$STUB/bundle" \
   "dp-ci-one-command|$older|" "dry-run-container|$created|" "someone-elses-container|$created|" \
-  "someone-elses-bundle-1|$created|$STUB/other-bundle" > "$STUB/containers"
+  "someone-elses-bundle-1|$created|$STUB/other-bundle" "app-stack-of-the-bundle-1|$created|$STUB/bundle/_apps/flowkraft/_ai-hub" \
+  "older-app-stack-1|$older|$STUB/bundle/_apps/flowkraft/_older" "folder-with-a-longer-name-1|$created|$STUB/bundle-longer" \
+  > "$STUB/containers"
 setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$LOG_DIR/win-e2e.pid"   # its own session, as win-e2e.sh's driver
 if [ -n "${STUB_RUNNERS:-}" ]; then
   setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$LOG_DIR/win-e2e-c.pid"   # VM c's driver
@@ -206,10 +210,10 @@ kill_round_process() {  # as a reboot does to the round: its process group, gone
 round_going
 out=$(round stop); rc=$?
 check "stop while running: exit 4, the round stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
-check "docker stop for the run's container and its compose stack's container only" \
-  same "bundle-datapallas-1 dp-ci" "$(lines "$STUB/stopped")"
+check "docker stop for the run's container, its compose stack's container and the app stack below it only" \
+  same "app-stack-of-the-bundle-1 bundle-datapallas-1 dp-ci" "$(lines "$STUB/stopped")"
 check "left: the ended part's, the older, the dry-run line's and someone else's containers" \
-  same "dp-ci-one-command dry-run-container ended-part-container someone-elses-bundle-1 someone-elses-container" "$(containers_left)"
+  same "dp-ci-one-command dry-run-container ended-part-container folder-with-a-longer-name-1 older-app-stack-1 someone-elses-bundle-1 someone-elses-container" "$(containers_left)"
 check "the Windows driver of the pid file (its own session) ended" bash -c '! kill -0 "$(cat "$1")" 2>/dev/null' _ "$LOG_DIR/win-e2e.pid"
 check "the process of a pid file older than its entry left running" alive "$STUB/older.pid"
 check "the VM's steps of dp-ci.sh win docker-e2e stopped, in order" same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
@@ -248,7 +252,7 @@ kill -KILL "$(cat "$LOG_DIR/win-e2e.pid")"; sed -i '/^dp-ci|/d' "$STUB/container
 out=$(round stop); rc=$?
 check "process gone, the CI free: the VM's steps stopped (they outlive a reboot of this host)" \
   same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
-check "process gone, the CI free: the run's compose container stopped, nothing else" same "bundle-datapallas-1" "$(lines "$STUB/stopped")"
+check "process gone, the CI free: the run's compose container and app stack stopped, nothing else" same "app-stack-of-the-bundle-1 bundle-datapallas-1" "$(lines "$STUB/stopped")"
 check "process gone, the CI free: exit 4, stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
 
 # ---- 5. the VMs a run started ----
