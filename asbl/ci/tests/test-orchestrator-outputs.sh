@@ -117,6 +117,12 @@ FULL=$(full_lane "$GREEN")
 check "green dry run: exit 0" same 0 "$(cat "$SCRATCH/green/rc")"
 check "green dry run: no \"command not found\" in its console (the memory sampler is defined before the run calls it)" \
   bash -c '! grep -a "command not found" "$1"' _ "$SCRATCH/green/console.log"
+mkdir -p "$SCRATCH/zram-of-a-dry-run"
+RELEASE_ZRAM_SWAP_GB=128 RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram-of-a-dry-run" RELEASE_SWAPS_FILE="$SCRATCH/no-swaps" dry_run zram > /dev/null
+check "the zram swap: a run turns it on at its start and off at its end" bash -c \
+  'on=$(grep -n "^WOULD   host: zram swap on" "$1" | cut -d: -f1); off=$(grep -n "^WOULD   host: zram swap off" "$1" | cut -d: -f1); [ -n "$on" ] && [ -n "$off" ] && [ "$on" -lt "$off" ]' \
+  _ "$SCRATCH/zram/console.log"
+check "  a dry run touches nothing" bash -c '[ -z "$(ls -A "$1")" ]' _ "$SCRATCH/zram-of-a-dry-run"
 check "green dry run: result=green dry_run=yes execution=1 step1=green" \
   same "green yes 1 green" "$(key "$GREEN" result) $(key "$GREEN" dry_run) $(key "$GREEN" execution) $(key "$GREEN" step1)"
 check "green dry run: the pin is origin/main, the version the tree's at the pin, nothing kept" \
@@ -166,6 +172,8 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
 export RELEASE_LIBVIRT_RUN_DIR="$SCRATCH/libvirt-run" RELEASE_PROC_DIR="$SCRATCH/proc"
 mkdir -p "$RELEASE_LIBVIRT_RUN_DIR" "$RELEASE_PROC_DIR/4242"; echo 4242 > "$RELEASE_LIBVIRT_RUN_DIR/win10-dev.pid"
 printf 'Rss:            14680064 kB\nPss:            10485760 kB\n' > "$RELEASE_PROC_DIR/4242/smaps_rollup"
+export RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram-counters"; mkdir -p "$RELEASE_ZRAM_SYS_DIR"
+printf '8589934592 3221225472 3355443200 0 0 0 0 0\n' > "$RELEASE_ZRAM_SYS_DIR/mm_stat"
 : > "$STUB_CALLS"
 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
 check "sampler: one free -m line of this host" \
@@ -179,8 +187,13 @@ check "sampler: the VM's memory over ssh (dp-ci.sh win ps)" same \
   "$(grep -P '\twindows-vm\t' "$SAMPLE/memory.log" | cut -f2-)"
 check "sampler: what the VM holds of this host and its real cost, beside what Windows says it uses" same \
   "$(printf 'host\tvm a\trss_kb=14680064 pss_kb=10485760')" "$(grep -P '\tvm a\t' "$SAMPLE/memory.log" | cut -f2-)"
+check "sampler: what the zram swap holds and what that takes of RAM" same \
+  "$(printf 'host\tzram swap\tstored_kb=8388608 ram_kb=3276800')" "$(grep -P '\tzram swap\t' "$SAMPLE/memory.log" | cut -f2-)"
+rm "$RELEASE_ZRAM_SYS_DIR/mm_stat"
 check "sampler: ssh ran PowerShell on the VM" eval 'grep -q "^ssh .* ci@vm.invalid powershell -NoProfile -NonInteractive -EncodedCommand" "$STUB_CALLS"'
 STUB_SSH_DOWN=1 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
+check "sampler: the zram swap off, no line" same 1 "$(grep -cP '\tzram swap\t' "$SAMPLE/memory.log")"
+unset RELEASE_ZRAM_SYS_DIR
 check "sampler: a VM that does not answer is said, and the sample goes on" same \
   "2 1" "$(grep -c 'free -m' "$SAMPLE/memory.log") $(grep -cP '\twindows-vm\tmemory\tnot answering' "$SAMPLE/memory.log")"
 
@@ -191,11 +204,14 @@ mkdir -p "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/docker/inner" "$REL
 printf 'low 0\nhigh 0\nmax 7\noom 1\noom_kill 2\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/docker/inner/memory.events.local"
 printf 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/memory.events.local"
 printf 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci.scope/memory.events.local"
+# a test's container that ended between find and the read: a folder of that name stands in, nothing can be read from it
+mkdir -p "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/docker/ended/memory.events.local"
 : > "$STUB_CALLS"
 bash "$ORCHESTRATOR" memory-sample "$CAPS"
 check "ceilings reached: a box inside a runner, each kind a line; a box at none, no line" same \
   "$(printf 'host\tkilled by a ceiling: dp-ci-runner-1/docker/inner\toom_kill=2\nhost\treached its ceiling: dp-ci-runner-1/docker/inner\tmax=7')" \
   "$(cut -f2- "$CAPS/caps-reached.log" | sort)"
+check "ceilings reached: a container gone before its counters were read, no line" same 0 "$(grep -c 'docker/ended' "$CAPS/caps-reached.log")"
 check "ceilings reached: said in memory.log too" same 2 "$(grep -cP '\thost\t(reached its ceiling|killed by a ceiling): ' "$CAPS/memory.log")"
 check "ceilings reached: this host's other containers are never asked" same 0 "$(grep -cE '^docker inspect.* (someone-elses-container|looks-alike-1)' "$STUB_CALLS")"
 bash "$ORCHESTRATOR" memory-sample "$CAPS"

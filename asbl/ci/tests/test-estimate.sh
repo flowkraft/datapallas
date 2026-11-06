@@ -378,6 +378,10 @@ for day in 03 04 05 06 07; do peak_run "202611${day}T000000Z" "2026-11-${day}T00
 check "  five newer rounds of a runner: the old peak stops counting; the others keep theirs" same "3 1 14" "$(peaks)"
 check "one run's own peaks, for its SUMMARY, Windows' own use beside the VM's cost" same "the host lanes' runner 0.7 GB; the VMs 14.0 GB; Windows itself in the VMs 8.0 GB" \
   "$(python3 -I asbl/ci/release-estimate.py run-peaks --runs "$PEAKS/20261102T000000Z-release-orchestrator-execution-1-version-9.9.9")"
+peak_run 20261108T000000Z '2026-11-08T00:00:00Z\thost\tzram swap\tstored_kb=20971520 ram_kb=8388608\n2026-11-08T00:05:00Z\thost\tzram swap\tstored_kb=31457280 ram_kb=10485760\n'
+check "one run's own peaks: what the zram swap held and what that took of RAM" same "the zram swap held 30.0 GB; taking of RAM 10.0 GB" \
+  "$(python3 -I asbl/ci/release-estimate.py run-peaks --runs "$PEAKS/20261108T000000Z-release-orchestrator-execution-1-version-9.9.9")"
+check "  shown only: no figure of the memory rule changes" same "3 1 14" "$(peaks)"
 
 # ---- 5. WIN_VM_MEMORY_GB=10; two VMs named ----
 WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate > /dev/null

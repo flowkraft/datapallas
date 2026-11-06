@@ -18,7 +18,7 @@
 #                                                       lanes' runner at its real peak, each VM to start at its peak, each
 #                                                       VM running at what it can still grow by; a box no round recorded
 #                                                       at its default): it only warns, the owner decides; the disk rule: /var
-#                                                       keeps MACHINES_MIN_FREE_VAR_GB [50] free after what the runners take
+#                                                       keeps RELEASE_MIN_FREE_VAR_GB [50] free after what the runners take
 #                                                       there (MACHINES_RUNNER_FIRST_GB [40] for a runner with no image
 #                                                       volume yet, MACHINES_RUNNER_ROUND_GB [4] for one whose volume is
 #                                                       there) (release-rehearsal.sh start; not a dry round: it starts
@@ -26,6 +26,7 @@
 #   bash asbl/ci/release-machines.sh schedule <N> <M>   what would run on which machine and when, each part's expected
 #                                                       time from the last release runs' marks (asbl/ci/release-estimate.py)
 #   bash asbl/ci/release-machines.sh lanes              the time of each lane, and the run it comes from
+#   bash asbl/ci/release-machines.sh zram-swap-on | zram-swap-off   what a run does at its start and its end, by hand
 #   bash asbl/ci/release-machines.sh vm-memory-setup    the memory settings of every VM named, one VM at a time, the same
 #                                                       for each (machines_vms_memory_setup): run it once after changing
 #                                                       WIN_VM_MEMORY_GB or WIN_VM_DOCKER_MEMORY_GB, or adding a VM. An
@@ -62,6 +63,9 @@
 #   VM_LANES_<M>_<name>         the lanes VM <name> runs, in order, when the round uses M VMs; missing: the default
 #                               layout of that VM's place in RELEASE_WINDOWS_VMS (DEFAULT_LAYOUT_<M>, below)
 #   VM_DOMAIN_<name>            the VM's libvirt name [a: win10-dev, any other: win10-dev-<name>]
+#   RELEASE_MIN_FREE_VAR_GB [50] the disk rule: what /var keeps free at a press, after what the runners take there
+#   RELEASE_ZRAM_SWAP_GB [0]    the zram swap of a run, in GB (ZRAM SWAP, below): 0 = none
+#   RELEASE_ZRAM_RAM_LIMIT_GB [64] the most of RAM that swap takes
 #   RELEASE_ESTIMATES_FILE      where `release-rehearsal.sh estimate` writes the 16 estimates the job's form reads
 #                               [/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json]
 # The lanes: pack, docker-proof (step 2's Windows Docker proof), server-light, electron-light, robot.
@@ -89,6 +93,12 @@
 # needs, inside it Docker does the same up to its own ceiling, and the host holds only what Windows really uses. That takes
 # KSM on this host (machines_host_memory_sharing_on) and a memory placement rule on the VM (machines_vm_memory_placement_set),
 # both set before every round, so a host reboot needs nothing done. A VM gives everything back when it shuts down.
+# ZRAM SWAP, for the length of a run: this host's disk swap is small and full of its apps' idle memory, so when RAM runs short
+# Linux has nowhere to move idle memory. With RELEASE_ZRAM_SWAP_GB set, a run turns on a swap in RAM that keeps what moves
+# there compressed (machines_host_zram_swap_on), and turns it off at its end or stop (machines_host_zram_swap_off). Its size
+# is a ceiling, not a reservation: it stays empty while RAM is enough. Both do nothing when it already is that way, so any mix
+# of starts, stops and failures ends with it off. A run killed outright leaves it on until the next run's end; a reboot
+# removes it, nothing of it is kept. The runners and dp-ci may swap (--memory-swap -1): their ceilings are of RAM.
 # Other inputs: WIN_CI_CONF [/var/kraft-internalsystems/config/datapallas-ci/win-ci.env] (VM a's, named only),
 # WIN_VM_CONF_DIR [/root], RELEASE_MEMINFO [/proc/meminfo], RUN_RECORD_DIR [<LOG_DIR>/runs] (the runs whose marks give
 # the times), LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci].
@@ -99,9 +109,13 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_MIN_FREE_VAR_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
-MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
+# the zram swap: its one device, zstd because it packs tighter than lz4, used before the disk swap (priority -2)
+MACHINES_ZRAM_DEVICE=/dev/zram0
+MACHINES_ZRAM_COMPRESSION=zstd
+MACHINES_ZRAM_SWAP_PRIORITY=100
+MACHINES_ZRAM_OFF_SECS=900   # swapoff reads everything back into RAM: it gives up after this, and the swap stays on
 # the /var disk a runner takes in a round (its image store, the volume dp-ci-runner-<n>-docker, and its checkout copy under
 # E2E_RUNNERS_HOME, both on /var): a runner with no volume yet copies in this host's images of its list and the CI
 # caches (22 GB on 2026-11-05), pulls the rest of what its lane uses, and gets its checkout (9 GB); a runner whose volume
@@ -156,6 +170,9 @@ machines_load() {
   WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
   RELEASE_CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
+  RELEASE_MIN_FREE_VAR_GB="${RELEASE_MIN_FREE_VAR_GB:-50}"
+  RELEASE_ZRAM_SWAP_GB="${RELEASE_ZRAM_SWAP_GB:-0}"
+  RELEASE_ZRAM_RAM_LIMIT_GB="${RELEASE_ZRAM_RAM_LIMIT_GB:-64}"
   RELEASE_ESTIMATES_FILE="${RELEASE_ESTIMATES_FILE:-/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json}"
   return 0
 }
@@ -228,6 +245,48 @@ machines_host_memory_sharing_on() {
   if { echo 1000 > "$ksm/pages_to_scan" && echo 1 > "$ksm/use_zero_pages" && echo 1 > "$ksm/run"; } 2>/dev/null; then
     echo "HOST    KSM on (use_zero_pages, 1000 pages a scan): a VM holds only what Windows uses"
   else echo "WARN    host: KSM could not be turned on ($ksm): each VM holds its whole size on the host"; fi
+}
+
+# machines_zram_swap_is_on: this host swaps to the zram device now
+machines_zram_swap_is_on() {
+  awk -v device="$MACHINES_ZRAM_DEVICE" '$1 == device { found = 1 } END { exit !found }' "${RELEASE_SWAPS_FILE:-/proc/swaps}" 2> /dev/null
+}
+# machines_host_zram_swap_on [dry]: the zram swap on, when RELEASE_ZRAM_SWAP_GB asks for it and it is not. Never in a run's way:
+# without it the run has RAM only, as before. The reset clears a device a killed run left half set up
+machines_host_zram_swap_on() {
+  local sys="${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}" what
+  [ "${RELEASE_ZRAM_SWAP_GB:-0}" != 0 ] || return 0
+  ! machines_zram_swap_is_on || return 0
+  what="zram swap on: up to $RELEASE_ZRAM_SWAP_GB GB, taking at most $RELEASE_ZRAM_RAM_LIMIT_GB GB of RAM, empty while RAM is enough"
+  if [ "${1:-}" = dry ]; then echo "WOULD   host: $what"; return 0; fi
+  if { modprobe zram && echo 1 > "$sys/reset" && echo "$MACHINES_ZRAM_COMPRESSION" > "$sys/comp_algorithm" &&
+       echo "${RELEASE_ZRAM_SWAP_GB}G" > "$sys/disksize" && echo "${RELEASE_ZRAM_RAM_LIMIT_GB}G" > "$sys/mem_limit" &&
+       mkswap "$MACHINES_ZRAM_DEVICE" && swapon -p "$MACHINES_ZRAM_SWAP_PRIORITY" "$MACHINES_ZRAM_DEVICE"; } > /dev/null 2>&1; then
+    echo "HOST    $what"
+  else echo "WARN    host: the zram swap could not be turned on ($sys): this run has RAM only"; fi
+}
+# machines_host_zram_swap_off [dry]: the zram swap off and its device gone, when it is there. Turning it off reads all it holds
+# back into RAM, and Linux does not refuse when that does not fit, it kills: with too little available it stays on, said,
+# and the next run's end tries again. Only when RELEASE_ZRAM_SWAP_GB asks for it, so a test beside a real run cannot reach it
+machines_host_zram_swap_off() {
+  local sys="${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}" stored=0 need_gb available_gb
+  [ "${RELEASE_ZRAM_SWAP_GB:-0}" != 0 ] || return 0
+  [ -e "$sys" ] || return 0
+  if [ "${1:-}" = dry ]; then echo "WOULD   host: zram swap off"; return 0; fi
+  if machines_zram_swap_is_on; then
+    { read -r stored _ < "$sys/mm_stat"; } 2> /dev/null
+    need_gb=$(( (${stored:-0} >> 30) + 1 ))
+    available_gb=$(machines_available_gb)
+    if [ "${available_gb:-0}" -lt "$need_gb" ]; then
+      echo "WARN    host: the zram swap stays on: it holds about $need_gb GB, ${available_gb:-0} GB is available (the next run's end tries again)"
+      return 0
+    fi
+    timeout "$MACHINES_ZRAM_OFF_SECS" swapoff "$MACHINES_ZRAM_DEVICE" > /dev/null 2>&1 ||
+      { echo "WARN    host: the zram swap stays on: swapoff did not end (the next run's end tries again)"; return 0; }
+  fi
+  echo 1 > "$sys/reset" 2> /dev/null
+  modprobe -r zram 2> /dev/null
+  echo "HOST    zram swap off"
 }
 # machines_vm_memory_placement_set <name> [dry]: the VM's memory spread over this host's NUMA nodes by a rule of its own
 # (virsh numatune --config), when it has none. NUMA balancing marks idle pages of memory with no rule of its own, and KSM
@@ -434,7 +493,7 @@ machines_check() {
           refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
     *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
   esac
-  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB; do
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_MIN_FREE_VAR_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done
   # a box stays under the box it runs in: a runaway reaches its own ceiling first and ends there
@@ -502,14 +561,14 @@ machines_check() {
     free_var=$(df -BG --output=avail /var 2>/dev/null | tail -1 | tr -dc '0-9')
     disk=$(machines_runner_disk "$n"); disk_gb=${disk%% *}
     if [ -z "$free_var" ]; then refuse_rule "disk: /var's free disk cannot be read (df /var)"
-    elif [ "$disk_gb" = 0 ] && [ "$free_var" -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
-      refuse_rule "disk: /var has $free_var GB free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
-    elif [ $((free_var - disk_gb)) -lt "$MACHINES_MIN_FREE_VAR_GB" ]; then
-      refuse_rule "disk: N=$n: /var has $free_var GB free, the runners take about $disk_gb GB there (${disk#* }): $((free_var - disk_gb)) GB would stay free, under the $MACHINES_MIN_FREE_VAR_GB GB a round keeps free"
+    elif [ "$disk_gb" = 0 ] && [ "$free_var" -lt "$RELEASE_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: /var has $free_var GB free, under the $RELEASE_MIN_FREE_VAR_GB GB a round keeps free"
+    elif [ $((free_var - disk_gb)) -lt "$RELEASE_MIN_FREE_VAR_GB" ]; then
+      refuse_rule "disk: N=$n: /var has $free_var GB free, the runners take about $disk_gb GB there (${disk#* }): $((free_var - disk_gb)) GB would stay free, under the $RELEASE_MIN_FREE_VAR_GB GB a round keeps free"
     fi
   fi
   [ "$refused" = 0 ] || return 2
-  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free%s (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$([ "$disk_gb" = 0 ] || printf ', the runners take about %s GB, %s GB stay free' "$disk_gb" "$((free_var - disk_gb))")" "$MACHINES_MIN_FREE_VAR_GB")"
+  echo "MACHINES OK steps=$RELEASE_STEPS jobs=$n vms=$m ($vms)$([ "$press" = --press ] && printf ', memory: needs %s GB of %s GB available, %s GB stay free (rule %s); /var %s GB free%s (rule %s)' "$need" "$available" "$((available - need))" "$RELEASE_MIN_FREE_GB" "$free_var" "$([ "$disk_gb" = 0 ] || printf ', the runners take about %s GB, %s GB stay free' "$disk_gb" "$((free_var - disk_gb))")" "$RELEASE_MIN_FREE_VAR_GB")"
 }
 
 # machines_full_target: the full set's target of the version to release next (release-state.sh full-lane --choose, dry).
@@ -585,8 +644,10 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     schedule) [ "$#" -ge 3 ] || { echo "usage: $0 schedule <N> <M>"; exit 2; }
               machines_check "$2" "$3" >/dev/null || { machines_check "$2" "$3"; exit 2; }; machines_schedule "$2" "$3" ;;
     vm-memory-setup) machines_vms_memory_setup; exit $? ;;
+    zram-swap-on)  machines_host_zram_swap_on; exit 0 ;;
+    zram-swap-off) machines_host_zram_swap_off; exit 0 ;;
     lanes)    python3 -I asbl/ci/release-estimate.py lanes --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" ;;
     help|-h|--help) sed -n '2,/^MACHINES_KEYS=/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' ;;
-    *) echo "usage: $0 show|check <N> <M> [--press]|schedule <N> <M>|lanes|vm-memory-setup|help"; exit 2 ;;
+    *) echo "usage: $0 show|check <N> <M> [--press]|schedule <N> <M>|lanes|vm-memory-setup|zram-swap-on|zram-swap-off|help"; exit 2 ;;
   esac
 fi

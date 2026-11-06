@@ -84,7 +84,8 @@ MEMORY_PEAK_ROUNDS = 5
 # A VM holds all its memory while it boots, until KSM folds it back (about 6 min, measured 2026-11-06): that is not a need
 VM_BOOT_MINUTES = 20
 MEMORY_PEAK_NAMES = (("runner", "the runners"), ("host-lanes", "the host lanes' runner"), ("vm", "the VMs"),
-                     ("vm-windows", "Windows itself in the VMs"))
+                     ("vm-windows", "Windows itself in the VMs"), ("zram-stored", "the zram swap held"),
+                     ("zram-ram", "taking of RAM"))
 # The 16.6.2 release's lane times (round 20261103T231939Z, plan 16.6.3 TODO 1), used for a lane no run has passed yet.
 # runner-start (a runner's engine, this checkout and the CI caches copied in) and
 # runner-images (its images copied by id) are not measured: no runner ran before the 16.6.3 release. They are a first
@@ -881,7 +882,8 @@ def memory_peaks_of_run(folder):
     """one run's memory.log, its highest in GiB per kind of box it sampled: runner, host-lanes, vm, vm-windows. A VM's is its
     real cost to this host, past its boot: pss_kb, pages KSM shares counted once (rss_kb counts them in full: 23.4 GB
     against 15.8, and only 15.8 added up to the host's used memory, 2026-11-06). vm-windows is what Windows itself used:
-    it leaves out its file cache, which stays here, so it is shown, never counted"""
+    it leaves out its file cache, which stays here, so it is shown, never counted. So are zram-stored and zram-ram, what the
+    zram swap held and what that took of RAM"""
     peaks, start, held, windows = {}, None, 0.0, 0.0
     for line in read_text(os.path.join(folder, "memory.log")).splitlines():
         fields = line.split("\t")
@@ -896,11 +898,15 @@ def memory_peaks_of_run(folder):
         runner = re.match(r"container dp-ci-runner-(\d+)$", what)
         used = re.search(r"\bmem=([\d.]+)(GiB|MiB|KiB|B)\b", value)
         cost = re.search(r"\bpss_kb=(\d+)", value)
+        zram = re.search(r"\bstored_kb=(\d+) ram_kb=(\d+)", value)
         physical = re.search(r"\bphysical_total=(\d+) physical_available=(\d+)", value)
         if machine == "host" and runner and used:
             kind = "host-lanes" if int(runner.group(1)) == HOST_LANES_RUNNER else "runner"
             gib = float(used.group(1)) / {"GiB": 1, "MiB": 2 ** 10, "KiB": 2 ** 20, "B": 2 ** 30}[used.group(2)]
             peaks[kind] = max(peaks.get(kind, 0.0), gib)
+        elif machine == "host" and what == "zram swap" and zram:
+            peaks["zram-stored"] = max(peaks.get("zram-stored", 0.0), int(zram.group(1)) / 2.0 ** 20)
+            peaks["zram-ram"] = max(peaks.get("zram-ram", 0.0), int(zram.group(2)) / 2.0 ** 20)
         elif machine == "host" and what.startswith("vm ") and cost:
             if (at - start).total_seconds() >= VM_BOOT_MINUTES * 60:
                 held = max(held, int(cost.group(1)) / 2.0 ** 20)

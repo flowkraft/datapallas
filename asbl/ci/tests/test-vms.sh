@@ -313,5 +313,70 @@ check "  none of them started, the VM still shut down" bash -c \
   '! grep -qE "^PART    (windows-pack|docker-windows|windows-after-pack) START" "$1" && grep -q "^WOULD   VM a (win10-dev): shut down" "$1"' _ "$LOG"
 vm_is win10-dev running 12
 
+# ---- the zram swap of a run: on at its start, off at its end or stop, whatever happened before ----
+ZRAM_SYS="$SCRATCH/zram"; ZRAM_SWAPS="$SCRATCH/swaps"; ZRAM_MEMINFO="$SCRATCH/zram-meminfo"; ZRAM_CALLS="$STUB/zram-calls"
+for command in modprobe mkswap swapon swapoff; do
+  cat > "$STUB/bin/$command" <<'EOF'
+#!/bin/bash
+# stub: records its call; $STUB/fail-<name> makes it fail; modprobe makes and removes the device's folder, swapon and
+# swapoff the line of /proc/swaps
+name=$(basename "$0")
+echo "$name $*" >> "$STUB/zram-calls"
+[ ! -e "$STUB/fail-$name" ] || exit 1
+case "$name ${1:-}" in
+  "modprobe zram") mkdir -p "$RELEASE_ZRAM_SYS_DIR" ;;
+  "modprobe -r") rm -rf "$RELEASE_ZRAM_SYS_DIR" ;;
+  swapon*) echo "/dev/zram0 partition 134217724 0 100" >> "$RELEASE_SWAPS_FILE" ;;
+  swapoff*) : > "$RELEASE_SWAPS_FILE" ;;
+esac
+EOF
+  chmod +x "$STUB/bin/$command"
+done
+zram_lib() {  # zram_lib <function> <args...>: on the stand-ins, with 128 GB of zram swap asked for (ZRAM_GB= another figure)
+  RELEASE_ZRAM_SWAP_GB="${ZRAM_GB:-128}" RELEASE_ZRAM_SYS_DIR="$ZRAM_SYS" RELEASE_SWAPS_FILE="$ZRAM_SWAPS" RELEASE_MEMINFO="$ZRAM_MEMINFO" lib "$@"
+}
+zram_clean() { rm -rf "$ZRAM_SYS" "$STUB"/fail-*; : > "$ZRAM_SWAPS"; : > "$ZRAM_CALLS"; }
+zram_on_already() { mkdir -p "$ZRAM_SYS"; echo "/dev/zram0 partition 134217724 0 100" > "$ZRAM_SWAPS"; }
+zram_calls() { paste -sd'|' "$ZRAM_CALLS"; }
+available_gb() { printf 'MemAvailable:   %s kB\n' $(($1 * 1048576)) > "$ZRAM_MEMINFO"; }
+
+zram_clean; available_gb 80
+check "zram swap not asked for (the default): a run's start and end do nothing" same "" "$(lib machines_host_zram_swap_on)$(lib machines_host_zram_swap_off)$(zram_calls)"
+out=$(zram_lib machines_host_zram_swap_on dry)
+check "zram swap, dry: said, nothing done" bash -c '[[ "$1" == "WOULD   host: zram swap on: up to 128 GB"* ]] && [ -z "$2" ]' _ "$out" "$(zram_calls)"
+out=$(zram_lib machines_host_zram_swap_on)
+check "zram swap on: the device made and swapped to, before the disk swap" same "modprobe zram|mkswap /dev/zram0|swapon -p 100 /dev/zram0" "$(zram_calls)"
+check "  reset, its compression, its ceiling and the most of RAM it takes" same "1 zstd 128G 64G" \
+  "$(cat "$ZRAM_SYS/reset" "$ZRAM_SYS/comp_algorithm" "$ZRAM_SYS/disksize" "$ZRAM_SYS/mem_limit" | paste -sd' ')"
+check "  said" has "HOST    zram swap on: up to 128 GB, taking at most 64 GB of RAM" "$out"
+: > "$ZRAM_CALLS"
+check "zram swap on again (a leftover of a run killed outright): kept, nothing said" same "" "$(zram_lib machines_host_zram_swap_on)$(zram_calls)"
+printf '%s 0 0 0 0 0 0 0\n' $((30 * 1073741824)) > "$ZRAM_SYS/mm_stat"; available_gb 20
+out=$(zram_lib machines_host_zram_swap_off); rc=$?
+check "zram swap off, what it holds does not fit in RAM: it stays on, said, never asked to go" \
+  bash -c '[ "$1" = 0 ] && [[ "$2" == "WARN    host: the zram swap stays on: it holds about 31 GB, 20 GB is available"* ]] && [ -z "$3" ] && [ -s "$4" ]' _ "$rc" "$out" "$(zram_calls)" "$ZRAM_SWAPS"
+available_gb 80
+out=$(zram_lib machines_host_zram_swap_off dry)
+check "zram swap off, dry: said, nothing done" bash -c '[ "$1" = "WOULD   host: zram swap off" ] && [ -z "$2" ]' _ "$out" "$(zram_calls)"
+out=$(zram_lib machines_host_zram_swap_off)
+check "zram swap off: back into RAM, the device gone" same "swapoff /dev/zram0|modprobe -r zram" "$(zram_calls)"
+check "  nothing left of it" bash -c '[ ! -e "$1" ] && [ ! -s "$2" ]' _ "$ZRAM_SYS" "$ZRAM_SWAPS"
+check "  said" same "HOST    zram swap off" "$out"
+: > "$ZRAM_CALLS"
+check "zram swap off again: nothing said, nothing done" same "" "$(zram_lib machines_host_zram_swap_off)$(zram_calls)"
+zram_clean; for round in 1 2 3; do zram_lib machines_host_zram_swap_on > /dev/null; zram_lib machines_host_zram_swap_on > /dev/null; zram_lib machines_host_zram_swap_off > /dev/null; zram_lib machines_host_zram_swap_off > /dev/null; done
+check "three runs, each start and end twice: the host as it was" bash -c '[ ! -e "$1" ] && [ ! -s "$2" ] && [ "$(grep -c "^swapon" "$3")" = 3 ] && [ "$(grep -c "^swapoff" "$3")" = 3 ]' _ "$ZRAM_SYS" "$ZRAM_SWAPS" "$ZRAM_CALLS"
+zram_clean; touch "$STUB/fail-modprobe"
+out=$(zram_lib machines_host_zram_swap_on); rc=$?
+check "zram swap cannot be turned on: a warning, the run goes on" bash -c '[ "$1" = 0 ] && [[ "$2" == "WARN    host: the zram swap could not be turned on"* ]]' _ "$rc" "$out"
+zram_clean; zram_on_already; touch "$STUB/fail-swapoff"
+out=$(zram_lib machines_host_zram_swap_off); rc=$?
+check "swapoff fails: it stays on, said, the run's end goes on" bash -c '[ "$1" = 0 ] && [[ "$2" == "WARN    host: the zram swap stays on: swapoff did not end"* ]] && [ -e "$3" ]' _ "$rc" "$out" "$ZRAM_SYS"
+zram_clean; mkdir -p "$ZRAM_SYS"
+out=$(zram_lib machines_host_zram_swap_off)
+check "a device half set up (a run killed while turning it on): cleared, no swapoff" same "modprobe -r zram" "$(zram_calls)"
+zram_clean; zram_on_already
+check "not asked for, yet on: left alone, a test beside a real run must never turn it off" same "" "$(ZRAM_GB=0 zram_lib machines_host_zram_swap_off)$(zram_calls)"
+
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-vms"; exit 0; fi
 echo "FAILED  $FAILED_CASES case(s)  test-vms"; exit 1

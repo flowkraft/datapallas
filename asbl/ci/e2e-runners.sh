@@ -171,9 +171,10 @@ start_engine() {
   mkdir -p "$SOCKET_DIR/$n" "$RUNNERS_HOME/$n" "$(runner_log_dir "$n")" || return 1
   rm -f "$(runner_socket "$n")"   # an old socket of a runner that ended
   # its engine listens on two sockets only, its own /var/run/docker.sock (what its CI container mounts) and the host
-  # folder's (what this script and dp-ci.sh talk to): dockerd as the command, so the image adds no TCP listener
+  # folder's (what this script and dp-ci.sh talk to): dockerd as the command, so the image adds no TCP listener.
+  # --memory-swap -1: the ceiling is of RAM, and what the runner holds idle may move to swap when RAM runs short
   docker run -d --rm --privileged --name "$name" --label "dp-ci-runner=$n" \
-    --memory "${LIMIT_GB}g" --memory-swap "${LIMIT_GB}g" \
+    --memory "${LIMIT_GB}g" --memory-swap -1 \
     -v "$(runner_volume "$n")":/var/lib/docker \
     -v "$SOCKET_DIR/$n":"$SOCKET_DIR/$n" \
     -v "$RUNNERS_HOME/$n":"$RUNNERS_HOME/$n" \

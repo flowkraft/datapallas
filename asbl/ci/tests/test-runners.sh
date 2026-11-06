@@ -212,7 +212,7 @@ check "start: the containers of a runner's last run removed from its engine, and
 for n in 1 2 3 4; do
   run_line=$(docker_runs_of "$n")
   check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 24 GB" same \
-    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 24g --memory-swap 24g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
+    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 24g --memory-swap -1' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
   check "runner $n: its volume, socket folder, checkout and log folder, each at the same path inside" bash -c '
     l="$1"; s="$2/$3"; h="$4/$3"; g="$5/runners/$3"
     case "$l" in *"-v dp-ci-runner-$3-docker:/var/lib/docker "*) ;; *) exit 1 ;; esac
@@ -303,7 +303,7 @@ RUN_OUT=$(E2E_TARGET=docker-server E2E_RETRIES=1 E2E_TIMEOUT_SECS=259200 E2E_ROT
   E2E_RUNNER_FILES='/specs/features/(reporting|connections)\.spec\.ts$' bash "$RUNNERS" run 2 2>&1); RUN_RC=$?
 RUN_CALLS=$(cat "$STUB/calls")
 CI_RUN=$(grep '^r2 docker run -d --rm --name dp-ci ' "$STUB/calls")
-check "the CI container in a runner: its memory ceiling, set at its creation" has "--memory 12g --memory-swap 12g" "$CI_RUN"
+check "the CI container in a runner: its memory ceiling, set at its creation" has "--memory 12g --memory-swap -1" "$CI_RUN"
 check "run 2: followed to its green end (the stub CI container's log), exit 0" same "0 PIPELINE_RESULT=SUCCESS" "$RUN_RC $(printf '%s\n' "$RUN_OUT" | tail -1)"
 check "run 2: every docker call of the lane to runner 2's socket (on this host's only run's own check that the runner is there)" same \
   "host docker ps -a --filter name=^dp-ci-runner-2\$ --format {{.Names}}|r2" \
@@ -344,7 +344,7 @@ echo "---- 4b. the host lanes' runner ----"
 OUT=$(E2E_TARGET=docker-server E2E_SPEC='/auth\.spec\.ts$' bash "$RUNNERS" host-lane 2>&1); RC=$?
 check "host-lane, no runner 5 yet: it starts it, runs the lane there with its E2E_SPEC, followed to a green end" same "0 1 1 PIPELINE_RESULT=SUCCESS" \
   "$RC $(grep -c '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls") $(grep -c '^r5 docker run -d --rm --name dp-ci ' "$STUB/calls") $(printf '%s\n' "$OUT" | tail -1)"
-check "  runner 5 has the full set's ceiling" has "--memory 24g --memory-swap 24g" "$(grep '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls")"
+check "  runner 5 has the full set's ceiling" has "--memory 24g --memory-swap -1" "$(grep '^host docker run .*--name dp-ci-runner-5 ' "$STUB/calls")"
 : > "$STUB/calls"
 OUT=$(E2E_TARGET=docker-server E2E_SPEC=light bash "$RUNNERS" host-lane 2>&1); RC=$?
 check "  the next lane finds it: no second start, the lane in its engine" same "0 0 1" \

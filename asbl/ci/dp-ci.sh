@@ -4610,8 +4610,9 @@ fi
 # chromium-1097, gone since the pinned chrome-for-testing) and left 536 MB of browser memory sitting
 # in frend/reporting/, one `git add -A` away from being committed. Crashes still show up as
 # "[RENDERER crash]" in the run log, which is the part worth keeping.
+# --memory-swap -1: the ceiling is of RAM, and what it holds idle may move to swap when RAM runs short
 docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --ulimit core=0 \
-  --memory "${CI_CONTAINER_LIMIT_GB}g" --memory-swap "${CI_CONTAINER_LIMIT_GB}g" \
+  --memory "${CI_CONTAINER_LIMIT_GB}g" --memory-swap -1 \
   -v "$REPO":"$REPO" -w "$REPO" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v dp-ci-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \

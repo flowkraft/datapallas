@@ -127,6 +127,7 @@
 #   MEMORY_EVERY [60]      seconds between two samples of memory.log: its peaks are what the memory rule counts next time
 #   RELEASE_CGROUP_DIR [/sys/fs/cgroup/system.slice]   where this host's containers' memory counters are
 #   RELEASE_LIBVIRT_RUN_DIR [/run/libvirt/qemu], RELEASE_PROC_DIR [/proc]   where a running VM's process and its memory are
+#   RELEASE_ZRAM_SYS_DIR [/sys/block/zram0]   where the zram swap's own counters are
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
@@ -330,6 +331,14 @@ vm_host_memory_line() {
   pss=$(awk '$1 == "Pss:" { print $2 }' "${RELEASE_PROC_DIR:-/proc}/$pid/smaps_rollup" 2>/dev/null)
   printf '%s\thost\tvm %s\trss_kb=%s pss_kb=%s\n' "$2" "$1" "$rss" "$pss"
 }
+# zram_memory_line <UTC>: what the zram swap holds and what that takes of RAM (machine host, zram swap, stored_kb= ram_kb=); no
+# line when it is off or empty
+zram_memory_line() {
+  local stored ram
+  { read -r stored _ ram _ < "${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}/mm_stat"; } 2> /dev/null || return 0
+  [ "${stored:-0}" != 0 ] || return 0
+  printf '%s\thost\tzram swap\tstored_kb=%s ram_kb=%s\n' "$1" "$((stored / 1024))" "$((ram / 1024))"
+}
 # sample_memory_once <run folder>: one sample appended to its memory.log: this host's memory and CPU load (the runners and
 # the VMs share its CPUs, which the memory rule does not count), the run's containers (a runner whole: its engine and all
 # it runs), and the memory of each VM of the round (SAMPLE_VMS, else the run's RUN_VMS, else VM a), asked at once
@@ -341,6 +350,7 @@ sample_memory_once() {
     free -m | awk -v t="$now" '/^Mem:/ { m = sprintf("total=%s used=%s free=%s shared=%s buff_cache=%s available=%s", $2, $3, $4, $5, $6, $7) }
       /^Swap:/ { s = sprintf(" swap_total=%s swap_used=%s", $2, $3) } END { printf "%s\thost\tfree -m\t%s%s\n", t, m, s }'
     awk -v t="$now" -v cpus="$(nproc 2>/dev/null)" '{ printf "%s\thost\tcpu load\tload1=%s load5=%s load15=%s cpus=%s\n", t, $1, $2, $3, cpus }' /proc/loadavg
+    zram_memory_line "$now"
     names=$(containers_of_the_run "$dir")
     # (one call for all of them: each docker stats --no-stream takes about two seconds)
     [ -z "$names" ] || docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' $names 2>/dev/null |
@@ -370,7 +380,9 @@ report_caps_reached() {
     id=$(docker inspect -f '{{.Id}}' "$box" 2>/dev/null) || continue
     group="${RELEASE_CGROUP_DIR:-/sys/fs/cgroup/system.slice}/docker-$id.scope"
     while read -r file; do
-      read -r max killed < <(awk '$1 == "max" { m = $2 } $1 == "oom_kill" { k = $2 } END { print m + 0, k + 0 }' "$file")
+      read -r max killed < <(awk '$1 == "max" { m = $2 } $1 == "oom_kill" { k = $2 } END { print m + 0, k + 0 }' "$file" 2> /dev/null)
+      # a test's container that ended since find leaves nothing to read: no ceiling (two false lines, 2026-11-06)
+      [ -n "$max" ] || continue
       inside=${file#"$group"}; inside=${inside%/memory.events.local}
       [ "$max" = 0 ] || cap_reached_once "$dir" host "reached its ceiling: $box$inside" "max=$max"
       [ "$killed" = 0 ] || cap_reached_once "$dir" host "killed by a ceiling: $box$inside" "oom_kill=$killed"
@@ -497,6 +509,7 @@ vm_order() {
   printf '%s' "${out%, }"
 }
 machines_host_memory_sharing_on "$([ "$DRY" = yes ] && echo dry)"
+machines_host_zram_swap_on "$([ "$DRY" = yes ] && echo dry)"   # off in finish; a stop kills this script, so release-rehearsal.sh stop does it too
 for vm in $RUN_VMS; do machines_vm_memory_rules "$vm" "$([ "$DRY" = yes ] && echo dry)"; done
 start_memory_sampler
 
@@ -786,6 +799,7 @@ finish() {  # finish <rc>: the summary with the flaky tests, result.txt and flak
     awk -F'\t' '{ printf "  %-22s %s  (%s)\n", $1, $2, $3 }' "$PARTS/flaky.txt"
   fi
   echo "RESULT  $PARTS/result.txt (result=$([ "$1" = 0 ] && echo green || echo red)); flaky.txt and started.txt beside it"
+  machines_host_zram_swap_off "$([ "$DRY" = yes ] && echo dry)"
   run_record_end "$([ "$DRY" = yes ] && echo DRY-RUN || { [ "$1" = 0 ] && echo PASS || echo "FAIL rc=$1"; })" "${PIN:-$(git rev-parse HEAD)}"
   exit "$1"
 }

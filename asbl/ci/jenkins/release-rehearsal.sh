@@ -105,7 +105,7 @@
 #   running this), mode 600 or 400, read as shell: RELEASE_FIXER="<command>" (the fix round's agent: below) and
 #   DRY_RUN_RED="<parts>" (a dry round only: the orchestrator's parts that come out red, to try the red paths). Missing = no
 #   fixer, no red parts. The machines of a round are there too: RELEASE_STEPS, RELEASE_SERVER_GB, RELEASE_WINDOWS_VMS,
-#   WIN_VM_MEMORY_GB, WIN_VM_DOCKER_MEMORY_GB, RELEASE_CI_CONTAINER_LIMIT_GB, RELEASE_MIN_FREE_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
+#   WIN_VM_MEMORY_GB, WIN_VM_DOCKER_MEMORY_GB, RELEASE_CI_CONTAINER_LIMIT_GB, RELEASE_MIN_FREE_GB, RELEASE_MIN_FREE_VAR_GB, RELEASE_ZRAM_SWAP_GB, RELEASE_ZRAM_RAM_LIMIT_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
 #   default, in asbl/ci/release-layout.example.conf; read by asbl/ci/release-machines.sh).
 # THE FIXER (RELEASE_FIXER, outside the public repo: devops-gitops bkend-infra/scripts/jenkins/release-fixer.sh)
 #   <fixer> start <run folder> <fix round n>   prints FIX_RUN=<name> and FIX_PLAN=<the fix round's plan>
@@ -763,7 +763,10 @@ stop_round() {
   [ "$(state_get "$dir" dry_run)" != yes ] || dry_started_entries "$dir"
   other_run=""; [ "$was_alive" = yes ] || other_run=$(busy_reason "$dir")
   case "$other_run" in "a green round waits"*|"a fix run is going"*) other_run="" ;; esac   # this round itself
-  if [ -z "$other_run" ]; then stop_what_the_runs_started "$dir"
+  if [ -z "$other_run" ]; then
+    stop_what_the_runs_started "$dir"
+    # the orchestrator's end never came: it was killed above, or a reboot did it
+    machines_load && machines_host_zram_swap_off "$([ "$(state_get "$dir" dry_run)" = yes ] && echo dry)"
   else echo "LEFT    what this round's runs started: its process was gone already, and the CI is busy now: $other_run"; fi
   fix_run=$(state_get "$dir" fix_run)
   if [ "$recorded_state" = fixing ] && [ -n "$fix_run" ]; then
