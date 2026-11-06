@@ -34,7 +34,8 @@ Playwright JSON reports, and writes nothing.
 
 Where the memory comes from: the same run folders' memory.log. The memory rule counts each kind of box (a runner, the host
 lanes' runner, a VM) at the highest it really reached over the newest MEMORY_PEAK_ROUNDS rounds that sampled it, and at its
-default (--server-gb, --vm-default-gb) until one did. A VM's figure is what it held of this host, past its boot.
+default (--server-gb, --vm-default-gb) until one did. A VM's figure is its real cost to this host (pss_kb), past its boot; what Windows itself used is shown beside
+it, never counted.
 
 Where the times come from: the real (not dry-run) orchestrator run folders under --runs (<UTC>-release-orchestrator-*),
 newest first; each lane takes its time from the newest run in which it passed (its exit code 0), as the PART lines of
@@ -82,7 +83,8 @@ HOST_LANES_MACHINE = "runner %d" % HOST_LANES_RUNNER
 MEMORY_PEAK_ROUNDS = 5
 # A VM holds all its memory while it boots, until KSM folds it back (about 6 min, measured 2026-11-06): that is not a need
 VM_BOOT_MINUTES = 20
-MEMORY_PEAK_NAMES = (("runner", "the runners"), ("host-lanes", "the host lanes' runner"), ("vm", "the VMs"))
+MEMORY_PEAK_NAMES = (("runner", "the runners"), ("host-lanes", "the host lanes' runner"), ("vm", "the VMs"),
+                     ("vm-windows", "Windows itself in the VMs"))
 # The 16.6.2 release's lane times (round 20261103T231939Z, plan 16.6.3 TODO 1), used for a lane no run has passed yet.
 # runner-start (a runner's engine, this checkout and the CI caches copied in) and
 # runner-images (its images copied by id) are not measured: no runner ran before the 16.6.3 release. They are a first
@@ -817,8 +819,10 @@ def estimates(args):
             servers_gb, servers_text = servers_need(n, use_runners, counted, server_gb)
             started = vms[1:]   # the VMs a round starts: every VM but the first, which runs for the dev gates
             # the first VM runs already: what it holds now is out of the available memory, what it can grow by is not
-            vm_text = "VM %s can grow by %d GB (%s: %d GB, about %d GB idle)" % (vms[0], vm_growth, seen(counted["vm"]),
-                                                                                  vm_gb, idle_gb)
+            windows_gb = counted["vm-windows"][0]
+            vm_text = "VM %s can grow by %d GB (%s: %d GB of this host%s, about %d GB idle)" % (
+                vms[0], vm_growth, seen(counted["vm"]), vm_gb,
+                "" if windows_gb is None else ", Windows itself used %d GB" % windows_gb, idle_gb)
             if missing:
                 vm_text += "; %d VM%s at %d GB (%s not created yet)" % (m - 1, "" if m == 2 else "s", vm_gb,
                                                                         "%d of them" % missing if m > 2 else "it is")
@@ -874,9 +878,10 @@ def estimates(args):
 
 
 def memory_peaks_of_run(folder):
-    """one run's memory.log, its highest in GiB per kind of box it sampled: runner, host-lanes, vm. A VM's is what it held
-    of this host (Windows' own figure leaves out its file cache, which stays here), past its boot; before those lines
-    were written, what Windows says it used"""
+    """one run's memory.log, its highest in GiB per kind of box it sampled: runner, host-lanes, vm, vm-windows. A VM's is its
+    real cost to this host, past its boot: pss_kb, pages KSM shares counted once (rss_kb counts them in full: 23.4 GB
+    against 15.8, and only 15.8 added up to the host's used memory, 2026-11-06). vm-windows is what Windows itself used:
+    it leaves out its file cache, which stays here, so it is shown, never counted"""
     peaks, start, held, windows = {}, None, 0.0, 0.0
     for line in read_text(os.path.join(folder, "memory.log")).splitlines():
         fields = line.split("\t")
@@ -890,19 +895,21 @@ def memory_peaks_of_run(folder):
         start = start or at
         runner = re.match(r"container dp-ci-runner-(\d+)$", what)
         used = re.search(r"\bmem=([\d.]+)(GiB|MiB|KiB|B)\b", value)
-        rss = re.search(r"\brss_kb=(\d+)", value)
+        cost = re.search(r"\bpss_kb=(\d+)", value)
         physical = re.search(r"\bphysical_total=(\d+) physical_available=(\d+)", value)
         if machine == "host" and runner and used:
             kind = "host-lanes" if int(runner.group(1)) == HOST_LANES_RUNNER else "runner"
             gib = float(used.group(1)) / {"GiB": 1, "MiB": 2 ** 10, "KiB": 2 ** 20, "B": 2 ** 30}[used.group(2)]
             peaks[kind] = max(peaks.get(kind, 0.0), gib)
-        elif machine == "host" and what.startswith("vm ") and rss:
+        elif machine == "host" and what.startswith("vm ") and cost:
             if (at - start).total_seconds() >= VM_BOOT_MINUTES * 60:
-                held = max(held, int(rss.group(1)) / 2.0 ** 20)
+                held = max(held, int(cost.group(1)) / 2.0 ** 20)
         elif machine.startswith("windows-vm") and what == "memory" and physical:
             windows = max(windows, (int(physical.group(1)) - int(physical.group(2))) / 2.0 ** 30)
-    if held or windows:
-        peaks["vm"] = held or windows
+    if held:
+        peaks["vm"] = held
+    if windows:
+        peaks["vm-windows"] = windows
     return peaks
 
 
@@ -924,6 +931,7 @@ def memory_counted(args):
     defaults = {"runner": int(args.server_gb), "host-lanes": int(args.server_gb), "vm": int(args.vm_default_gb)}
     counted = {kind: peaks.get(kind, (gb, None)) for kind, gb in defaults.items()}
     counted["vm"] = (min(counted["vm"][0], int(args.vm_gb)), counted["vm"][1])
+    counted["vm-windows"] = peaks.get("vm-windows", (None, None))   # shown beside the VM's figure, never counted
     return counted
 
 

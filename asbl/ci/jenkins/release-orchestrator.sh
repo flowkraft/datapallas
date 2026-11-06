@@ -126,6 +126,7 @@
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [60]      seconds between two samples of memory.log: its peaks are what the memory rule counts next time
 #   RELEASE_CGROUP_DIR [/sys/fs/cgroup/system.slice]   where this host's containers' memory counters are
+#   RELEASE_LIBVIRT_RUN_DIR [/run/libvirt/qemu], RELEASE_PROC_DIR [/proc]   where a running VM's process and its memory are
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
@@ -317,12 +318,17 @@ vm_memory_line() {
     *) printf '%s\t%s\tmemory\tnot answering%s\n' "$now" "$machine" "${answer:+: $answer}" ;;
   esac
 }
-# vm_host_memory_line <VM name> <UTC>: what the VM holds of this host (machine host, vm <name>, rss_kb=): Windows' own figure
-# leaves out its file cache, which stays in this host's memory; a VM that is off gives no line
+# vm_host_memory_line <VM name> <UTC>: what the VM holds of this host (machine host, vm <name>, rss_kb= pss_kb=): pss_kb is its
+# real cost, pages KSM shares counted once; rss_kb counts them in full. Windows' own figure leaves out its file cache, which
+# stays in this host's memory. A VM that is off gives no line
 vm_host_memory_line() {
-  local rss
-  rss=$(virsh dommemstat "$(machines_domain_of "$1")" 2>/dev/null | awk '$1 == "rss" { print $2 }')
-  [ -z "$rss" ] || printf '%s\thost\tvm %s\trss_kb=%s\n' "$2" "$1" "$rss"
+  local dom rss pid pss
+  dom=$(machines_domain_of "$1")
+  rss=$(virsh dommemstat "$dom" 2>/dev/null | awk '$1 == "rss" { print $2 }')
+  [ -n "$rss" ] || return 0
+  pid=$(cat "${RELEASE_LIBVIRT_RUN_DIR:-/run/libvirt/qemu}/$dom.pid" 2>/dev/null)
+  pss=$(awk '$1 == "Pss:" { print $2 }' "${RELEASE_PROC_DIR:-/proc}/$pid/smaps_rollup" 2>/dev/null)
+  printf '%s\thost\tvm %s\trss_kb=%s pss_kb=%s\n' "$2" "$1" "$rss" "$pss"
 }
 # sample_memory_once <run folder>: one sample appended to its memory.log: this host's memory and CPU load (the runners and
 # the VMs share its CPUs, which the memory rule does not count), the run's containers (a runner whole: its engine and all

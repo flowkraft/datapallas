@@ -53,8 +53,8 @@
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
 #   WIN_VM_MEMORY_GB [24]       one memory for every Windows VM, set on each before a round (virsh --config): a ceiling,
 #                               see THE VMS' MEMORY below
-#   WIN_VM_DEFAULT_PEAK_GB [12] what the memory rule counts a VM at until a round recorded a VM's peak: the most a VM used
-#                               in the last real round was 10.5 GB, in a VM of 12 GB with Docker held to 6.2 GB
+#   WIN_VM_DEFAULT_PEAK_GB [12] what the memory rule counts a VM at until a round recorded what a VM really cost this host
+#                               (memory.log's pss_kb)
 #   WIN_VM_DOCKER_MEMORY_GB [16]   the most Docker takes inside each VM, under WIN_VM_MEMORY_GB (.wslconfig memory=,
 #                               written by vm-memory-setup)
 #   RELEASE_CI_CONTAINER_LIMIT_GB [12]   the CI's own container dp-ci: see THE MEMORY CEILINGS below

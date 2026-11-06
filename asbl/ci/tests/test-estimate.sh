@@ -368,15 +368,15 @@ peak_run() { mkdir -p "$PEAKS/$1-release-orchestrator-execution-1-version-9.9.9$
 peaks() { python3 -I asbl/ci/release-estimate.py peaks --runs "$PEAKS" --server-gb 9 --vm-gb "${1:-24}" --vm-default-gb 12; }
 check "no round recorded anything: the defaults" same "9 9 12" "$(peaks)"
 peak_run 20261101T000000Z '2026-11-01T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=512MiB / 10GiB mem_percent=5%\n2026-11-01T00:05:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=9.2GiB / 10GiB mem_percent=92%\n2026-11-01T00:05:00Z\twindows-vm\tmemory\tcommitted=1 commit_peak=1 commit_limit=1 physical_total=12884901888 physical_available=1610612736\n'
-check "a round before the host's VM lines: a runner's highest sample, rounded up; a VM at what Windows used" same "10 9 11" "$(peaks)"
-peak_run 20261102T000000Z '2026-11-02T00:00:00Z\thost\tvm a\trss_kb=25165824\n2026-11-02T00:30:00Z\thost\tvm a\trss_kb=14680064\n2026-11-02T00:30:00Z\thost\tcontainer dp-ci-runner-5\tcpu=1% mem=700MiB / 24GiB mem_percent=3%\n2026-11-02T00:30:00Z\twindows-vm\tmemory\tcommitted=1 commit_peak=1 commit_limit=1 physical_total=25769803776 physical_available=17179869184\n'
-check "a VM at what it held of this host, past its boot; the host lanes' runner on its own" same "10 1 14" "$(peaks)"
+check "a round with no real VM figure: a runner's highest sample, rounded up; a VM at its default, whatever Windows used" same "10 9 12" "$(peaks)"
+peak_run 20261102T000000Z '2026-11-02T00:00:00Z\thost\tvm a\trss_kb=25165824 pss_kb=25165824\n2026-11-02T00:30:00Z\thost\tvm a\trss_kb=23068672 pss_kb=14680064\n2026-11-02T00:30:00Z\thost\tcontainer dp-ci-runner-5\tcpu=1% mem=700MiB / 24GiB mem_percent=3%\n2026-11-02T00:30:00Z\twindows-vm\tmemory\tcommitted=1 commit_peak=1 commit_limit=1 physical_total=25769803776 physical_available=17179869184\n'
+check "a VM at its real cost to this host (not rss_kb), past its boot; the host lanes' runner on its own" same "10 1 14" "$(peaks)"
 check "  a VM never counts above the ceiling it has now" same "10 1 10" "$(peaks 10)"
 peak_run 20261102T120000Z '2026-11-02T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1% mem=30GiB / 32GiB mem_percent=93%\n' -dry-run
 check "  a dry run counts for nothing" same "10 1 14" "$(peaks)"
 for day in 03 04 05 06 07; do peak_run "202611${day}T000000Z" "2026-11-${day}T00:00:00Z\thost\tcontainer dp-ci-runner-2\tcpu=1% mem=3GiB / 24GiB mem_percent=12%\n"; done
 check "  five newer rounds of a runner: the old peak stops counting; the others keep theirs" same "3 1 14" "$(peaks)"
-check "one run's own peaks, for its SUMMARY" same "the host lanes' runner 0.7 GB; the VMs 14.0 GB" \
+check "one run's own peaks, for its SUMMARY, Windows' own use beside the VM's cost" same "the host lanes' runner 0.7 GB; the VMs 14.0 GB; Windows itself in the VMs 8.0 GB" \
   "$(python3 -I asbl/ci/release-estimate.py run-peaks --runs "$PEAKS/20261102T000000Z-release-orchestrator-execution-1-version-9.9.9")"
 
 # ---- 5. WIN_VM_MEMORY_GB=10; two VMs named ----

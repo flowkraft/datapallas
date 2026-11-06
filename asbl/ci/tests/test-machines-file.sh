@@ -200,7 +200,7 @@ check "press: N=4 M=1, the warning counts the runners" has \
   "WARN    memory: N=4 M=1 needs 31 GB (4 x a runner at 5 GB, the host lanes' runner at 5 GB, VMs a running, each can grow by 6 GB), 40 GB are available now: 9 GB would stay free, under RELEASE_MIN_FREE_GB=16; the round starts anyway" \
   "$(printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$SCRATCH/meminfo-40"; RELEASE_MEMINFO="$SCRATCH/meminfo-40" bash "$MACHINES" check 4 1 --press 2>&1)"
 mkdir -p "$SCRATCH/peak-runs/20261105T000000Z-release-orchestrator-execution-1-version-9.9.9"
-printf '2026-11-05T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1%% mem=10GiB / 24GiB mem_percent=41%%\n2026-11-05T00:30:00Z\thost\tvm a\trss_kb=11534336\n' > "$SCRATCH/peak-runs/20261105T000000Z-release-orchestrator-execution-1-version-9.9.9/memory.log"
+printf '2026-11-05T00:00:00Z\thost\tcontainer dp-ci-runner-1\tcpu=1%% mem=10GiB / 24GiB mem_percent=41%%\n2026-11-05T00:30:00Z\thost\tvm a\trss_kb=23068672 pss_kb=11534336\n' > "$SCRATCH/peak-runs/20261105T000000Z-release-orchestrator-execution-1-version-9.9.9/memory.log"
 check "press: a recorded round: the real peaks, the default only where none was recorded (10 + 5 + 11 - 6)" has \
   "memory: needs 20 GB of 100 GB available" "$(RUN_RECORD_DIR="$SCRATCH/peak-runs" machines check 1 1 --press)"
 check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused, with the numbers" refused \
