@@ -59,6 +59,7 @@ approval=none; [ -n "${E2E_APPROVAL:-}" ] && approval="given:${E2E_APPROVAL_USER
 echo "run=$n EXECUTION=${EXECUTION:-} RELEASE_VERSION=${RELEASE_VERSION:-} RELEASE_PIN=${RELEASE_PIN:-} MODE=${MODE:-} UPLOAD=${UPLOAD:-} DRY_RUN=${DRY_RUN:-} DRY_RUN_RED=${DRY_RUN_RED:-} approval=$approval started_by=${ORCH_STARTED_BY:-}" >> "$STUB/orchestrator-calls"
 tr '\0' ' ' < /proc/$$/cmdline >> "$STUB/orchestrator-cmdlines"; echo >> "$STUB/orchestrator-cmdlines"
 echo "N=${SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS:-} M=${USE_N_NUMBER_OF_WINDOWS_VMS:-}" >> "$STUB/advanced-calls"
+echo "${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP:-}" >> "$STUB/zram-calls"
 echo "RELEASE_STEPS=${RELEASE_STEPS:-}" >> "$STUB/steps-calls"
 folder="$STUB/runs/run-$n"; mkdir -p "$folder"
 echo "PARTS   one log per part in $folder"
@@ -125,7 +126,7 @@ export ROUND_ORCHESTRATOR="bash $STUB/orchestrator" ROUND_RELEASE_STATE="bash $S
 export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E="bash $STUB/scheduled-e2e" ROUND_POLL=1
 export ROUND_ESTIMATE="bash $STUB/estimate"   # never the real one: it would write the Jenkins home's estimates file
 unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL E2E_APPROVAL_USER
-unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS RELEASE_STEPS RELEASE_WINDOWS_VMS
+unset SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP RELEASE_STEPS RELEASE_WINDOWS_VMS
 # the machines check of a start (asbl/ci/release-machines.sh) on stand-ins: VM a's settings file, the host's memory
 # (64 GB available) and virsh (every VM running); /var's free disk is this host's
 export WIN_CI_CONF="$STUB/win-ci.env" RELEASE_MEMINFO="$STUB/meminfo"; : > "$WIN_CI_CONF"
@@ -279,6 +280,20 @@ out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2 RELEASE_WINDOWS_VMS="a b" WIN_VM_CONF
 check "M=2 with VMs a and b, 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=1 vms=2 (a b), memory: needs 22 GB of 64 GB available" "$out"
 check "M=2: the orchestrator gets the Advanced values" same "N=1 M=2" "$(cat "$STUB/advanced-calls")"
 check "M=2: the round's state keeps them" bash -c 'grep -qx "jobs=1" "$@" && grep -qx "vms=2" "$@"' _ "$LOG_DIR"/release-rounds/*/round.state
+
+# ---- the form's zram swap: from the press to every run of the round ----
+fresh green
+start > /dev/null; follow > /dev/null
+check "no zram swap on the form: the orchestrator gets 0" same 0 "$(cat "$STUB/zram-calls")"
+fresh red green
+(export ON_FAILURES=fix-prove-then-rerun-automatically USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=128; start > /dev/null); follow > /dev/null
+check "128 pressed: each run of the round gets it, the run after fixes too" same "128 128" "$(paste -sd' ' "$STUB/zram-calls")"
+fresh green
+out=$(export USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=big; start); rc=$?
+check "a zram swap that is no number: refused, exit 2, nothing started" refused_nothing_started "the machines file does not allow" "$out" "$rc"
+check "the form offers it, 0 first, and the job passes it to the start" bash -c \
+  'grep -q "^      USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP: \[choices: \[.0.," "$1/seed.groovy" &&
+   grep -qF "USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=\$(q \"\$USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP\")" "$1/dp-ci-release-steps-0-3-rehearsal.Jenkinsfile"' _ "$(dirname "$ROUND_SCRIPT")"
 
 # ---- a scheduled run is stopped first ----
 fresh green; sleeper; echo "$SLEEPER" > "$LOG_DIR/scheduled-e2e.pid"

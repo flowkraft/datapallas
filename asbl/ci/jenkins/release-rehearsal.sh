@@ -80,6 +80,8 @@
 #                                                             on this host's engine, as before the runners; N must be 1
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs, each running the
 #                                                             lanes of the layout for that many VMs
+#     USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP [0]              a swap in RAM for each run, compressed, up to that many
+#                                                             GB (asbl/ci/release-machines.sh, ZRAM SWAP); 0 = none
 #     What a choice gives, before the press: the job's block under the two choices, or estimate <N> <M> (above).
 #     Checked before anything starts (asbl/ci/release-machines.sh check <N> <M>): the machines file's rules, enough VMs
 #     named, the layout's rules; a real round also what the host must have now (check <N> <M> --press): each added VM's
@@ -105,7 +107,7 @@
 #   running this), mode 600 or 400, read as shell: RELEASE_FIXER="<command>" (the fix round's agent: below) and
 #   DRY_RUN_RED="<parts>" (a dry round only: the orchestrator's parts that come out red, to try the red paths). Missing = no
 #   fixer, no red parts. The machines of a round are there too: RELEASE_STEPS, RELEASE_SERVER_GB, RELEASE_WINDOWS_VMS,
-#   WIN_VM_MEMORY_GB, WIN_VM_DOCKER_MEMORY_GB, RELEASE_CI_CONTAINER_LIMIT_GB, RELEASE_MIN_FREE_GB, RELEASE_ZRAM_SWAP_GB, RELEASE_ZRAM_RAM_LIMIT_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
+#   WIN_VM_MEMORY_GB, WIN_VM_DOCKER_MEMORY_GB, RELEASE_CI_CONTAINER_LIMIT_GB, RELEASE_MIN_FREE_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
 #   default, in asbl/ci/release-layout.example.conf; read by asbl/ci/release-machines.sh).
 # THE FIXER (RELEASE_FIXER, outside the public repo: devops-gitops bkend-infra/scripts/jenkins/release-fixer.sh)
 #   <fixer> start <run folder> <fix round n>   prints FIX_RUN=<name> and FIX_PLAN=<the fix round's plan>
@@ -509,7 +511,8 @@ start_round() {
     why="starting" fixer="${RELEASE_FIXER:-none}"
   { say "STARTED by $who: version ${RELEASE_VERSION:-$version (no step 0)}, ON_FAILURES=$ON_FAILURES, DRY_RUN=$ROUND_DRY_RUN${RELEASE_PIN:+, RELEASE_PIN=$RELEASE_PIN}$([ -n "$E2E_APPROVAL" ] && echo ', E2E_APPROVAL given'), fixer: ${RELEASE_FIXER:-none set (report only)}, Advanced N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED"; } >> "$dir/round.log"
   export RELEASE_VERSION RELEASE_PIN ON_FAILURES E2E_APPROVAL ROUND_STARTED_BY="$who" DRY_RUN="$ROUND_DRY_RUN" \
-    SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS="$FULL_SET_JOBS" USE_N_NUMBER_OF_WINDOWS_VMS="$WINDOWS_VMS_USED"
+    SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS="$FULL_SET_JOBS" USE_N_NUMBER_OF_WINDOWS_VMS="$WINDOWS_VMS_USED" \
+    USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP="${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP:-0}"
   setsid nohup bash "$0" __drive "$dir" > /dev/null 2>&1 < /dev/null &
   exec 9>&-
   echo "STARTED the release round $dir (its process $!): follow it with  bash asbl/ci/jenkins/release-rehearsal.sh follow"
@@ -766,7 +769,7 @@ stop_round() {
   if [ -z "$other_run" ]; then
     stop_what_the_runs_started "$dir"
     # the orchestrator's end never came: it was killed above, or a reboot did it
-    machines_load && machines_host_zram_swap_off "$([ "$(state_get "$dir" dry_run)" = yes ] && echo dry)"
+    machines_host_zram_swap_off "$([ "$(state_get "$dir" dry_run)" = yes ] && echo dry)"
   else echo "LEFT    what this round's runs started: its process was gone already, and the CI is busy now: $other_run"; fi
   fix_run=$(state_get "$dir" fix_run)
   if [ "$recorded_state" = fixing ] && [ -n "$fix_run" ]; then

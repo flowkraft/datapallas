@@ -63,8 +63,6 @@
 #   VM_LANES_<M>_<name>         the lanes VM <name> runs, in order, when the round uses M VMs; missing: the default
 #                               layout of that VM's place in RELEASE_WINDOWS_VMS (DEFAULT_LAYOUT_<M>, below)
 #   VM_DOMAIN_<name>            the VM's libvirt name [a: win10-dev, any other: win10-dev-<name>]
-#   RELEASE_ZRAM_SWAP_GB [0]    the zram swap of a run, in GB (ZRAM SWAP, below): 0 = none
-#   RELEASE_ZRAM_RAM_LIMIT_GB [64] the most of RAM that swap takes
 #   RELEASE_ESTIMATES_FILE      where `release-rehearsal.sh estimate` writes the 16 estimates the job's form reads
 #                               [/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json]
 # The lanes: pack, docker-proof (step 2's Windows Docker proof), server-light, electron-light, robot.
@@ -93,11 +91,13 @@
 # KSM on this host (machines_host_memory_sharing_on) and a memory placement rule on the VM (machines_vm_memory_placement_set),
 # both set before every round, so a host reboot needs nothing done. A VM gives everything back when it shuts down.
 # ZRAM SWAP, for the length of a run: this host's disk swap is small and full of its apps' idle memory, so when RAM runs short
-# Linux has nowhere to move idle memory. With RELEASE_ZRAM_SWAP_GB set, a run turns on a swap in RAM that keeps what moves
+# Linux has nowhere to move idle memory. With USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP above 0 (the job's Advanced form: a
+# value of the press, not of this file), a run turns on a swap in RAM that keeps what moves
 # there compressed (machines_host_zram_swap_on), and turns it off at its end or stop (machines_host_zram_swap_off). Its size
 # is a ceiling, not a reservation: it stays empty while RAM is enough. Both do nothing when it already is that way, so any mix
-# of starts, stops and failures ends with it off. A run killed outright leaves it on until the next run's end; a reboot
-# removes it, nothing of it is kept. The runners and dp-ci may swap (--memory-swap -1): their ceilings are of RAM.
+# of starts, stops and failures ends with it off. A run killed outright leaves it on until the next run's end, whatever
+# that run's press asked: the mark a run leaves when it turns it on says it is to go, not the press. A reboot removes it,
+# nothing of it is kept. The runners and dp-ci may swap (--memory-swap -1): their ceilings are of RAM.
 # Other inputs: WIN_CI_CONF [/var/kraft-internalsystems/config/datapallas-ci/win-ci.env] (VM a's, named only),
 # WIN_VM_CONF_DIR [/root], RELEASE_MEMINFO [/proc/meminfo], RUN_RECORD_DIR [<LOG_DIR>/runs] (the runs whose marks give
 # the times), LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci].
@@ -108,13 +108,14 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
 MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
 # the zram swap: its one device, zstd because it packs tighter than lz4, used before the disk swap (priority -2)
 MACHINES_ZRAM_DEVICE=/dev/zram0
 MACHINES_ZRAM_COMPRESSION=zstd
 MACHINES_ZRAM_SWAP_PRIORITY=100
+MACHINES_ZRAM_RAM_LIMIT_GB=64   # the most of RAM it takes, whatever size the press asks for
 MACHINES_ZRAM_OFF_SECS=900   # swapoff reads everything back into RAM: it gives up after this, and the swap stays on
 # the /var disk a runner takes in a round (its image store, the volume dp-ci-runner-<n>-docker, and its checkout copy under
 # E2E_RUNNERS_HOME, both on /var): a runner with no volume yet copies in this host's images of its list and the CI
@@ -170,8 +171,7 @@ machines_load() {
   WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
   RELEASE_CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
-  RELEASE_ZRAM_SWAP_GB="${RELEASE_ZRAM_SWAP_GB:-0}"
-  RELEASE_ZRAM_RAM_LIMIT_GB="${RELEASE_ZRAM_RAM_LIMIT_GB:-64}"
+  USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP="${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP:-0}"   # the press's, never a key of the file
   RELEASE_ESTIMATES_FILE="${RELEASE_ESTIMATES_FILE:-/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json}"
   return 0
 }
@@ -250,28 +250,37 @@ machines_host_memory_sharing_on() {
 machines_zram_swap_is_on() {
   awk -v device="$MACHINES_ZRAM_DEVICE" '$1 == device { found = 1 } END { exit !found }' "${RELEASE_SWAPS_FILE:-/proc/swaps}" 2> /dev/null
 }
-# machines_host_zram_swap_on [dry]: the zram swap on, when RELEASE_ZRAM_SWAP_GB asks for it and it is not. Never in a run's way:
+# machines_zram_mark_file: written before a run turns the swap on, gone once it is off. It says the swap is a run's to turn
+# off: at the end of any later run, whatever that run's press asked, and at a stop, which knows no press
+machines_zram_mark_file() { echo "${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/zram-swap-turned-on-by-a-run"; }
+# machines_host_zram_swap_on [dry]: the zram swap on, when the press asks for it and it is not. Never in a run's way:
 # without it the run has RAM only, as before. The reset clears a device a killed run left half set up
 machines_host_zram_swap_on() {
   local sys="${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}" what
-  [ "${RELEASE_ZRAM_SWAP_GB:-0}" != 0 ] || return 0
+  [ "${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP:-0}" != 0 ] || return 0
   ! machines_zram_swap_is_on || return 0
-  what="zram swap on: up to $RELEASE_ZRAM_SWAP_GB GB, taking at most $RELEASE_ZRAM_RAM_LIMIT_GB GB of RAM, empty while RAM is enough"
+  what="zram swap on: up to $USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP GB, taking at most $MACHINES_ZRAM_RAM_LIMIT_GB GB of RAM, empty while RAM is enough"
   if [ "${1:-}" = dry ]; then echo "WOULD   host: $what"; return 0; fi
-  if { modprobe zram && echo 1 > "$sys/reset" && echo "$MACHINES_ZRAM_COMPRESSION" > "$sys/comp_algorithm" &&
-       echo "${RELEASE_ZRAM_SWAP_GB}G" > "$sys/disksize" && echo "${RELEASE_ZRAM_RAM_LIMIT_GB}G" > "$sys/mem_limit" &&
+  if { touch "$(machines_zram_mark_file)" && modprobe zram && echo 1 > "$sys/reset" &&
+       echo "$MACHINES_ZRAM_COMPRESSION" > "$sys/comp_algorithm" &&
+       echo "${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP}G" > "$sys/disksize" && echo "${MACHINES_ZRAM_RAM_LIMIT_GB}G" > "$sys/mem_limit" &&
        mkswap "$MACHINES_ZRAM_DEVICE" && swapon -p "$MACHINES_ZRAM_SWAP_PRIORITY" "$MACHINES_ZRAM_DEVICE"; } > /dev/null 2>&1; then
     echo "HOST    $what"
   else echo "WARN    host: the zram swap could not be turned on ($sys): this run has RAM only"; fi
 }
 # machines_host_zram_swap_off [dry]: the zram swap off and its device gone, when it is there. Turning it off reads all it holds
 # back into RAM, and Linux does not refuse when that does not fit, it kills: with too little available it stays on, said,
-# and the next run's end tries again. Only when RELEASE_ZRAM_SWAP_GB asks for it, so a test beside a real run cannot reach it
+# and the next run's end tries again. Only when a run turned it on (machines_zram_mark_file), so a test beside a real run
+# cannot reach it. Dry: said when the press asks for it, as that run's start says it
 machines_host_zram_swap_off() {
-  local sys="${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}" stored=0 need_gb available_gb
-  [ "${RELEASE_ZRAM_SWAP_GB:-0}" != 0 ] || return 0
-  [ -e "$sys" ] || return 0
-  if [ "${1:-}" = dry ]; then echo "WOULD   host: zram swap off"; return 0; fi
+  local sys="${RELEASE_ZRAM_SYS_DIR:-/sys/block/zram0}" mark stored=0 need_gb available_gb
+  if [ "${1:-}" = dry ]; then
+    [ "${USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP:-0}" = 0 ] || echo "WOULD   host: zram swap off"
+    return 0
+  fi
+  mark=$(machines_zram_mark_file)
+  [ -e "$mark" ] || return 0
+  [ -e "$sys" ] || { rm -f "$mark"; return 0; }   # a reboot took it already
   if machines_zram_swap_is_on; then
     { read -r stored _ < "$sys/mm_stat"; } 2> /dev/null
     need_gb=$(( (${stored:-0} >> 30) + 1 ))
@@ -285,6 +294,7 @@ machines_host_zram_swap_off() {
   fi
   echo 1 > "$sys/reset" 2> /dev/null
   modprobe -r zram 2> /dev/null
+  rm -f "$mark"
   echo "HOST    zram swap off"
 }
 # machines_vm_memory_placement_set <name> [dry]: the VM's memory spread over this host's NUMA nodes by a rule of its own
@@ -492,7 +502,7 @@ machines_check() {
           refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
     *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
   esac
-  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_RAM_LIMIT_GB; do
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
   done
   # a box stays under the box it runs in: a runaway reaches its own ceiling first and ends there

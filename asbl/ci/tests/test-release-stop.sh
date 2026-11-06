@@ -255,12 +255,12 @@ check "process gone, the CI free: the VM's steps stopped (they outlive a reboot 
 check "process gone, the CI free: the run's compose container and app stack stopped, nothing else" same "app-stack-of-the-bundle-1 bundle-datapallas-1" "$(lines "$STUB/stopped")"
 check "process gone, the CI free: exit 4, stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
 
-# ---- 4b. the zram swap: the orchestrator is killed by a stop, so the stop turns it off ----
+# ---- 4b. the zram swap: the orchestrator is killed by a stop, so the stop turns it off; a stop knows no press, the run's mark tells ----
 for command in swapoff modprobe; do
   printf '#!/bin/bash\necho "%s $*" >> "$STUB/events"\n' "$command" > "$STUB/bin/$command"; chmod +x "$STUB/bin/$command"
 done
-export RELEASE_ZRAM_SWAP_GB=128 RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram" RELEASE_SWAPS_FILE="$SCRATCH/swaps"
-zram_is_on() { mkdir -p "$RELEASE_ZRAM_SYS_DIR"; echo "/dev/zram0 partition 134217724 0 100" > "$RELEASE_SWAPS_FILE"; }
+export RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram" RELEASE_SWAPS_FILE="$SCRATCH/swaps"
+zram_is_on() { mkdir -p "$RELEASE_ZRAM_SYS_DIR"; touch "$LOG_DIR/zram-swap-turned-on-by-a-run"; echo "/dev/zram0 partition 134217724 0 100" > "$RELEASE_SWAPS_FILE"; }
 round_going
 zram_is_on
 out=$(round stop)
@@ -272,7 +272,7 @@ kill_round_process
 out=$(round stop)
 check "process gone, another run holding the CI: the zram swap left on for that run" same 0 "$(cat "$STUB/events" 2>/dev/null | grep -cE '^(swapoff|modprobe)')"
 kill -KILL "$(cat "$LOG_DIR/win-e2e.pid")" 2>/dev/null
-unset RELEASE_ZRAM_SWAP_GB RELEASE_ZRAM_SYS_DIR RELEASE_SWAPS_FILE
+rm -f "$LOG_DIR/zram-swap-turned-on-by-a-run"; unset RELEASE_ZRAM_SYS_DIR RELEASE_SWAPS_FILE
 
 # ---- 5. the VMs a run started ----
 export STUB_VMS=yes

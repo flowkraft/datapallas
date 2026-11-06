@@ -118,7 +118,7 @@ check "green dry run: exit 0" same 0 "$(cat "$SCRATCH/green/rc")"
 check "green dry run: no \"command not found\" in its console (the memory sampler is defined before the run calls it)" \
   bash -c '! grep -a "command not found" "$1"' _ "$SCRATCH/green/console.log"
 mkdir -p "$SCRATCH/zram-of-a-dry-run"
-RELEASE_ZRAM_SWAP_GB=128 RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram-of-a-dry-run" RELEASE_SWAPS_FILE="$SCRATCH/no-swaps" dry_run zram > /dev/null
+USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=128 RELEASE_ZRAM_SYS_DIR="$SCRATCH/zram-of-a-dry-run" RELEASE_SWAPS_FILE="$SCRATCH/no-swaps" dry_run zram > /dev/null
 check "the zram swap: a run turns it on at its start and off at its end" bash -c \
   'on=$(grep -n "^WOULD   host: zram swap on" "$1" | cut -d: -f1); off=$(grep -n "^WOULD   host: zram swap off" "$1" | cut -d: -f1); [ -n "$on" ] && [ -n "$off" ] && [ "$on" -lt "$off" ]' \
   _ "$SCRATCH/zram/console.log"

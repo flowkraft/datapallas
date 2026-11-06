@@ -226,15 +226,16 @@ pipeline {
       steps {
         script {
           env.ROUND_STARTED_BY = whoStartedThisBuild()
-          // the Advanced (Parallelization) values: 1 when the job has no such parameter yet (a seed not applied)
+          // the Advanced (Parallelization) values: 1, and 0 for the swap, when the job has no such parameter yet (a seed not applied)
           env.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS = params.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS ?: '1'
           env.USE_N_NUMBER_OF_WINDOWS_VMS = params.USE_N_NUMBER_OF_WINDOWS_VMS ?: '1'
-          env.ROUND_SETTINGS = "RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}\nON_FAILURES=${params.ON_FAILURES}\nRELEASE_PIN=${params.RELEASE_PIN ?: ''}\nDRY_RUN=${params.DRY_RUN}\nE2E_APPROVAL=${params.E2E_APPROVAL ? 'given (its text is never written down by the round)' : 'none'}\nSPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=${env.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS}\nUSE_N_NUMBER_OF_WINDOWS_VMS=${env.USE_N_NUMBER_OF_WINDOWS_VMS}\nstarted by: ${env.ROUND_STARTED_BY}\n"
+          env.USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP = params.USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP ?: '0'
+          env.ROUND_SETTINGS = "RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}\nON_FAILURES=${params.ON_FAILURES}\nRELEASE_PIN=${params.RELEASE_PIN ?: ''}\nDRY_RUN=${params.DRY_RUN}\nE2E_APPROVAL=${params.E2E_APPROVAL ? 'given (its text is never written down by the round)' : 'none'}\nSPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=${env.SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS}\nUSE_N_NUMBER_OF_WINDOWS_VMS=${env.USE_N_NUMBER_OF_WINDOWS_VMS}\nUSE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=${env.USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP}\nstarted by: ${env.ROUND_STARTED_BY}\n"
           echo "The settings of this round:\n${env.ROUND_SETTINGS}"
           // the estimate of the two Advanced values first, as the form's block draws it (also without the uno-choice
           // plugin); it never stops the build
           roundCall('bash asbl/ci/jenkins/release-rehearsal.sh estimate $(q "$SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS") $(q "$USE_N_NUMBER_OF_WINDOWS_VMS")', false, '', false)
-          Map start = roundCall('E2E_APPROVAL=\\$(cat) RELEASE_VERSION=$(q "$RELEASE_VERSION") ON_FAILURES=$(q "$ON_FAILURES") RELEASE_PIN=$(q "$RELEASE_PIN") DRY_RUN=$(q "$DRY_RUN") SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$(q "$SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS") USE_N_NUMBER_OF_WINDOWS_VMS=$(q "$USE_N_NUMBER_OF_WINDOWS_VMS") ROUND_STARTED_BY=$(q "$ROUND_STARTED_BY") bash asbl/ci/jenkins/release-rehearsal.sh start', true, 'E2E_APPROVAL', false)
+          Map start = roundCall('E2E_APPROVAL=\\$(cat) RELEASE_VERSION=$(q "$RELEASE_VERSION") ON_FAILURES=$(q "$ON_FAILURES") RELEASE_PIN=$(q "$RELEASE_PIN") DRY_RUN=$(q "$DRY_RUN") SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$(q "$SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS") USE_N_NUMBER_OF_WINDOWS_VMS=$(q "$USE_N_NUMBER_OF_WINDOWS_VMS") USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=$(q "$USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP") ROUND_STARTED_BY=$(q "$ROUND_STARTED_BY") bash asbl/ci/jenkins/release-rehearsal.sh start', true, 'E2E_APPROVAL', false)
           if (start.rc == 2) {
             String refused = firstLineStartingWith(start.text, 'REFUSED') ?: 'REFUSED: see the log'
             currentBuild.description = refused

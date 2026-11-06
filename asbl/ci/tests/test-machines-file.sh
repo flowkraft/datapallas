@@ -80,7 +80,7 @@ memory_gb() { printf 'MemTotal:       131072000 kB\nMemAvailable:   %s kB\n' $((
 memory_gb 100
 export RUN_RECORD_DIR="$SCRATCH/no-rounds-yet"   # the memory rule's defaults: this file's own cases name their runs
 unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DEFAULT_PEAK_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
-  SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
+  SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP
 for key in $(compgen -v | grep -E '^(VM_LANES_|VM_DOMAIN_)'); do unset "$key"; done
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
 # settings <line>...: the machines file, root-only, holding those lines; settings_example [<line>...]: the example plus them
@@ -108,8 +108,6 @@ WIN_VM_DEFAULT_PEAK_GB=12
 WIN_VM_DOCKER_MEMORY_GB=16
 RELEASE_CI_CONTAINER_LIMIT_GB=12
 RELEASE_MIN_FREE_GB=16
-RELEASE_ZRAM_SWAP_GB=0
-RELEASE_ZRAM_RAM_LIMIT_GB=64
 RELEASE_ESTIMATES_FILE=/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json
 VM_LANES_1_a=\"pack docker-proof server-light electron-light robot\"
 VM a: libvirt win10-dev, settings $WIN_CI_CONF" "$(machines show)"
@@ -221,8 +219,8 @@ check "press: /var with 20 GB free: refused" refused \
   env STUB_VAR_FREE_GB=20 bash "$MACHINES" check 1 1 --press
 check "press: /var with 20 GB free, RELEASE_RUNNERS=no: refused" refused "disk: /var has 20 GB free, under the 50 GB a round keeps free" \
   env STUB_VAR_FREE_GB=20 RELEASE_RUNNERS=no bash "$MACHINES" check 1 1 --press
-check "a zram swap that is no number: refused" refused "RELEASE_ZRAM_SWAP_GB=big: it must be a whole number of GB" \
-  env RELEASE_ZRAM_SWAP_GB=big bash "$MACHINES" check 1 1
+check "a zram swap that is no number: refused" refused "USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=big: it must be a whole number of GB" \
+  env USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP=big bash "$MACHINES" check 1 1
 
 # ---- 4. the lane times from the marks, and the schedule ----
 RUNS="$SCRATCH/runs"

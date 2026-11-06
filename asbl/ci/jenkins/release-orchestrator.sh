@@ -131,6 +131,7 @@
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
+#   and the same form's USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP [0]: a swap in RAM for this run (asbl/ci/release-machines.sh, ZRAM SWAP)
 #   THE MACHINES: RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf], the machines file (asbl/ci/release-machines.sh,
 #   with asbl/ci/release-layout.example.conf): RELEASE_STEPS, RELEASE_RUNNERS (no: step 1's full set on this host's engine,
 #   N = 1), the memory per host test server and per VM, the VMs and the
