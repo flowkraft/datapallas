@@ -96,11 +96,11 @@ refused() {
 
 # ---- 1. no file, the environment first, a file others may read ----
 rm -f "$RELEASE_REHEARSAL_CONF"
-check "no file: the defaults (together, 5 GB per server, runners of 10 GB, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
+check "no file: the defaults (together, 5 GB per server, runners of 64 GB, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
 "RELEASE_STEPS=together
 RELEASE_SERVER_GB=5
 RELEASE_RUNNERS=yes
-RELEASE_RUNNER_LIMIT_GB=10
+RELEASE_RUNNER_LIMIT_GB=64
 RELEASE_WINDOWS_VMS=a
 WIN_VM_MEMORY_GB=12
 RELEASE_MIN_FREE_GB=16

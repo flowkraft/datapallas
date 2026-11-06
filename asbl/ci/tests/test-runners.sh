@@ -211,8 +211,8 @@ check "start: the containers of a runner's last run removed from its engine, and
   "$(grep -c '^r2 docker rm -f rb-rundeck datapallas-server$' "$STUB/calls") $(printf '%s\n' "$START2_OUT" | grep -c '^RUNNER  2: 2 containers of its last run removed$') $(grep -c '^r3 docker rm' "$STUB/calls")"
 for n in 1 2 3 4; do
   run_line=$(docker_runs_of "$n")
-  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 10 GB" same \
-    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 10g --memory-swap 10g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
+  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 64 GB" same \
+    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 64g --memory-swap 64g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
   check "runner $n: its volume, socket folder, checkout and log folder, each at the same path inside" bash -c '
     l="$1"; s="$2/$3"; h="$4/$3"; g="$5/runners/$3"
     case "$l" in *"-v dp-ci-runner-$3-docker:/var/lib/docker "*) ;; *) exit 1 ;; esac

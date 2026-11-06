@@ -42,7 +42,7 @@
 #   RELEASE_RUNNERS [yes]       yes: with the steps together, step 1's full set runs in runners (N of them, 1 the
 #                               default), each a Docker engine of its own; no: on this host's engine, as before the
 #                               runners (the fallback when a runner fails for its own reason; N must be 1)
-#   RELEASE_RUNNER_LIMIT_GB [10]   each runner's hard memory limit: a runner that needs more fails its own job
+#   RELEASE_RUNNER_LIMIT_GB [64]   each runner's memory ceiling: it reserves nothing, a runner takes what it needs
 #   RELEASE_WINDOWS_VMS [a]     the Windows VMs that exist, in order: a = win10-dev (win-ci.env); each other VM's
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
 #   WIN_VM_MEMORY_GB [12]       one memory for every Windows VM, set on each before a round (virsh --config)
@@ -115,7 +115,7 @@ machines_load() {
   RELEASE_STEPS="${RELEASE_STEPS:-together}"
   RELEASE_SERVER_GB="${RELEASE_SERVER_GB:-5}"
   RELEASE_RUNNERS="${RELEASE_RUNNERS:-yes}"
-  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-10}"
+  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-64}"
   RELEASE_WINDOWS_VMS="${RELEASE_WINDOWS_VMS:-a}"
   WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
