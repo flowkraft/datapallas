@@ -268,7 +268,7 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
     Win VM c light set on Electron               ########                 1 h 23  (step 3: 54 tests)
     Win VM d e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)
     Win VM d light set on docker-server          #######################  3 h 50  (step 2, Docker on Windows: the same 42 tests)
-                                           # runs   . waits on its machine for its inputs (the build, the pack, the runners' copies)   one column: 10 min
+                                           # runs   . waits on its machine for its inputs (the build, the pack)   one column: 10 min
                                            step 1, 2, 3 = the release step a part belongs to, not its order:
                                            the three steps start together; each machine runs its parts top to bottom
     What each part runs (the counts: the newest runs that passed it; the lists: this checkout):

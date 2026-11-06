@@ -762,7 +762,7 @@ def chart(rows):
         machine_end[machine] = max(machine_end.get(machine, 0.0), end)
         lines.append((ROW_HEAD + "%s  %s%s") % (machine, part, "".join(bar).ljust(width), duration(end - start),
                                                 "  (" + note + ")" if note else ""))
-    lines.append(" " * CHART_LEAD + "# runs   . waits on its machine for its inputs (the build, the pack, the runners' copies)   "
+    lines.append(" " * CHART_LEAD + "# runs   . waits on its machine for its inputs (the build, the pack)   "
                  "one column: %d min" % mpc)
     return lines, mpc
 
