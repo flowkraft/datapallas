@@ -183,17 +183,19 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
 check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=1 M=4 needs 82 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner), VMs b c d to start x 24 GB), 60 GB are available now: -22 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=1 M=4 needs 100 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner), VMs a running, each can grow by 18 GB, VMs b c d to start x 24 GB), 60 GB are available now: -40 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   machines check 1 4 --press
-check "press: only the VMs a round starts count (b c d running: 10 GB needed)" has \
-  "needs 10 GB of 60 GB available, 50 GB stay free (rule 16)" \
-  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
 memory_gb 100
-check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 82 GB of 100 GB available, 18 GB stay free (rule 16); /var 400 GB free, the runners take about 8 GB, 392 GB stay free (rule 50)" \
+check "press: a running VM counts what it can grow by, not its ceiling (a b c d running: 82 GB needed)" has \
+  "needs 82 GB of 100 GB available, 18 GB stay free (rule 16)" \
+  "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
+memory_gb 120
+check "press: N=1 M=4 with 120 GB available: OK, with the numbers" has \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 100 GB of 120 GB available, 20 GB stay free (rule 16); /var 400 GB free, the runners take about 8 GB, 392 GB stay free (rule 50)" \
   "$(machines check 1 4 --press)"
+memory_gb 100
 check "press: N=4 M=1, the memory rule names the runners: refused, with the numbers" refused \
-  "memory: N=4 M=1 needs 25 GB (5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner)), 40 GB are available now: 15 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=4 M=1 needs 43 GB (5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner), VMs a running, each can grow by 18 GB), 40 GB are available now: -3 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   bash -c 'printf "MemTotal:       131072000 kB\nMemAvailable:   41943040 kB\n" > "$1/meminfo-40"; RELEASE_MEMINFO="$1/meminfo-40" bash "$2" check 4 1 --press' _ "$SCRATCH" "$MACHINES"
 check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused, with the numbers" refused \
   "disk: N=4: /var has 120 GB free, the runners take about 92 GB there (runners 3 4 with no volume yet x 40 GB, runners 1 2 5 with a volume x 4 GB): 28 GB would stay free, under the 50 GB a round keeps free" \
@@ -201,7 +203,7 @@ check "press: N=4, runners 3 and 4 with no volume yet, /var 120 GB free: refused
 check "press: N=4, every runner's volume there, /var 120 GB free: OK, with the numbers" has \
   "/var 120 GB free, the runners take about 20 GB, 100 GB stay free (rule 50)" "$(STUB_VAR_FREE_GB=120 machines check 4 1 --press)"
 check "press: RELEASE_RUNNERS=no: the disk rule counts no runner" has \
-  "memory: needs 10 GB of 100 GB available, 90 GB stay free (rule 16); /var 400 GB free (rule 50)" \
+  "memory: needs 28 GB of 100 GB available, 72 GB stay free (rule 16); /var 400 GB free (rule 50)" \
   "$(STUB_RUNNER_VOLUMES="" RELEASE_RUNNERS=no machines check 1 1 --press)"
 check "press: N=4 RELEASE_RUNNERS=no with 100 GB available: refused, one Docker engine" refused \
   "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=4 with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine" \
@@ -320,15 +322,19 @@ host_parts() {  # host_parts <schedule>: "<part> <start>-<end>" of each Linux ho
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }'
 }
-check "schedule 4 4: this host's parts: the build, then the auth file once the runners have their copies (0:34 + 15), then the Linux proof" same \
-  "build + JUnit 0:00-0:34|auth file on docker-server 0:49-1:09|light set on docker-server 1:09-2:04" "$(host_parts "$out")"
+check "schedule 4 4: this host's engine only builds" same "build + JUnit 0:00-0:34" "$(host_parts "$out")"
+check "schedule 4 4: the host lanes' runner: from the build's end, its start (15 min), its images (10 min), the auth file, then the Linux proof" same \
+  "runner 5 auth file on docker-server 0:34-1:19|runner 5 light set on docker-server 1:19-2:14" \
+  "$(printf '%s\n' "$out" | awk '$1 == "runner" && $2 == 5 { line = $0; sub(/^ +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
+    name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
+    printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
 runner_ends=""; total_files=$(python3 -I asbl/ci/full-set-runners.py files 1 1 | wc -l)
 for k in 1 2 3 4; do   # no file times in the records: each runner the lane's 620 min by its share of the files
   files=$(python3 -I asbl/ci/full-set-runners.py files 4 "$k" | wc -l)
   runner_ends="$runner_ends|runner $k full set on docker-server 0:34-$(awk -v f="$files" -v t="$total_files" 'BEGIN { m = int(34 + 15 + 10 + 620 * f / t + 0.5); printf "%d:%02d", m / 60, m % 60 }')"
 done
 check "schedule 4 4: the four runners from the build's end, each its list after its start (15 min) and images (10 min)" same \
-  "${runner_ends#|}" "$(printf '%s\n' "$out" | awk '$1 == "runner" { line = $0; sub(/^ +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
+  "${runner_ends#|}" "$(printf '%s\n' "$out" | awk '$1 == "runner" && $2 != 5 { line = $0; sub(/^ +/, "", line); match(line, /[0-9]+:[0-9]+ +-> +[0-9]+:[0-9]+/)
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
 check "  the memory the memory rule counts, the runners named" has \

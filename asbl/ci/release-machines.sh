@@ -15,8 +15,9 @@
 #   bash asbl/ci/release-machines.sh check <N> <M> --press   the same, plus what the host must have now for a real round:
 #                                                       each added VM's settings file, each VM in libvirt, the memory rule
 #                                                       with the host's available memory now (N + 1 host test servers at
-#                                                       RELEASE_SERVER_GB: with the runners, each runner and this host's
-#                                                       engine; each VM to start at WIN_VM_MEMORY_GB), the disk rule: /var
+#                                                       RELEASE_SERVER_GB: with the runners, each runner and the host
+#                                                       lanes' runner; each VM to start at WIN_VM_MEMORY_GB; each VM
+#                                                       running at what it can still grow by), the disk rule: /var
 #                                                       keeps MACHINES_MIN_FREE_VAR_GB [50] free after what the runners take
 #                                                       there (MACHINES_RUNNER_FIRST_GB [40] for a runner with no image
 #                                                       volume yet, MACHINES_RUNNER_ROUND_GB [4] for one whose volume is
@@ -105,6 +106,9 @@ MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overla
 # volume is removed (docker volume rm dp-ci-runner-<n>-docker resets the runner)
 MACHINES_RUNNER_FIRST_GB=40
 MACHINES_RUNNER_ROUND_GB=4
+# what a VM holds of the host when idle (measured 2026-11-06: 5.3 to 6.4 GB). A VM running at a press is already out of
+# the available memory by about this much, and can still grow from here to WIN_VM_MEMORY_GB during the round
+MACHINES_VM_IDLE_GB=6
 # The host lanes' runner: with the runners, step 1's auth file and step 2's Linux proof run in it, one after the other,
 # beside the runners of the full set (1 to 4). Its number is fixed, so its images stay in one volume whatever N is
 HOST_LANES_RUNNER=5
@@ -243,7 +247,9 @@ machines_vm_memory_placement_set() {
 # machines_vm_memory_rules <name> [dry]: what every VM gets before a round: its memory and its placement
 machines_vm_memory_rules() { machines_vm_memory_set "$@"; machines_vm_memory_placement_set "$@"; }
 # machines_vm_docker_memory_script: the PowerShell of machines_vm_docker_memory_set. .wslconfig holds this one setting.
-# AutoStart: Docker Desktop starts at the VM's logon, so a VM a round starts has Docker for its lanes, with no one at it.
+# The logon start: Docker Desktop starts at the VM's logon, so a VM a round starts has Docker for its lanes, with no one at
+# it. It takes three settings: Docker's own AutoStart, the Run entry, and no entry of Windows' StartupApproved, which the
+# VMs' disk has set to off and which beats the other two (2026-11-06: VM a came up with no Docker).
 machines_vm_docker_memory_script() {
   sed "s/@GB@/$WIN_VM_DOCKER_MEMORY_GB/" <<'PS'
 $wsl = Join-Path $env:USERPROFILE '.wslconfig'
@@ -254,6 +260,10 @@ $settings = Get-Content -Raw $store | ConvertFrom-Json
 if ($settings.AutoStart -eq $true) { 'AUTOSTART same' } else {
   $settings | Add-Member -Force -NotePropertyName AutoStart -NotePropertyValue $true
   [IO.File]::WriteAllText($store, ($settings | ConvertTo-Json -Depth 20)); 'AUTOSTART on' }
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'Docker Desktop' -Value 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
+$approved = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'
+if ((Get-Item $approved -ErrorAction SilentlyContinue).Property -contains 'Docker Desktop') {
+  Remove-ItemProperty $approved -Name 'Docker Desktop'; 'STARTUP allowed' } else { 'STARTUP same' }
 PS
 }
 # machines_vm_docker_memory_set <name>: on the VM, over SSH: Docker's ceiling (.wslconfig: WSL takes it at its next start)
@@ -262,9 +272,9 @@ machines_vm_docker_memory_set() {
   local dom out said
   dom=$(machines_domain_of "$1")
   out=$(machines_vm_docker_memory_script | WIN_VM="$1" bash asbl/ci/dp-ci.sh win ps 2>&1)
-  said=$(tr -d '\r' <<< "$out" | grep -E '^(WSLCONFIG|AUTOSTART) ' | paste -sd',' | sed 's/,/, /')
+  said=$(tr -d '\r' <<< "$out" | grep -E '^(WSLCONFIG|AUTOSTART|STARTUP) ' | paste -sd',' | sed 's/,/, /g')
   case "$said" in
-    WSLCONFIG*AUTOSTART*) echo "VM      $1 ($dom): Docker up to $WIN_VM_DOCKER_MEMORY_GB GB, started at logon ($said): it takes them at WSL's next start" ;;
+    WSLCONFIG*AUTOSTART*STARTUP*) echo "VM      $1 ($dom): Docker up to $WIN_VM_DOCKER_MEMORY_GB GB, started at logon ($said): it takes them at WSL's next start" ;;
     *) echo "WARN    VM $1 ($dom): Docker's memory not confirmed: $(tr -d '\r' <<< "$out" | tail -2 | paste -sd' ' | cut -c1-200)"; return 1 ;;
   esac
 }
@@ -330,6 +340,15 @@ machines_available_gb() { awk '/^MemAvailable:/ { printf "%d", $2 / 1048576 }' "
 machines_servers_for() { echo $(($1 + 1)); }   # the host test servers of a choice: N subsets + step 2's (the plan's rule)
 # machines_runners_used: yes when step 1's full set runs in runners (RELEASE_RUNNERS=yes with the steps together)
 machines_runners_used() { [ "$RELEASE_RUNNERS" = yes ] && [ "$RELEASE_STEPS" = together ] && echo yes || echo no; }
+# machines_vm_growth_gb: what a running VM can still take from the host during a round: from idle up to its ceiling
+machines_vm_growth_gb() {
+  local growth=$((WIN_VM_MEMORY_GB - MACHINES_VM_IDLE_GB))
+  [ "$growth" -gt 0 ] && echo "$growth" || echo 0
+}
+# machines_ceilings_text: a round's memory ceilings, as the job's form says them under its memory line
+machines_ceilings_text() {
+  echo "ceilings: a runner up to $RELEASE_RUNNER_LIMIT_GB GB, dp-ci in it up to $RELEASE_CI_CONTAINER_LIMIT_GB GB; a VM up to $WIN_VM_MEMORY_GB GB, Docker in it up to $WIN_VM_DOCKER_MEMORY_GB GB"
+}
 # machines_servers_text <N>: what the memory rule's N + 1 host test servers are, with the runners
 machines_servers_text() {
   [ "$(machines_runners_used)" = yes ] || return 0
@@ -360,7 +379,7 @@ machines_runner_disk() {
 # its numbers) and returns 2, or prints MACHINES OK and returns 0
 machines_check() {
   local n="$1" m="$2" press="${3:-}" refused=0 vms v lanes lane count place robot_place light_place electron_place
-  local key value need available free_var starts="" servers disk disk_gb=0 ceilings inner outer
+  local key value need available free_var starts="" growing="" servers disk disk_gb=0 ceilings inner outer
   refuse_rule() { echo "REFUSED $*"; refused=1; }
   case "$n" in 1|2|3|4) ;; *) refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: it must be 1, 2, 3 or 4" ;; esac
   case "$m" in 1|2|3|4) ;; *) refuse_rule "USE_N_NUMBER_OF_WINDOWS_VMS=$m: it must be 1, 2, 3 or 4" ;; esac
@@ -417,22 +436,23 @@ machines_check() {
   if [ "$press" = --press ]; then
     # what the host must have now: each added VM's settings file (VM a's win-ci.env is release-publish.sh preflight
     # docker's, at the same start) and each VM in libvirt; the memory rule: the host test servers (with the runners: each
-    # runner and the host lanes' runner, each one host test server), plus each VM this round would start, against what is
+    # runner and the host lanes' runner, each one host test server), plus each VM this round would start at its ceiling
+    # and what each VM running now can still grow by (machines_vm_growth_gb), against what is
     # available now; the disk rule: /var's free disk, less what the runners take there (machines_runner_disk)
     for v in $vms; do
       [ "$v" = a ] || [ -e "$(machines_conf_of "$v")" ] || refuse_rule "VM $v has no settings file $(machines_conf_of "$v")"
       case "$(machines_vm_state "$v")" in
-        running) ;;
+        running) growing="$growing $v" ;;
         off) starts="$starts $v" ;;
         missing) refuse_rule "VM $v (libvirt $(machines_domain_of "$v")) does not exist: not created yet" ;;
       esac
     done
     servers=$(machines_servers_for "$n")
-    need=$((servers * RELEASE_SERVER_GB + $(wc -w <<< "$starts") * WIN_VM_MEMORY_GB))
+    need=$((servers * RELEASE_SERVER_GB + $(wc -w <<< "$growing") * $(machines_vm_growth_gb) + $(wc -w <<< "$starts") * WIN_VM_MEMORY_GB))
     available=$(machines_available_gb)
     if [ -z "$available" ]; then refuse_rule "the host's available memory cannot be read (${RELEASE_MEMINFO:-/proc/meminfo})"
     elif [ $((available - need)) -lt "$RELEASE_MIN_FREE_GB" ]; then
-      refuse_rule "memory: N=$n M=$m needs $need GB ($servers host test servers x $RELEASE_SERVER_GB GB$(machines_servers_text "$n")${starts:+, VMs$starts to start x $WIN_VM_MEMORY_GB GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB"
+      refuse_rule "memory: N=$n M=$m needs $need GB ($servers host test servers x $RELEASE_SERVER_GB GB$(machines_servers_text "$n")${growing:+, VMs$growing running, each can grow by $(machines_vm_growth_gb) GB}${starts:+, VMs$starts to start x $WIN_VM_MEMORY_GB GB}), $available GB are available now: $((available - need)) GB would stay free, under RELEASE_MIN_FREE_GB=$RELEASE_MIN_FREE_GB"
     fi
     free_var=$(df -BG --output=avail /var 2>/dev/null | tail -1 | tr -dc '0-9')
     disk=$(machines_runner_disk "$n"); disk_gb=${disk%% *}
@@ -473,7 +493,7 @@ machines_schedule() {
   [ -n "$target" ] || target=$(machines_full_target)
   python3 -I asbl/ci/release-estimate.py schedule --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
     --target "$target" --jobs "$n" --vms "$vms" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
-    --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vms-off "${off# }"
+    --server-gb "$RELEASE_SERVER_GB" --vm-gb "$WIN_VM_MEMORY_GB" --vm-idle-gb "$MACHINES_VM_IDLE_GB" --vms-off "${off# }"
 }
 
 # machines_estimates [<full target>]: the 16 Advanced choices, N and M from 1 to 4, as JSON on stdout (asbl/ci/release-
@@ -495,7 +515,8 @@ machines_estimates() {
   python3 -I asbl/ci/release-estimate.py estimates --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" \
     --target "$target" --vms-named "$RELEASE_WINDOWS_VMS" "${args[@]}" --steps "$RELEASE_STEPS" --runners "$([ "$RELEASE_RUNNERS" = no ] && echo no || echo yes)" \
     --server-gb "$RELEASE_SERVER_GB" \
-    --vm-gb "$WIN_VM_MEMORY_GB" --min-free-gb "$RELEASE_MIN_FREE_GB"
+    --vm-gb "$WIN_VM_MEMORY_GB" --vm-idle-gb "$MACHINES_VM_IDLE_GB" --min-free-gb "$RELEASE_MIN_FREE_GB" \
+    --ceilings "$(machines_ceilings_text)"
 }
 
 machines_show() {

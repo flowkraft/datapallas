@@ -267,7 +267,7 @@ fresh green; available_memory_gb 20
 out=$(start); rc=$?
 check "20 GB available: refused, exit 2, nothing started" refused_nothing_started "the host cannot hold N=1 M=1 now" "$out" "$rc"
 check "20 GB available: the memory rule's numbers said" \
-  has "needs 10 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner)), 20 GB are available now: 10 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
+  has "needs 28 GB (2 host test servers x 5 GB (runner 1 and the host lanes' runner), VMs a running, each can grow by 18 GB), 20 GB are available now: -8 GB would stay free, under RELEASE_MIN_FREE_GB=16" "$out"
 fresh green
 out=$(export DRY_RUN=yes; start); rc=$?; follow > /dev/null
 check "20 GB available in a dry round: started (a dry round starts no server)" same 5 "$rc"
@@ -275,7 +275,7 @@ check "a dry round refreshes no estimate (a dry run leaves no marks)" bash -c '[
 available_memory_gb 64
 fresh green; : > "$STUB/win-ci-b.env"
 out=$(export USE_N_NUMBER_OF_WINDOWS_VMS=2 RELEASE_WINDOWS_VMS="a b" WIN_VM_CONF_DIR="$STUB"; start); rc=$?; follow > /dev/null
-check "M=2 with VMs a and b, 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=1 vms=2 (a b), memory: needs 10 GB of 64 GB available" "$out"
+check "M=2 with VMs a and b, 64 GB available: started, the check's line printed" has "MACHINES OK steps=together jobs=1 vms=2 (a b), memory: needs 46 GB of 64 GB available" "$out"
 check "M=2: the orchestrator gets the Advanced values" same "N=1 M=2" "$(cat "$STUB/advanced-calls")"
 check "M=2: the round's state keeps them" bash -c 'grep -qx "jobs=1" "$@" && grep -qx "vms=2" "$@"' _ "$LOG_DIR"/release-rounds/*/round.state
 

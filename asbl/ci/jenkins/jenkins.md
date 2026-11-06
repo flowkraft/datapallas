@@ -248,8 +248,9 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS  [4 v]   1 (default), 2, 3, 4
   USE_N_NUMBER_OF_WINDOWS_VMS                        [4 v]   1 (default), 2, 3, 4
   ESTIMATED_TIME_AND_MEMORY   (redrawn when either choice changes; here 4 and 4, from the last release runs' marks)
-    Memory  needs +81 GB: 5 host test servers x 9 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 12 GB
-            available now 72 GB -> -9 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
+    Memory  needs +135 GB: 5 host test servers x 9 GB (runners 1 to 4 and the host lanes' runner); VM a can grow by 18 GB (up to 24 GB, about 6 GB idle); VMs b, c, d at 24 GB
+            ceilings: a runner up to 24 GB, dp-ci in it up to 12 GB; a VM up to 24 GB, Docker in it up to 16 GB
+            available now 72 GB -> -63 GB would stay free    WARNING: under the 16 GB rule (the press refuses it)
                                            0h    1h    2h    3h    4h
                                            |-----|-----|-----|-----|-----
     Linux    build + JUnit                 ###                            34 min  (1705 JUnit tests, then the zips and the image)
@@ -257,8 +258,8 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
     runner 2 full set on docker-server        #################           2 h 50  (step 1, its list for 4 jobs: 7 spec files; after its start (2 min) and its images (4 min))
     runner 3 full set on docker-server        #################           2 h 42  (step 1, its list for 4 jobs: 8 spec files; after its start (2 min) and its images (4 min))
     runner 4 full set on docker-server        ###############             2 h 25  (step 1, its list for 4 jobs: 36 spec files; after its start (2 min) and its images (4 min))
-    Linux    auth file on docker-server       .#                          18 min  (step 1: 138 tests; once the runners have the checkout and the caches)
-    Linux    light set on docker-server         ######                    55 min  (step 2, Docker on Linux: 42 tests)
+    runner 5 auth file on docker-server       .#                          18 min  (step 1: 138 tests; in the host lanes' runner, after its start (2 min) and its images (4 min))
+    runner 5 light set on docker-server         ######                    55 min  (step 2, Docker on Linux: 42 tests)
     Win VM a Windows pack                  ########                       1 h 17  (step 3, pack-datapallas.bat: the 3 Windows zips)
     Win VM a Robot UAT                             ####                   41 min  (step 3: 16 tests)
     Win VM b e2e package (from the pack)         #                        1 min  (a copy of the pack's, once its NoExeAssembler finished (58 min into the pack): no build, no JUnit)

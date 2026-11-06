@@ -18,7 +18,7 @@
 #      1 and 1 as before the runners (this host's parts in a row, the full set last);
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
 #      left, a warning with 1 GB less, "unknown" without the file;
-#   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 42 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
+#   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 56 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
 #      yet" and not drawn;
 #   6. the form's Groovy script, run by the Groovy of this host's Jenkins image in a throwaway container (no network,
 #      the scratch folder read-only), draws exactly what the shell draws, for the 16 choices and the cases of 4 and 5,
@@ -189,8 +189,8 @@ for (n, m), p in sorted(pairs.items()):
         gain = "(with 1 and 1: about %s; about %s longer)" % (about(base), about(total - base))
     if p["total_line"] != "Total   about %s   %s" % (about(total), gain):
         bad["gain"].append("%s: %s, expected about %s %s" % (tag, p["total_line"], about(total), gain))
-    # the memory: N + 1 host test servers (each runner and the host lanes' runner), M - 1 VMs
-    need = (n + 1) * data["server_gb"] + (m - 1) * data["vm_gb"]
+    # the memory: N + 1 host test servers (each runner and the host lanes' runner), VM a's growth, M - 1 VMs
+    need = (n + 1) * data["server_gb"] + (data["vm_gb"] - data["vm_idle_gb"]) + (m - 1) * data["vm_gb"]
     engines = {1: "runner 1", 2: "runners 1, 2"}.get(n, "runners 1 to %d" % n)
     if p["need_gb"] != need or not p["need_text"].startswith("%d host test servers x %d GB (%s and the host lanes' runner); "
                                                              % (n + 1, data["server_gb"], engines)):
@@ -202,8 +202,8 @@ for (n, m), p in sorted(pairs.items()):
     block = open(os.path.join(S, "block-%d-%d.txt" % (n, m))).read().rstrip("\n").split("\n")
     available = 100 - need
     expected = (["REFUSED at the press: " + r for r in p["refused"]] +
-                ["Memory  needs +%d GB: %s" % (need, p["need_text"]),
-                 "        available now 100 GB -> %d GB would stay free%s" % (
+                ("Memory  needs +%d GB: %s" % (need, p["need_text"])).split("\n") +
+                ["        available now 100 GB -> %d GB would stay free%s" % (
                      available, "    WARNING: under the %d GB rule (the press refuses it)" % data["min_free_gb"]
                      if available < data["min_free_gb"] else "")] +
                 chart + [p["total_line"]])
@@ -216,7 +216,7 @@ check("each part's times are the schedule's (release-machines.sh machines_schedu
 check("each bar starts and ends at its part's times, to half a column, for the 16", bad["bars"])
 check("the total is the last end (also the chart's last column), for the 16", bad["total"])
 check("the gain is against 1 and 1 (about %s), for the 16" % about(base), bad["gain"])
-check("the memory: N + 1 host test servers x %d GB (the runners and the host lanes' runner) and M - 1 VMs x %d GB, for the 16"
+check("the memory: N + 1 host test servers x %d GB (the runners and the host lanes' runner), VM a's growth and M - 1 VMs x %d GB, for the 16"
       % (data["server_gb"], data["vm_gb"]), bad["memory"])
 check("none REFUSED at the press (N above 1 runs in runners)", bad["refused"])
 check("each block: the refusals, the memory against 100 GB, the chart, the total, where from", bad["block"])
@@ -312,7 +312,7 @@ else:
 problems = []
 p = pairs[(1, 1)]
 parts = [(r[0], r[1]) for r in p["rows"]]
-for expected in (("Linux", "light set on docker-server"), ("Win VM a", "light set on docker-server"),
+for expected in (("runner 5", "light set on docker-server"), ("Win VM a", "light set on docker-server"),
                  ("Win VM a", "light set on server zip"), ("Win VM a", "light set on Electron")):
     if expected not in parts:
         problems.append("no %s part %r: %s" % (expected[0], expected[1], parts))
@@ -329,7 +329,7 @@ check("the names say which test set and where, the light set's alike on Linux an
       "part runs (%d lines, the %d light set entries)" % (len(legend), len(entries)), problems)
 problems = []
 p = pairs[(4, 4)]
-runners = [r for r in p["rows"] if r[0].startswith("runner ")]
+runners = [r for r in p["rows"] if r[0].startswith("runner ") and r[0] != "runner 5"]
 if [r[0] for r in runners] != ["runner 1", "runner 2", "runner 3", "runner 4"] or \
         any(r[1] != "full set on " + data["target"] for r in runners):
     problems.append("4 and 4's runner rows: %s" % [(r[0], r[1]) for r in runners])
@@ -341,7 +341,7 @@ for k in (1, 2, 3, 4):
 if "... in runners each runner a Docker engine of its own" not in legend:
     problems.append("what the runners are is not under the chart")
 one = " ".join(" ".join(pairs[(1, 1)]["chart"]).split())
-if "The whole full set in runner 1." not in one or [r[0] for r in pairs[(1, 1)]["rows"] if r[0].startswith("runner")] != ["runner 1"]:
+if "The whole full set in runner 1." not in one or [r[0] for r in pairs[(1, 1)]["rows"] if r[0].startswith("runner") and r[0] != "runner 5"] != ["runner 1"]:
     problems.append("1 and 1: not the whole full set in runner 1")
 check("each runner's rows say runner <n>, the part name the full set's; under the chart each runner's list (4 and 4), "
       "the whole full set in runner 1 (1 and 1)", problems)
@@ -363,10 +363,11 @@ check "no /proc/meminfo: the available memory unknown, the rest drawn" \
 
 # ---- 5. WIN_VM_MEMORY_GB=10; two VMs named ----
 WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate > /dev/null
-check "WIN_VM_MEMORY_GB=10: 4 and 4 need 42 GB less ($need GB with 24)" \
-  same $((need - 42)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
+check "WIN_VM_MEMORY_GB=10: 4 and 4 need 56 GB less ($need GB with 24)" \
+  same $((need - 56)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate 4 4 > "$SCRATCH/shell-vm10.txt"
-check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 42)) GB: 5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 56)) GB: 5 host test servers x 5 GB (runners 1 to 4 and the host lanes' runner); VM a can grow by 4 GB (up to 10 GB, about 6 GB idle); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "the memory line's second line: the ceilings" has "        ceilings: a runner up to 24 GB, dp-ci in it up to 12 GB; a VM up to 10 GB, Docker in it up to 16 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 RELEASE_WINDOWS_VMS="a b" RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate > /dev/null
 check "RELEASE_WINDOWS_VMS=\"a b\": 3 and 4 VMs not created yet, refused and not drawn; 1 and 2 VMs drawn" python3 -I -c 'import json, sys
 d = json.load(open(sys.argv[1]))
@@ -377,7 +378,7 @@ RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 3 >
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 2 > "$SCRATCH/shell-ab-1-2.txt"
 check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with its memory" \
   bash -c 'grep -q "^REFUSED at the press: USE_N_NUMBER_OF_WINDOWS_VMS=3, .*not created yet" "$1" &&
-    grep -qx "Memory  needs +58 GB: 2 host test servers x 5 GB (runner 1 and the host lanes'"'"' runner); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
+    grep -qx "Memory  needs +76 GB: 2 host test servers x 5 GB (runner 1 and the host lanes'"'"' runner); VM a can grow by 18 GB (up to 24 GB, about 6 GB idle); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
     grep -q "^Total   not estimated" "$1"' _ "$SCRATCH/shell-ab-1-3.txt"
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \

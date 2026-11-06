@@ -215,7 +215,7 @@ check "  a VM it started, shut down before the next starts; a running VM left on
 check "  every VM its size: 24 GB defined on all three" same "25165824 25165824 25165824" "$(cat "$STUB"/vms/win10-dev.mem "$STUB"/vms/win10-dev-b.mem "$STUB"/vms/win10-dev-c.mem | paste -sd' ')"
 for d in win10-dev win10-dev-b win10-dev-c; do vm_is "$d" running 12; done
 out=$(WIN_VM_DOCKER_MEMORY_GB=16 lib machines_vm_docker_memory_script)
-check "  the script: Docker's ceiling and the start at logon, no double quote (the channel to the VM)" bash -c '[[ "$1" == *"memory=16GB"* && "$1" == *"AutoStart"* && "$1" != *\"* ]]' _ "$out"
+check "  the script: Docker's ceiling and the start at logon, no double quote (the channel to the VM)" bash -c '[[ "$1" == *"memory=16GB"* && "$1" == *"AutoStart"* && "$1" == *"StartupApproved"* && "$1" != *\"* ]]' _ "$out"
 vm_is win10-dev-c "shut off" 12; : > "$STUB/virsh-calls"
 out=$(VM_SSH_WAIT_SECS=6 VM_POLL_SECS=1 lib machines_vm_start c); rc=$?
 check "an off VM: virsh start, waited for until it answers over SSH (exit 0)" bash -c \

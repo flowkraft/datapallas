@@ -67,8 +67,10 @@ import re
 import sys
 from datetime import datetime, timezone
 
+# Where the auth file and the Linux proof run, with the runners (HOST_LANES_RUNNER, asbl/ci/release-machines.sh)
+HOST_LANES_MACHINE = "runner 5"
 # The 16.6.2 release's lane times (round 20261103T231939Z, plan 16.6.3 TODO 1), used for a lane no run has passed yet.
-# runner-start (a runner's engine, this checkout and the CI caches copied in: what this host's auth file waits for) and
+# runner-start (a runner's engine, this checkout and the CI caches copied in) and
 # runner-images (its images copied by id) are not measured: no runner ran before the 16.6.3 release. They are a first
 # start's guess from what it copies (this host's sizes on 2026-11-05: the checkout 9 GB, the caches 12 GB, the images of
 # the runner's list 10 GB); a later start copies only what changed. The 16.6.3 release's RUNNER <n> marks replace them.
@@ -187,7 +189,7 @@ def lanes_of_run(folder):
         elif part == "windows-pack":
             found["pack"] = minutes
     # the runners' start, from their marks in step 1's full lane log (asbl/ci/e2e-runners.sh), whatever its tests gave:
-    # the slowest runner's engine, checkout and caches (what this host's auth file waits for), and its images
+    # the slowest runner's engine, checkout and caches, and its images
     for part in parts:
         if re.match(r"lane1-(web|docker-server)-full$", part):
             log = read_text(os.path.join(folder, part + ".log"))
@@ -630,9 +632,9 @@ def plan_round(lanes, full, target, n, vms, layouts, steps, counts=None, runners
                          "step 1, %s; after its start (%d min) and its images (%d min)"
                          % (what, round(m["runner-start"]), round(m["runner-images"]))))
         auth_end = copied + m["runner-images"] + m["auth"]
-        rows.append((auth[0], auth[1], build_end, auth_end, auth[2] + "; in the host lanes' runner, after its start (%d min) and its images (%d min)"
+        rows.append((HOST_LANES_MACHINE, auth[1], build_end, auth_end, auth[2] + "; in the host lanes' runner, after its start (%d min) and its images (%d min)"
                      % (round(m["runner-start"]), round(m["runner-images"]))))
-        rows.append((proof[0], proof[1], auth_end, auth_end + m["linux-proof"], proof[2]))
+        rows.append((HOST_LANES_MACHINE, proof[1], auth_end, auth_end + m["linux-proof"], proof[2]))
         offset = 0.0
     elif steps == "in-order":
         # 16.6.2: step 1 (the build, the auth file, the full set), then steps 2 and 3 side by side
@@ -788,7 +790,8 @@ def estimates(args):
         key, _, why = item.partition("=")
         n_text, _, m_text = key.partition(":")
         refused.setdefault((int(n_text), int(m_text)), []).append(why)
-    server_gb, vm_gb = int(args.server_gb), int(args.vm_gb)
+    server_gb, vm_gb, idle_gb = int(args.server_gb), int(args.vm_gb), int(args.vm_idle_gb)
+    vm_growth = max(vm_gb - idle_gb, 0)
     use_runners = args.runners == "yes" and args.steps == "together"
     pairs, base = [], None
     for n in range(1, 5):
@@ -797,18 +800,19 @@ def estimates(args):
             missing = m - len(vms)
             servers = n + 1   # the memory rule counts N + 1 host test servers, as release-machines.sh's check does
             started = vms[1:]   # the VMs a round starts: every VM but the first, which runs for the dev gates
-            if m == 1:
-                vm_text = "no VM to start (VM a only)"
-            elif missing:
-                vm_text = "%d VM%s at %d GB (%s not created yet)" % (m - 1, "" if m == 2 else "s", vm_gb,
-                                                                     "%d of them" % missing if m > 2 else "it is")
-            else:
-                vm_text = "VM%s %s at %d GB" % ("" if m == 2 else "s", ", ".join(started), vm_gb)
+            # the first VM runs already: what it holds now is out of the available memory, what it can grow by is not
+            vm_text = "VM %s can grow by %d GB (up to %d GB, about %d GB idle)" % (vms[0], vm_growth, vm_gb, idle_gb)
+            if missing:
+                vm_text += "; %d VM%s at %d GB (%s not created yet)" % (m - 1, "" if m == 2 else "s", vm_gb,
+                                                                        "%d of them" % missing if m > 2 else "it is")
+            elif m > 1:
+                vm_text += "; VM%s %s at %d GB" % ("" if m == 2 else "s", ", ".join(started), vm_gb)
             entry = {
                 "jobs": n, "vms": m, "refused": refused.get((n, m), []),
-                "need_gb": servers * server_gb + (m - 1) * vm_gb,
+                "need_gb": servers * server_gb + vm_growth + (m - 1) * vm_gb,
                 "need_text": "%d host test servers x %d GB%s; %s" % (servers, server_gb, engines_text(n, use_runners),
-                                                                    vm_text),
+                                                                    vm_text)
+                             + ("\n        " + args.ceilings if args.ceilings else ""),
             }
             why_not = ""
             if missing or any(v not in layouts.get(m, {}) for v in vms):
@@ -845,6 +849,7 @@ def estimates(args):
     written = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "written": written, "steps": args.steps, "target": args.target, "server_gb": server_gb, "vm_gb": vm_gb,
+        "vm_idle_gb": idle_gb,
         "min_free_gb": int(args.min_free_gb), "vms_named": named, "pairs": pairs,
         "from_line": "From    the estimate of %s (release-rehearsal.sh estimate): the lane times of %s; the time per "
                      "file of %s" % (written, ", ".join(where), full_info["from"] if full_info else "none"),
@@ -899,7 +904,9 @@ def main():
     ap.add_argument("--runners", default="yes", choices=("yes", "no"),
                     help="the machines file's RELEASE_RUNNERS: yes, step 1's full set in N runners (the steps together)")
     ap.add_argument("--server-gb", type=float, default=5)
-    ap.add_argument("--vm-gb", type=float, default=12)
+    ap.add_argument("--vm-gb", type=float, default=24)
+    ap.add_argument("--vm-idle-gb", type=float, default=6, help="what a VM holds of the host when idle (MACHINES_VM_IDLE_GB)")
+    ap.add_argument("--ceilings", default="", help="estimates: the round's memory ceilings, drawn under the memory line")
     ap.add_argument("--vms-off", default=None, help="the VMs the round would start (default: every VM but the first)")
     ap.add_argument("--vms-named", default="a", help="estimates: the VMs that exist (RELEASE_WINDOWS_VMS)")
     ap.add_argument("--min-free-gb", type=float, default=16)
@@ -963,10 +970,12 @@ def main():
         print(("  " + ROW_HEAD + " %5s -> %5s  %4d min%s") % (machine, part, hm(start), hm(end), round(end - start),
                                                                "  (" + note + ")" if note else ""))
     print("TOTAL     about %s (the last part to end: %s %s)" % (about(total), last[0], last[1]))
-    print("MEMORY    %d host test server%s x %g GB = %g GB%s; VMs the round starts: %s"
+    running = [v for v in vms if v not in off]
+    print("MEMORY    %d host test server%s x %g GB = %g GB%s; VMs the round starts: %s; VMs running: %s"
           % (servers, "" if servers == 1 else "s", args.server_gb, servers * args.server_gb,
              engines_text(args.jobs, use_runners),
-             ("%s x %g GB = %g GB" % (" ".join(off), args.vm_gb, len(off) * args.vm_gb)) if off else "none"))
+             ("%s x %g GB = %g GB" % (" ".join(off), args.vm_gb, len(off) * args.vm_gb)) if off else "none",
+             ("%s, each can grow by %g GB" % (" ".join(running), max(args.vm_gb - args.vm_idle_gb, 0))) if running else "none"))
     # the copy's two times are named only when a VM copies the pack's e2e package (more VMs): with one VM the line reads
     # as before the copy
     copying = any(part == PART_NAMES["package-copy"] for _, part, _, _, _ in rows)
