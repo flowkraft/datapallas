@@ -6,7 +6,8 @@
 #   2. win-e2e.sh: each VM its own pid file (its lock), log names and latest link, VM a 16.6.2's; two runs on one VM at
 #      once: the second refused; VMs a to d at once: all four run, each driver on its own VM;
 #   3. a round's VMs (stub virsh): WIN_VM_MEMORY_GB (12, or 10 when set) as a VM's defined memory when it differs
-#      (--config, never above its maximum); an off VM started and waited for until it answers over SSH; no answer in time:
+#      (--config, never above its maximum); KSM on, once; a VM's memory placement, once; Docker's ceiling and start at
+#      logon, every VM the same, off VMs one at a time; an off VM started and waited for until it answers over SSH; no answer in time:
 #      "did not start"; shut down (virsh shutdown), or virsh destroy when it hangs; a VM off already left as it is;
 #   4. the orchestrator's dry runs: VM a running at 12 GB: no VM line, the dry run of before; VM a off at 24 GB: its
 #      memory, its start before its first part, its shutdown after its last part and before the run's end, a dry-run
@@ -72,8 +73,11 @@ v="$STUB/vms"
 case "${1:-}" in
   domstate) [ -e "$v/$2.state" ] || { echo "error: failed to get domain '$2'" >&2; exit 1; }; cat "$v/$2.state" ;;
   dumpxml)  d="${*: -1}"; [ -e "$v/$d.state" ] || exit 1
-            printf "<domain type='kvm'>\n  <name>%s</name>\n  <memory unit='KiB'>%s</memory>\n  <currentMemory unit='KiB'>%s</currentMemory>\n</domain>\n" \
-              "$d" "$(cat "$v/$d.mem")" "$(cat "$v/$d.cur" 2>/dev/null || cat "$v/$d.mem")" ;;
+            printf "<domain type='kvm'>\n  <name>%s</name>\n  <memory unit='KiB'>%s</memory>\n  <currentMemory unit='KiB'>%s</currentMemory>\n" \
+              "$d" "$(cat "$v/$d.mem")" "$(cat "$v/$d.cur" 2>/dev/null || cat "$v/$d.mem")"
+            [ ! -e "$v/$d.placed" ] || printf "  <numatune>\n    <memory mode='interleave' nodeset='0-3'/>\n  </numatune>\n"
+            printf "</domain>\n" ;;
+  numatune) echo "virsh $*" >> "$STUB/virsh-calls"; : > "$v/$2.placed" ;;
   setmaxmem) echo "virsh $*" >> "$STUB/virsh-calls"; [ "$(cat "$v/$2.cur" 2>/dev/null || echo 0)" -le "$3" ] || { echo "error: current above max" >&2; exit 1; }; echo "$3" > "$v/$2.mem" ;;
   setmem)   echo "virsh $*" >> "$STUB/virsh-calls"; [ "$3" -le "$(cat "$v/$2.mem")" ] || { echo "error: cannot set memory higher than max memory" >&2; exit 1; }; echo "$3" > "$v/$2.cur" ;;
   start)    echo "virsh $*" >> "$STUB/virsh-calls"; echo running > "$v/$2.state" ;;
@@ -86,7 +90,7 @@ chmod +x "$STUB/bin/ssh" "$STUB/bin/virsh"
 export PATH="$STUB/bin:$PATH"
 GB=1048576   # KiB
 # vm_is <domain> <state> <memory GB> [<current GB>]: a stub domain
-vm_is() { echo "$2" > "$STUB/vms/$1.state"; echo $(($3 * GB)) > "$STUB/vms/$1.mem"; echo $((${4:-$3} * GB)) > "$STUB/vms/$1.cur"; rm -f "$STUB/vms/$1.hangs"; }
+vm_is() { echo "$2" > "$STUB/vms/$1.state"; echo $(($3 * GB)) > "$STUB/vms/$1.mem"; echo $((${4:-$3} * GB)) > "$STUB/vms/$1.cur"; rm -f "$STUB/vms/$1.hangs"; : > "$STUB/vms/$1.placed"; }
 for d in win10-dev win10-dev-b win10-dev-c win10-dev-d; do vm_is "$d" running 12; done
 export WIN_CI_CONF="$SCRATCH/vm-conf/win-ci.env" WIN_VM_CONF_DIR="$SCRATCH/vm-conf"
 printf 'WIN_HOST=vm-a.invalid\nWIN_USER=ci\nWIN_SSH_KEY=%s\nWIN_KNOWN_HOSTS=%s\nWIN_REPO=C:/ci/repo\n' "$SCRATCH/stub-key" "$SCRATCH/stub-known-hosts" > "$WIN_CI_CONF"
@@ -95,9 +99,14 @@ for v in b c d; do echo "WIN_HOST=vm-$v.invalid" > "$SCRATCH/vm-conf/win-ci-$v.e
 echo "WIN_HOST=vm-x.invalid" > "$SCRATCH/vm-conf/win-ci-x.env"; echo "# no address" > "$SCRATCH/vm-conf/win-ci-y.env"
 chmod 600 "$SCRATCH"/vm-conf/*; chmod 644 "$SCRATCH/vm-conf/win-ci-x.env"
 export RELEASE_REHEARSAL_CONF="$SCRATCH/no-release-rehearsal.conf" RELEASE_PUBLISH_ENV="$SCRATCH/no-release-publish.env"
-export LOG_DIR="$SCRATCH/logs"
+export LOG_DIR="$SCRATCH/logs" RELEASE_KSM_DIR="$SCRATCH/ksm" RELEASE_NUMA_NODES_FILE="$SCRATCH/numa-online"
+mkdir -p "$RELEASE_KSM_DIR"; echo 0-3 > "$RELEASE_NUMA_NODES_FILE"
+ksm_is() { echo "$1" > "$RELEASE_KSM_DIR/run"; echo "$2" > "$RELEASE_KSM_DIR/use_zero_pages"; echo "$3" > "$RELEASE_KSM_DIR/pages_to_scan"; }
+ksm_is 1 1 1000
 unset WIN_VM WIN_HOST WIN_USER WIN_SSH_KEY WIN_KNOWN_HOSTS WIN_VM_MEMORY_GB RELEASE_WINDOWS_VMS RELEASE_STEPS RELEASE_PIN \
-  DRY_RUN_RED E2E_APPROVAL UPLOAD MODE SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
+  DRY_RUN_RED E2E_APPROVAL UPLOAD MODE SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS \
+  WIN_VM_DOCKER_MEMORY_GB
+export WIN_VM_MEMORY_GB=12 WIN_VM_DOCKER_MEMORY_GB=8 RELEASE_CI_CONTAINER_LIMIT_GB=6   # this file's VMs are of 12 GB; the defaults: test-machines-file.sh
 
 echo "---- 1. dp-ci.sh: each VM's commands to its own host ----"
 for v in a b c d; do
@@ -178,6 +187,35 @@ check "  a current memory that differs (8 of 12 GB): set too" same \
   "virsh setmaxmem win10-dev-b 12582912 --config|virsh setmem win10-dev-b 12582912 --config" "$(paste -sd'|' "$STUB/virsh-calls")"
 vm_is win10-dev-b "shut off" 24; : > "$STUB/virsh-calls"; out=$(lib machines_vm_memory_set b dry)
 check "  dry: what it would do, nothing set" bash -c '[[ "$1" == "WOULD   VM b (win10-dev-b): its memory set to 12 GB (now 24 GB;"* ]] && [ ! -s "$2" ]' _ "$out" "$STUB/virsh-calls"
+# the host's KSM and a VM's placement: the two that make the VM's size a ceiling
+ksm_is 0 0 100; out=$(lib machines_host_memory_sharing_on dry)
+check "KSM off, dry: said, nothing written" bash -c '[[ "$1" == "WOULD   host: KSM on"* ]] && [ "$(cat "$2/run" "$2/use_zero_pages" "$2/pages_to_scan" | paste -sd" ")" = "0 0 100" ]' _ "$out" "$RELEASE_KSM_DIR"
+out=$(lib machines_host_memory_sharing_on)
+check "KSM off: on, with empty pages to the zero page and a pass in minutes" same "1 1 1000" "$(cat "$RELEASE_KSM_DIR/run" "$RELEASE_KSM_DIR/use_zero_pages" "$RELEASE_KSM_DIR/pages_to_scan" | paste -sd' ')"
+check "  said" has "HOST    KSM on" "$out"
+check "KSM on already: nothing said" same "" "$(lib machines_host_memory_sharing_on)"
+check "KSM cannot be turned on: a warning, the round goes on" bash -c 'RELEASE_KSM_DIR=/nonexistent/ksm bash -c ". asbl/ci/release-machines.sh; machines_load && machines_host_memory_sharing_on" 2>&1 | grep -q "^WARN    host: KSM could not be turned on"'
+vm_is win10-dev-b "shut off" 12; rm -f "$STUB/vms/win10-dev-b.placed"; : > "$STUB/virsh-calls"; out=$(lib machines_vm_memory_rules b dry)
+check "no placement, dry: said, nothing set" bash -c '[[ "$1" == "WOULD   VM b (win10-dev-b): its memory spread over NUMA nodes 0-3"* ]] && [ ! -s "$2" ]' _ "$out" "$STUB/virsh-calls"
+out=$(lib machines_vm_memory_rules b)
+check "no placement: interleaved over the host's nodes, --config" same "virsh numatune win10-dev-b --mode interleave --nodeset 0-3 --config" "$(paste -sd'|' "$STUB/virsh-calls")"
+check "  said" has "VM      b (win10-dev-b): its memory spread over NUMA nodes 0-3 (--config: it takes it at its next start)" "$out"
+: > "$STUB/virsh-calls"; out=$(lib machines_vm_memory_rules b)
+check "a placement there, the memory right: no virsh change, nothing said" same "|" "$(paste -sd'|' "$STUB/virsh-calls")|$out"
+# every VM the same, off VMs one at a time: VM a on, b and c off; Docker's ceiling written on each over SSH
+vm_is win10-dev running 12; vm_is win10-dev-b "shut off" 12; vm_is win10-dev-c "shut off" 12; ksm_is 1 1 1000
+setup() { bash -c '. asbl/ci/release-machines.sh; machines_load
+  machines_vm_docker_memory_set() { echo "DOCKER $1 $(machines_vm_docker_memory_script | grep -c "memory=16GB") state=$(machines_vm_state "$1")"; }
+  machines_vms_memory_setup' _ 2>&1; }
+: > "$STUB/virsh-calls"
+out=$(WIN_VM_MEMORY_GB=24 WIN_VM_DOCKER_MEMORY_GB=16 RELEASE_WINDOWS_VMS="a b c" VM_POLL_SECS=0 setup)
+check "vm-memory-setup: Docker's ceiling on each VM, each one up when it is written" same "DOCKER a 1 state=running|DOCKER b 1 state=running|DOCKER c 1 state=running" "$(grep '^DOCKER' <<< "$out" | paste -sd'|')"
+check "  a VM it started, shut down before the next starts; a running VM left on" same \
+  "virsh start win10-dev-b|virsh shutdown win10-dev-b|virsh start win10-dev-c|virsh shutdown win10-dev-c" "$(grep -E ' (start|shutdown) ' "$STUB/virsh-calls" | paste -sd'|')"
+check "  every VM its size: 24 GB defined on all three" same "25165824 25165824 25165824" "$(cat "$STUB"/vms/win10-dev.mem "$STUB"/vms/win10-dev-b.mem "$STUB"/vms/win10-dev-c.mem | paste -sd' ')"
+for d in win10-dev win10-dev-b win10-dev-c; do vm_is "$d" running 12; done
+out=$(WIN_VM_DOCKER_MEMORY_GB=16 lib machines_vm_docker_memory_script)
+check "  the script: Docker's ceiling and the start at logon, no double quote (the channel to the VM)" bash -c '[[ "$1" == *"memory=16GB"* && "$1" == *"AutoStart"* && "$1" != *\"* ]]' _ "$out"
 vm_is win10-dev-c "shut off" 12; : > "$STUB/virsh-calls"
 out=$(VM_SSH_WAIT_SECS=6 VM_POLL_SECS=1 lib machines_vm_start c); rc=$?
 check "an off VM: virsh start, waited for until it answers over SSH (exit 0)" bash -c \

@@ -211,8 +211,8 @@ check "start: the containers of a runner's last run removed from its engine, and
   "$(grep -c '^r2 docker rm -f rb-rundeck datapallas-server$' "$STUB/calls") $(printf '%s\n' "$START2_OUT" | grep -c '^RUNNER  2: 2 containers of its last run removed$') $(grep -c '^r3 docker rm' "$STUB/calls")"
 for n in 1 2 3 4; do
   run_line=$(docker_runs_of "$n")
-  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 64 GB" same \
-    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 64g --memory-swap 64g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
+  check "runner $n: one privileged docker run of docker:28.3.1-dind (the host engine's version), memory limit 32 GB" same \
+    "1 yes" "$(printf '%s\n' "$run_line" | grep -c . ) $(has '--memory 32g --memory-swap 32g' "$run_line" >/dev/null && has ' docker:28.3.1-dind dockerd ' "$run_line" >/dev/null && echo yes)"
   check "runner $n: its volume, socket folder, checkout and log folder, each at the same path inside" bash -c '
     l="$1"; s="$2/$3"; h="$4/$3"; g="$5/runners/$3"
     case "$l" in *"-v dp-ci-runner-$3-docker:/var/lib/docker "*) ;; *) exit 1 ;; esac
@@ -303,6 +303,7 @@ RUN_OUT=$(E2E_TARGET=docker-server E2E_RETRIES=1 E2E_TIMEOUT_SECS=259200 E2E_ROT
   E2E_RUNNER_FILES='/specs/features/(reporting|connections)\.spec\.ts$' bash "$RUNNERS" run 2 2>&1); RUN_RC=$?
 RUN_CALLS=$(cat "$STUB/calls")
 CI_RUN=$(grep '^r2 docker run -d --rm --name dp-ci ' "$STUB/calls")
+check "the CI container in a runner: its memory ceiling, set at its creation" has "--memory 12g --memory-swap 12g" "$CI_RUN"
 check "run 2: followed to its green end (the stub CI container's log), exit 0" same "0 PIPELINE_RESULT=SUCCESS" "$RUN_RC $(printf '%s\n' "$RUN_OUT" | tail -1)"
 check "run 2: every docker call of the lane to runner 2's socket (on this host's only run's own check that the runner is there)" same \
   "host docker ps -a --filter name=^dp-ci-runner-2\$ --format {{.Names}}|r2" \

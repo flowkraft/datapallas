@@ -25,6 +25,11 @@
 #   bash asbl/ci/release-machines.sh schedule <N> <M>   what would run on which machine and when, each part's expected
 #                                                       time from the last release runs' marks (asbl/ci/release-estimate.py)
 #   bash asbl/ci/release-machines.sh lanes              the time of each lane, and the run it comes from
+#   bash asbl/ci/release-machines.sh vm-memory-setup    the memory settings of every VM named, one VM at a time, the same
+#                                                       for each (machines_vms_memory_setup): run it once after changing
+#                                                       WIN_VM_MEMORY_GB or WIN_VM_DOCKER_MEMORY_GB, or adding a VM. An
+#                                                       off VM is started for it and shut down after; a running VM stays
+#                                                       on and takes the settings at its next start
 #   N = SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS (step 1's full set in N subsets), M =
 #   USE_N_NUMBER_OF_WINDOWS_VMS (the Windows lanes over M VMs); 1 to 4 each, 1 = nothing split (the job's defaults).
 #   Step 1's full set runs in N runners, each a Docker engine of its own (asbl/ci/e2e-runners.sh): this host's one engine
@@ -42,10 +47,14 @@
 #   RELEASE_RUNNERS [yes]       yes: with the steps together, step 1's full set runs in runners (N of them, 1 the
 #                               default), each a Docker engine of its own; no: on this host's engine, as before the
 #                               runners (the fallback when a runner fails for its own reason; N must be 1)
-#   RELEASE_RUNNER_LIMIT_GB [64]   each runner's memory ceiling: it reserves nothing, a runner takes what it needs
+#   RELEASE_RUNNER_LIMIT_GB [32]   each runner's memory ceiling: it reserves nothing, a runner takes what it needs
 #   RELEASE_WINDOWS_VMS [a]     the Windows VMs that exist, in order: a = win10-dev (win-ci.env); each other VM's
 #                               address in WIN_VM_CONF_DIR/win-ci-<name>.env (WIN_HOST only, read after win-ci.env)
-#   WIN_VM_MEMORY_GB [12]       one memory for every Windows VM, set on each before a round (virsh --config)
+#   WIN_VM_MEMORY_GB [24]       one memory for every Windows VM, set on each before a round (virsh --config): a ceiling,
+#                               see THE VMS' MEMORY below
+#   WIN_VM_DOCKER_MEMORY_GB [16]   the most Docker takes inside each VM, under WIN_VM_MEMORY_GB (.wslconfig memory=,
+#                               written by vm-memory-setup)
+#   RELEASE_CI_CONTAINER_LIMIT_GB [12]   the CI's own container dp-ci: see THE MEMORY CEILINGS below
 #   RELEASE_MIN_FREE_GB [16]    host memory that must stay free: the form warns, the press refuses
 #   VM_LANES_<M>_<name>         the lanes VM <name> runs, in order, when the round uses M VMs; missing: the default
 #                               layout of that VM's place in RELEASE_WINDOWS_VMS (DEFAULT_LAYOUT_<M>, below)
@@ -61,6 +70,20 @@
 # is off is started, and waited for until it answers over SSH (dp-ci.sh win ssh ver, VM_SSH_WAIT_SECS [900] at most,
 # every VM_POLL_SECS [15]), else its lanes are red; a VM the round started is shut down after its last lane (virsh
 # shutdown, then virsh destroy after VM_SHUTDOWN_WAIT_SECS [600]); a VM that was running is left running.
+# THE MEMORY CEILINGS sit around the apps, never on them: what the tests start (the AI Hub, the DB starter packs, third-party
+# apps) runs as the e2e proved it, with no limit of its own, inside a box that has one. Each is a ceiling, not a reservation:
+# a box takes what it needs up to it and gives it back. A box stays under the box it runs in (machines_check refuses
+# otherwise):
+#   a runner          RELEASE_RUNNER_LIMIT_GB         docker run --memory (asbl/ci/e2e-runners.sh)
+#   a Windows VM      WIN_VM_MEMORY_GB                virsh --config, before a round (below)
+#   Docker in a VM    WIN_VM_DOCKER_MEMORY_GB         .wslconfig (vm-memory-setup)
+#   the CI container  RELEASE_CI_CONTAINER_LIMIT_GB   docker run --memory (asbl/ci/dp-ci.sh), on this host's engine or in a
+#                                                     runner: about twice the biggest seen, 5.9 GiB
+# What the two host lanes start on this host's engine has none of these around it.
+# THE VMS' MEMORY, the same for every VM: its size is a ceiling, not a reservation. Windows sees all of it and uses what it
+# needs, inside it Docker does the same up to its own ceiling, and the host holds only what Windows really uses. That takes
+# KSM on this host (machines_host_memory_sharing_on) and a memory placement rule on the VM (machines_vm_memory_placement_set),
+# both set before every round, so a host reboot needs nothing done. A VM gives everything back when it shuts down.
 # Other inputs: WIN_CI_CONF [/var/kraft-internalsystems/config/datapallas-ci/win-ci.env] (VM a's, named only),
 # WIN_VM_CONF_DIR [/root], RELEASE_MEMINFO [/proc/meminfo], RUN_RECORD_DIR [<LOG_DIR>/runs] (the runs whose marks give
 # the times), LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci].
@@ -71,7 +94,7 @@
 #   RELEASE_STEPS=in-order bash asbl/ci/release-machines.sh schedule 1 1
 #   RELEASE_REHEARSAL_CONF=asbl/ci/release-layout.example.conf bash asbl/ci/release-machines.sh show   (after chmod 600)
 
-MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
+MACHINES_KEYS="RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE"
 MACHINES_LANES="pack docker-proof server-light electron-light robot"
 MACHINES_MIN_FREE_VAR_GB=50   # /var keeps this free at a press: the VMs' overlays and the run's reports grow there
 # the /var disk a runner takes in a round (its image store, the volume dp-ci-runner-<n>-docker, and its checkout copy under
@@ -115,9 +138,11 @@ machines_load() {
   RELEASE_STEPS="${RELEASE_STEPS:-together}"
   RELEASE_SERVER_GB="${RELEASE_SERVER_GB:-5}"
   RELEASE_RUNNERS="${RELEASE_RUNNERS:-yes}"
-  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-64}"
+  RELEASE_RUNNER_LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-32}"
   RELEASE_WINDOWS_VMS="${RELEASE_WINDOWS_VMS:-a}"
-  WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-12}"
+  WIN_VM_MEMORY_GB="${WIN_VM_MEMORY_GB:-24}"
+  WIN_VM_DOCKER_MEMORY_GB="${WIN_VM_DOCKER_MEMORY_GB:-16}"
+  RELEASE_CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
   RELEASE_MIN_FREE_GB="${RELEASE_MIN_FREE_GB:-16}"
   RELEASE_ESTIMATES_FILE="${RELEASE_ESTIMATES_FILE:-/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json}"
   return 0
@@ -177,6 +202,82 @@ machines_vm_memory_set() {
   fi || { echo "WARN    VM $1 ($dom): virsh could not set its memory to $WIN_VM_MEMORY_GB GB: left at $((max / 1048576)) GB"; return 1; }
   echo "VM      $1 ($dom): its memory set to $WIN_VM_MEMORY_GB GB, from $((max / 1048576)) GB (--config: it takes it at its next start)"
 }
+# machines_host_memory_sharing_on [dry]: KSM on this host, when it is not. Windows writes zeros over all its memory within
+# minutes of its start, so without KSM a VM holds its whole size on the host from then on, used or not (measured
+# 2026-11-06: 24 GB gone in 2.5 minutes, idle). KSM gives those empty pages back, and a page returns to the VM when Windows
+# writes to it. use_zero_pages sends empty pages to the kernel's zero page: without it millions of them chain 256 to a page
+# and KSM spends a whole core merging almost nothing. pages_to_scan: the default needs half an hour for one pass over the
+# VMs. Windows always sees its full size, so KSM falling behind costs the host memory, never the VM: a failure only warns.
+machines_host_memory_sharing_on() {
+  local ksm="${RELEASE_KSM_DIR:-/sys/kernel/mm/ksm}"
+  [ "$(cat "$ksm/run" 2>/dev/null)" != 1 ] || [ "$(cat "$ksm/use_zero_pages" 2>/dev/null)" != 1 ] ||
+    [ "$(cat "$ksm/pages_to_scan" 2>/dev/null)" != 1000 ] || return 0
+  if [ "${1:-}" = dry ]; then echo "WOULD   host: KSM on (use_zero_pages, 1000 pages a scan): a VM holds only what Windows uses"; return 0; fi
+  if { echo 1000 > "$ksm/pages_to_scan" && echo 1 > "$ksm/use_zero_pages" && echo 1 > "$ksm/run"; } 2>/dev/null; then
+    echo "HOST    KSM on (use_zero_pages, 1000 pages a scan): a VM holds only what Windows uses"
+  else echo "WARN    host: KSM could not be turned on ($ksm): each VM holds its whole size on the host"; fi
+}
+# machines_vm_memory_placement_set <name> [dry]: the VM's memory spread over this host's NUMA nodes by a rule of its own
+# (virsh numatune --config), when it has none. NUMA balancing marks idle pages of memory with no rule of its own, and KSM
+# cannot see marked pages on this kernel (the fix: Linux d74943a2): it saw 250,000 of a 24 GB VM's 6.2 million pages. The
+# rule takes this VM out of the balancing; turning the balancing off would touch every app on the host. 1 when it could not.
+machines_vm_memory_placement_set() {
+  local dom xml nodes
+  dom=$(machines_domain_of "$1")
+  xml=$(virsh dumpxml --inactive "$dom" 2>/dev/null) || return 0   # machines_vm_memory_set has said so
+  ! grep -q '<numatune>' <<< "$xml" || return 0
+  nodes=$(cat "${RELEASE_NUMA_NODES_FILE:-/sys/devices/system/node/online}" 2>/dev/null)
+  [ -n "$nodes" ] || { echo "WARN    VM $1 ($dom): this host's NUMA nodes cannot be read: its memory left unplaced, KSM sees little of it"; return 1; }
+  if [ "${2:-}" = dry ]; then
+    echo "WOULD   VM $1 ($dom): its memory spread over NUMA nodes $nodes (virsh numatune --config: it takes it at its next start)"
+    return 0
+  fi
+  virsh numatune "$dom" --mode interleave --nodeset "$nodes" --config >/dev/null 2>&1 ||
+    { echo "WARN    VM $1 ($dom): virsh could not set its memory placement: KSM sees little of its memory"; return 1; }
+  echo "VM      $1 ($dom): its memory spread over NUMA nodes $nodes (--config: it takes it at its next start)"
+}
+# machines_vm_memory_rules <name> [dry]: what every VM gets before a round: its memory and its placement
+machines_vm_memory_rules() { machines_vm_memory_set "$@"; machines_vm_memory_placement_set "$@"; }
+# machines_vm_docker_memory_script: the PowerShell of machines_vm_docker_memory_set. .wslconfig holds this one setting.
+# AutoStart: Docker Desktop starts at the VM's logon, so a VM a round starts has Docker for its lanes, with no one at it.
+machines_vm_docker_memory_script() {
+  sed "s/@GB@/$WIN_VM_DOCKER_MEMORY_GB/" <<'PS'
+$wsl = Join-Path $env:USERPROFILE '.wslconfig'
+$want = '[wsl2]' + [char]13 + [char]10 + 'memory=@GB@GB' + [char]13 + [char]10
+if ((Test-Path $wsl) -and ((Get-Content -Raw $wsl) -ceq $want)) { 'WSLCONFIG same' } else { [IO.File]::WriteAllText($wsl, $want); 'WSLCONFIG written' }
+$store = Join-Path $env:APPDATA 'Docker\settings-store.json'
+$settings = Get-Content -Raw $store | ConvertFrom-Json
+if ($settings.AutoStart -eq $true) { 'AUTOSTART same' } else {
+  $settings | Add-Member -Force -NotePropertyName AutoStart -NotePropertyValue $true
+  [IO.File]::WriteAllText($store, ($settings | ConvertTo-Json -Depth 20)); 'AUTOSTART on' }
+PS
+}
+# machines_vm_docker_memory_set <name>: on the VM, over SSH: Docker's ceiling (.wslconfig: WSL takes it at its next start)
+# and Docker Desktop's start at logon; 1 when the VM did not confirm both
+machines_vm_docker_memory_set() {
+  local dom out said
+  dom=$(machines_domain_of "$1")
+  out=$(machines_vm_docker_memory_script | WIN_VM="$1" bash asbl/ci/dp-ci.sh win ps 2>&1)
+  said=$(tr -d '\r' <<< "$out" | grep -E '^(WSLCONFIG|AUTOSTART) ' | paste -sd',' | sed 's/,/, /')
+  case "$said" in
+    WSLCONFIG*AUTOSTART*) echo "VM      $1 ($dom): Docker up to $WIN_VM_DOCKER_MEMORY_GB GB, started at logon ($said): it takes them at WSL's next start" ;;
+    *) echo "WARN    VM $1 ($dom): Docker's memory not confirmed: $(tr -d '\r' <<< "$out" | tail -2 | paste -sd' ' | cut -c1-200)"; return 1 ;;
+  esac
+}
+# machines_vms_memory_setup: the same memory settings on every VM named, one VM at a time: each VM started here writes
+# zeros over all its memory before KSM gives it back, so two at once could take the host's free memory
+machines_vms_memory_setup() {
+  local v started rc=0
+  machines_host_memory_sharing_on
+  for v in $RELEASE_WINDOWS_VMS; do
+    machines_vm_memory_rules "$v" || rc=1
+    started=no
+    if [ "$(machines_vm_state "$v")" = off ]; then machines_vm_start "$v" || { rc=1; continue; }; started=yes; fi
+    machines_vm_docker_memory_set "$v" || rc=1
+    [ "$started" = no ] || machines_vm_shutdown "$v"
+  done
+  return "$rc"
+}
 # machines_duration <seconds>: "15 min", or "40 s" under a minute
 machines_duration() { if [ "$1" -ge 60 ]; then echo "$(($1 / 60)) min"; else echo "$1 s"; fi; }
 # machines_vm_answers <name>: the VM answers over SSH now (dp-ci.sh win ssh ver)
@@ -193,6 +294,17 @@ machines_vm_start() {
     sleep "$every"; waited=$((waited + every))
   done
   echo "VM      $1 ($dom): answers over SSH, after about $waited s"
+}
+# machines_vm_docker_wait <name>: wait until Docker answers on a VM just started: Docker Desktop comes up after the logon,
+# a minute or two after SSH, and a lane asks for it at its very top. Never red by itself: the lane's own check says it.
+machines_vm_docker_wait() {
+  local dom waited=0 wait="${VM_SSH_WAIT_SECS:-900}" every="${VM_POLL_SECS:-15}"
+  dom=$(machines_domain_of "$1")
+  until WIN_VM="$1" bash asbl/ci/dp-ci.sh win ssh docker info >/dev/null 2>&1; do
+    [ "$waited" -lt "$wait" ] || { echo "WARN    VM $1 ($dom): no Docker within $(machines_duration "$wait") of its SSH: its lanes will say so"; return 0; }
+    sleep "$every"; waited=$((waited + every))
+  done
+  echo "VM      $1 ($dom): Docker answers, after about $waited s"
 }
 # machines_vm_shutdown <name>: virsh shutdown, then virsh destroy when it is still running after VM_SHUTDOWN_WAIT_SECS
 machines_vm_shutdown() {
@@ -244,7 +356,7 @@ machines_runner_disk() {
 # its numbers) and returns 2, or prints MACHINES OK and returns 0
 machines_check() {
   local n="$1" m="$2" press="${3:-}" refused=0 vms v lanes lane count place robot_place light_place electron_place
-  local key value need available free_var starts="" servers disk disk_gb=0
+  local key value need available free_var starts="" servers disk disk_gb=0 ceilings inner outer
   refuse_rule() { echo "REFUSED $*"; refused=1; }
   case "$n" in 1|2|3|4) ;; *) refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n: it must be 1, 2, 3 or 4" ;; esac
   case "$m" in 1|2|3|4) ;; *) refuse_rule "USE_N_NUMBER_OF_WINDOWS_VMS=$m: it must be 1, 2, 3 or 4" ;; esac
@@ -261,8 +373,14 @@ machines_check() {
           refuse_rule "SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS=$n with RELEASE_RUNNERS=no: the full set runs whole on this host's one Docker engine, which runs one DataPallas e2e set at a time (the shipped compose files fix the container names, the ports and the network): N must be 1" ;;
     *) refuse_rule "RELEASE_RUNNERS=$RELEASE_RUNNERS: it must be yes or no" ;;
   esac
-  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB; do
+  for key in RELEASE_SERVER_GB RELEASE_RUNNER_LIMIT_GB WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB; do
     value="${!key}"; [[ "$value" =~ ^[0-9]+$ ]] || refuse_rule "$key=$value: it must be a whole number of GB"
+  done
+  # a box stays under the box it runs in: a runaway reaches its own ceiling first and ends there
+  for ceilings in "WIN_VM_DOCKER_MEMORY_GB WIN_VM_MEMORY_GB" "RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_RUNNER_LIMIT_GB"; do
+    read -r inner outer <<< "$ceilings"
+    [[ "${!inner}" =~ ^[0-9]+$ && "${!outer}" =~ ^[0-9]+$ ]] || continue   # not a number: said above
+    [ "${!inner}" -lt "${!outer}" ] || refuse_rule "$inner=${!inner}: it runs inside $outer=${!outer}, so it must stay under it"
   done
   for v in $RELEASE_WINDOWS_VMS; do [[ "$v" =~ ^[a-z0-9]+$ ]] || refuse_rule "RELEASE_WINDOWS_VMS names '$v': a VM's name is lowercase letters and digits"; done
   count=$(wc -w <<< "$RELEASE_WINDOWS_VMS")
@@ -394,8 +512,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     check)    [ "$#" -ge 3 ] || { echo "usage: $0 check <N> <M> [--press]"; exit 2; }; machines_check "$2" "$3" "${4:-}"; exit $? ;;
     schedule) [ "$#" -ge 3 ] || { echo "usage: $0 schedule <N> <M>"; exit 2; }
               machines_check "$2" "$3" >/dev/null || { machines_check "$2" "$3"; exit 2; }; machines_schedule "$2" "$3" ;;
+    vm-memory-setup) machines_vms_memory_setup; exit $? ;;
     lanes)    python3 -I asbl/ci/release-estimate.py lanes --runs "${RUN_RECORD_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/runs}" ;;
     help|-h|--help) sed -n '2,/^MACHINES_KEYS=/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' ;;
-    *) echo "usage: $0 show|check <N> <M> [--press]|schedule <N> <M>|lanes|help"; exit 2 ;;
+    *) echo "usage: $0 show|check <N> <M> [--press]|schedule <N> <M>|lanes|vm-memory-setup|help"; exit 2 ;;
   esac
 fi

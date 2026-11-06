@@ -80,10 +80,10 @@ echo "ssh: connect to host vm.invalid port 22: Connection timed out" >&2; exit 2
 STUB
 cat > "$STUBS/virsh" <<'STUB'
 #!/bin/bash
-# stub virsh: every VM is running, 12 GB defined
+# stub virsh: every VM is running, 24 GB defined
 case "${1:-}" in
   domstate) echo running ;;
-  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n" ;;
   *)        exit 1 ;;
 esac
 STUB

@@ -48,8 +48,8 @@ STUBS="$SCRATCH/stubs"; mkdir -p "$STUBS" "$SCRATCH/vm-conf"
 cat > "$STUBS/virsh" <<'STUB'
 #!/bin/bash
 # stub virsh: domstate <domain> answers from $STUB_VM_STATES ("<domain>=<state> ..."), a domain not there does not exist;
-# dumpxml: 12 GB defined
-[ "${1:-}" != dumpxml ] || { printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n"; exit 0; }
+# dumpxml: 24 GB defined
+[ "${1:-}" != dumpxml ] || { printf "<domain>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n"; exit 0; }
 [ "${1:-}" = domstate ] || exit 0
 for pair in ${STUB_VM_STATES:-}; do [ "${pair%%=*}" = "${2:-}" ] && { echo "${pair#*=}"; exit 0; }; done
 echo "error: failed to get domain '${2:-}'" >&2; exit 1
@@ -78,7 +78,7 @@ for v in a b c d; do : > "$SCRATCH/vm-conf/win-ci-$v.env"; done; : > "$WIN_CI_CO
 export STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off win10-dev-c=shut-off win10-dev-d=shut-off"
 memory_gb() { printf 'MemTotal:       131072000 kB\nMemAvailable:   %s kB\n' $(($1 * 1048576)) > "$RELEASE_MEMINFO"; }
 memory_gb 100
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FILE \
   SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS USE_N_NUMBER_OF_WINDOWS_VMS
 for key in $(compgen -v | grep -E '^(VM_LANES_|VM_DOMAIN_)'); do unset "$key"; done
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
@@ -96,17 +96,24 @@ refused() {
 
 # ---- 1. no file, the environment first, a file others may read ----
 rm -f "$RELEASE_REHEARSAL_CONF"
-check "no file: the defaults (together, 5 GB per server, runners of 64 GB, VM a alone in 16.6.2's order, 12 GB per VM, 16 GB free)" same \
+check "no file: the defaults (together, 5 GB per server, runners of 32 GB, VM a alone in 16.6.2's order, 24 GB per VM, Docker 16 GB in it, 12 GB for the CI container, 16 GB free)" same \
 "RELEASE_STEPS=together
 RELEASE_SERVER_GB=5
 RELEASE_RUNNERS=yes
-RELEASE_RUNNER_LIMIT_GB=64
+RELEASE_RUNNER_LIMIT_GB=32
 RELEASE_WINDOWS_VMS=a
-WIN_VM_MEMORY_GB=12
+WIN_VM_MEMORY_GB=24
+WIN_VM_DOCKER_MEMORY_GB=16
+RELEASE_CI_CONTAINER_LIMIT_GB=12
 RELEASE_MIN_FREE_GB=16
 RELEASE_ESTIMATES_FILE=/var/kraft-internalsystems/apps/cvs/custom-jenkins/home/datapallas/release-estimates.json
 VM_LANES_1_a=\"pack docker-proof server-light electron-light robot\"
 VM a: libvirt win10-dev, settings $WIN_CI_CONF" "$(machines show)"
+ceilings_answer() { env "$@" bash "$MACHINES" check 1 1 >/dev/null 2>&1; echo $?; }
+check "the ceilings: the default order passes; a box not under the box it runs in, or not a number, is refused" same "0 2 2 2" \
+  "$(ceilings_answer A=1) $(ceilings_answer WIN_VM_MEMORY_GB=16) $(ceilings_answer RELEASE_RUNNER_LIMIT_GB=12) $(ceilings_answer RELEASE_CI_CONTAINER_LIMIT_GB=lots)"
+check "  what it says names both boxes" has "RELEASE_CI_CONTAINER_LIMIT_GB=12: it runs inside RELEASE_RUNNER_LIMIT_GB=12, so it must stay under it" \
+  "$(RELEASE_RUNNER_LIMIT_GB=12 machines check 1 1)"
 check "no file: 1 and 1 pass the check" has "MACHINES OK steps=together jobs=1 vms=1 (a)" "$(machines check 1 1)"
 settings "RELEASE_STEPS=together" "RELEASE_SERVER_GB=7"
 check "the caller's environment goes before the file" same "RELEASE_STEPS=in-order RELEASE_SERVER_GB=7" \
@@ -176,14 +183,14 @@ check "press: VM b's settings file missing: refused (the plain check does not as
 check "press: VM c not in libvirt: refused" bash -c 'STUB_VM_STATES="win10-dev=running win10-dev-b=shut-off" bash "$1" check 1 3 --press | grep -qF "REFUSED VM c (libvirt win10-dev-c) does not exist: not created yet"' _ "$MACHINES"
 memory_gb 60
 check "press: N=1 M=4 with 60 GB available, VMs b c d off: refused, with the numbers" refused \
-  "memory: N=1 M=4 needs 46 GB (2 host test servers x 5 GB (runner 1 and this host's engine), VMs b c d to start x 12 GB), 60 GB are available now: 14 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
+  "memory: N=1 M=4 needs 82 GB (2 host test servers x 5 GB (runner 1 and this host's engine), VMs b c d to start x 24 GB), 60 GB are available now: -22 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
   machines check 1 4 --press
 check "press: only the VMs a round starts count (b c d running: 10 GB needed)" has \
   "needs 10 GB of 60 GB available, 50 GB stay free (rule 16)" \
   "$(STUB_VM_STATES="win10-dev=running win10-dev-b=running win10-dev-c=running win10-dev-d=running" machines check 1 4 --press)"
 memory_gb 100
 check "press: N=1 M=4 with 100 GB available: OK, with the numbers" has \
-  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 46 GB of 100 GB available, 54 GB stay free (rule 16); /var 400 GB free, the runners take about 4 GB, 396 GB stay free (rule 50)" \
+  "MACHINES OK steps=together jobs=1 vms=4 (a b c d), memory: needs 82 GB of 100 GB available, 18 GB stay free (rule 16); /var 400 GB free, the runners take about 4 GB, 396 GB stay free (rule 50)" \
   "$(machines check 1 4 --press)"
 check "press: N=4 M=1, the memory rule names the runners: refused, with the numbers" refused \
   "memory: N=4 M=1 needs 25 GB (5 host test servers x 5 GB (runners 1 to 4 and this host's engine)), 40 GB are available now: 15 GB would stay free, under RELEASE_MIN_FREE_GB=16" \
@@ -325,7 +332,7 @@ check "schedule 4 4: the four runners from the build's end, each its list after 
     name = substr(line, 1, RSTART - 1); sub(/ +$/, "", name); gsub(/ +/, " ", name); split(substr(line, RSTART, RLENGTH), t, / +-> +/)
     printf "%s%s %s-%s", s, name, t[1], t[2]; s = "|" }')"
 check "  the memory the memory rule counts, the runners named" has \
-  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and this host's engine); VMs the round starts: b c d x 12 GB = 36 GB" "$out"
+  "MEMORY    5 host test servers x 5 GB = 25 GB (runners 1 to 4 and this host's engine); VMs the round starts: b c d x 24 GB = 72 GB" "$out"
 out=$(RELEASE_RUNNERS=no schedule 1 1 docker-server)
 check "schedule 1 1, RELEASE_RUNNERS=no: this host's parts one at a time (one engine), the full set last: about 12 h 10" bash -c \
   '[ "$2" = "build + JUnit 0:00-0:34|light set on docker-server 0:34-1:29|auth file on docker-server 1:29-1:49|full set on docker-server 1:49-12:09" ] &&

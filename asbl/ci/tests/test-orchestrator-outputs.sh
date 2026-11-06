@@ -4,12 +4,12 @@
 #   2. flaky.txt's reader on fixtures/playwright-flaky.json, a real Playwright report (a Windows Docker light set of
 #      2026-11-01) trimmed to its suites, titles and each try's status: Playwright counts two flaky tests there, one passed
 #      on its retry (listed) and one whose retry was skipped (a failure, not listed);
-#   3. memory.log's sampler, with stub docker and ssh commands;
+#   3. memory.log's sampler and the memory ceilings reached, with stub docker and ssh commands;
 #   4. what 16.6.2's release showed (2026-11-03): no "command not found" in a run's console (start_memory_sampler was
 #      called before its definition), and a part log with bytes that are not UTF-8 read with no awk warning.
 # The dry runs are in 16.6.2's order (RELEASE_STEPS=in-order), whose parts the cases name; the steps together, the
 # default, leave the same files: asbl/ci/tests/test-step-independence.sh checks their parts and verdicts.
-# Every folder is a scratch one, and docker, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call: nothing is started,
+# Every folder is a scratch one, and docker, ssh and virsh (every VM running at 24 GB) are stubs first on PATH that record each call: nothing is started,
 # no live folder is touched, no machines file of this host is read. Takes about 40 seconds (a dry run's part lasts two
 # seconds).
 # Callers: a person or an agent, from the shell, after changing the orchestrator.
@@ -38,10 +38,16 @@ export STUB_CALLS="$SCRATCH/calls.log"
 : > "$STUB_CALLS"
 cat > "$STUBS/docker" <<'STUB'
 #!/bin/bash
-# stub docker: records the call; ps lists two containers of the run and one that is not; stats answers for each name
+# stub docker: records the call; ps lists containers of the run, one in a folder below its compose folder and two that are
+# not, or $STUB_RUNNERS; stats answers for each name; inspect: an id made of the name
 echo "docker $*" >> "$STUB_CALLS"
 case "${1:-}" in
-  ps) printf 'dp-ci|\ndocker-server-datapallas-1|%s\nsomeone-elses-container|\n' "$STUB_BUNDLE" ;;
+  ps) case "$*" in
+        *dp-ci-runner*) [ -z "${STUB_RUNNERS:-}" ] || echo "$STUB_RUNNERS" ;;
+        *) printf 'dp-ci|\ndocker-server-datapallas-1|%s\nrundeck-1|%s/_apps/rundeck\nlooks-alike-1|%sCopy\nsomeone-elses-container|\n' \
+             "$STUB_BUNDLE" "$STUB_BUNDLE" "$STUB_BUNDLE" ;;
+      esac ;;
+  inspect) echo "id-${*: -1}" ;;
   stats) shift
     for arg in "$@"; do case "$arg" in --*|*'{{'*) ;; *) printf '%s|101.5%%|9.5GiB / 125GiB|7.6%%\n' "$arg" ;; esac; done ;;
 esac
@@ -55,10 +61,10 @@ echo "committed=8589934592 commit_peak=12884901888 commit_limit=21474836480 phys
 STUB
 cat > "$STUBS/virsh" <<'STUB'
 #!/bin/bash
-# stub virsh: every VM is running, 12 GB defined (a round's VMs: nothing to set, start or shut down)
+# stub virsh: every VM is running, 24 GB defined (a round's VMs: nothing to set, start or shut down)
 case "${1:-}" in
   domstate) echo running ;;
-  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n" ;;
   *)        exit 1 ;;
 esac
 STUB
@@ -160,8 +166,8 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
 check "sampler: one free -m line of this host" \
   same 1 "$(grep -cP '^[0-9TZ:-]+\thost\tfree -m\ttotal=\d+ used=\d+ .*available=\d+ swap_total=' "$SAMPLE/memory.log")"
-check "sampler: docker stats of the run's running containers only (dp-ci, the bundle's), one call" same \
-  "$(printf 'host\tcontainer %s\tcpu=101.5%% mem=9.5GiB / 125GiB mem_percent=7.6%%\n' docker-server-datapallas-1 dp-ci | paste -sd' ')" \
+check "sampler: docker stats of the run's running containers only (dp-ci, the bundle's and those below it), one call" same \
+  "$(printf 'host\tcontainer %s\tcpu=101.5%% mem=9.5GiB / 125GiB mem_percent=7.6%%\n' docker-server-datapallas-1 dp-ci rundeck-1 | paste -sd' ')" \
   "$(grep -P '\tcontainer ' "$SAMPLE/memory.log" | cut -f2- | sort | paste -sd' ')"
 check "sampler: docker stats --no-stream called once" same 1 "$(grep -c '^docker stats --no-stream' "$STUB_CALLS")"
 check "sampler: the VM's memory over ssh (dp-ci.sh win ps)" same \
@@ -171,6 +177,25 @@ check "sampler: ssh ran PowerShell on the VM" eval 'grep -q "^ssh .* ci@vm.inval
 STUB_SSH_DOWN=1 bash "$ORCHESTRATOR" memory-sample "$SAMPLE"
 check "sampler: a VM that does not answer is said, and the sample goes on" same \
   "2 1" "$(grep -c 'free -m' "$SAMPLE/memory.log") $(grep -cP '\twindows-vm\tmemory\tnot answering' "$SAMPLE/memory.log")"
+
+# ---- the memory ceilings reached: the kernel's counters of the run's boxes and of all inside them ----
+CAPS="$SCRATCH/caps"; mkdir -p "$CAPS"; cp "$SAMPLE/started.txt" "$CAPS/"
+export RELEASE_CGROUP_DIR="$SCRATCH/cgroups" STUB_RUNNERS=dp-ci-runner-1
+mkdir -p "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/docker/inner" "$RELEASE_CGROUP_DIR/docker-id-dp-ci.scope"
+printf 'low 0\nhigh 0\nmax 7\noom 1\noom_kill 2\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/docker/inner/memory.events.local"
+printf 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci-runner-1.scope/memory.events.local"
+printf 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n' > "$RELEASE_CGROUP_DIR/docker-id-dp-ci.scope/memory.events.local"
+: > "$STUB_CALLS"
+bash "$ORCHESTRATOR" memory-sample "$CAPS"
+check "ceilings reached: a box inside a runner, each kind a line; a box at none, no line" same \
+  "$(printf 'host\tkilled by a ceiling: dp-ci-runner-1/docker/inner\toom_kill=2\nhost\treached its ceiling: dp-ci-runner-1/docker/inner\tmax=7')" \
+  "$(cut -f2- "$CAPS/caps-reached.log" | sort)"
+check "ceilings reached: said in memory.log too" same 2 "$(grep -cP '\thost\t(reached its ceiling|killed by a ceiling): ' "$CAPS/memory.log")"
+check "ceilings reached: this host's other containers are never asked" same 0 "$(grep -cE '^docker inspect.* (someone-elses-container|looks-alike-1)' "$STUB_CALLS")"
+bash "$ORCHESTRATOR" memory-sample "$CAPS"
+check "ceilings reached: the next sample says nothing again" same 2 "$(wc -l < "$CAPS/caps-reached.log")"
+check "the sampler changes no container: no docker update" same 0 "$(grep -c '^docker update' "$STUB_CALLS")"
+unset RELEASE_CGROUP_DIR STUB_RUNNERS
 
 # 4. a part log with bytes that are not UTF-8 (a Windows console's), read by mark_verdict under a UTF-8 locale: its
 # verdict, and no awk "Invalid multibyte data" warning (16.6.2's docker-windows.log and windows-after-pack.log gave them)

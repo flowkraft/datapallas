@@ -15,7 +15,7 @@
 #      the server light set elsewhere not run, no kept pack); no copy of the pack's (the pack red before its NoExeAssembler's
 #      line, a check not met, a copy red): that VM prepares its own and every lane runs; its own prepare red too: its VM's
 #      lane still runs.
-# Every folder is a scratch one; ssh and virsh are stubs first on PATH, every VM running at 12 GB: nothing is started on
+# Every folder is a scratch one; ssh and virsh are stubs first on PATH, every VM running at 24 GB: nothing is started on
 # this host, no settings file of this host is read. Takes about three minutes.
 # Callers: a person or an agent, from the shell, after changing how a round spreads its Windows lanes over its VMs.
 #   bash asbl/ci/tests/test-vm-lanes.sh
@@ -42,7 +42,7 @@ one_at_a_time() {  # one_at_a_time <log> <part>...: each part starts after the o
   for p in "$@"; do before "$log" "PART    $prev END" "PART    $p START" || return 1; prev="$p"; done
 }
 
-# ---- the stubs: ssh and virsh (every VM running at 12 GB); the VMs' settings files ----
+# ---- the stubs: ssh and virsh (every VM running at 24 GB); the VMs' settings files ----
 export STUB="$SCRATCH/stub"; mkdir -p "$STUB/bin" "$STUB/vms" "$SCRATCH/vm-conf"
 cat > "$STUB/bin/ssh" <<'EOF'
 #!/bin/bash
@@ -52,12 +52,12 @@ echo "Microsoft Windows [Version 10.0.19045.0]"
 EOF
 cat > "$STUB/bin/virsh" <<'EOF'
 #!/bin/bash
-# stub virsh: every domain of $STUB/vms at 12 GB, running unless its file says "shut off"; a call that would change
+# stub virsh: every domain of $STUB/vms at 24 GB, running unless its file says "shut off"; a call that would change
 # something is recorded and refused
 case "${1:-}" in
   domstate) [ -e "$STUB/vms/$2" ] || { echo "error: failed to get domain '$2'" >&2; exit 1; }; s=$(cat "$STUB/vms/$2"); echo "${s:-running}" ;;
   dumpxml)  d="${*: -1}"; [ -e "$STUB/vms/$d" ] || exit 1
-            printf "<domain type='kvm'>\n  <name>%s</name>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" "$d" ;;
+            printf "<domain type='kvm'>\n  <name>%s</name>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n" "$d" ;;
   *)        echo "virsh $*" >> "$STUB/virsh-calls"; exit 1 ;;
 esac
 EOF

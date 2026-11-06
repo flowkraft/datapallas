@@ -21,7 +21,7 @@
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
 # checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host; its
 # kept files are small ones made from this commit (fixtures/make-kept-files.py), which the stages check from inside;
-# docker, curl, ssh and virsh (every VM running at 12 GB) are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
+# docker, curl, ssh and virsh (every VM running at 24 GB) are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
 # built, uploaded, pushed or started. Takes about a minute.
 # Callers: a person or an agent, from the shell, after changing the step model.
 #   bash asbl/ci/tests/test-step-model.sh
@@ -78,10 +78,10 @@ echo "ssh: connect to host vm.invalid port 22: Connection timed out" >&2; exit 2
 STUB
 cat > "$STUBS/virsh" <<'STUB'
 #!/bin/bash
-# stub virsh: every VM is running, 12 GB defined (a round's VMs: nothing to set, start or shut down)
+# stub virsh: every VM is running, 24 GB defined (a round's VMs: nothing to set, start or shut down)
 case "${1:-}" in
   domstate) echo running ;;
-  dumpxml)  printf "<domain>\n  <memory unit='KiB'>12582912</memory>\n  <currentMemory unit='KiB'>12582912</currentMemory>\n</domain>\n" ;;
+  dumpxml)  printf "<domain>\n  <memory unit='KiB'>25165824</memory>\n  <currentMemory unit='KiB'>25165824</currentMemory>\n</domain>\n" ;;
   *)        exit 1 ;;
 esac
 STUB

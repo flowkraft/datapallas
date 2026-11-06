@@ -74,7 +74,7 @@
 #                                                             Docker engine of its own on this host with its list of
 #                                                             asbl/ci/full-set-runners.txt (1: the whole full set in
 #                                                             one runner), all started when the build ends, each capped
-#                                                             at RELEASE_RUNNER_LIMIT_GB [64] of memory; this host's
+#                                                             at RELEASE_RUNNER_LIMIT_GB [32] of memory; this host's
 #                                                             engine meanwhile runs the auth file, then the Linux proof.
 #                                                             RELEASE_RUNNERS=no in the settings file: the full set whole
 #                                                             on this host's engine, as before the runners; N must be 1
@@ -104,7 +104,7 @@
 #   running this), mode 600 or 400, read as shell: RELEASE_FIXER="<command>" (the fix round's agent: below) and
 #   DRY_RUN_RED="<parts>" (a dry round only: the orchestrator's parts that come out red, to try the red paths). Missing = no
 #   fixer, no red parts. The machines of a round are there too: RELEASE_STEPS, RELEASE_SERVER_GB, RELEASE_WINDOWS_VMS,
-#   WIN_VM_MEMORY_GB, RELEASE_MIN_FREE_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
+#   WIN_VM_MEMORY_GB, WIN_VM_DOCKER_MEMORY_GB, RELEASE_CI_CONTAINER_LIMIT_GB, RELEASE_MIN_FREE_GB, VM_LANES_<M>_<name>, RELEASE_ESTIMATES_FILE (each explained, with its
 #   default, in asbl/ci/release-layout.example.conf; read by asbl/ci/release-machines.sh).
 # THE FIXER (RELEASE_FIXER, outside the public repo: devops-gitops bkend-infra/scripts/jenkins/release-fixer.sh)
 #   <fixer> start <run folder> <fix round n>   prints FIX_RUN=<name> and FIX_PLAN=<the fix round's plan>

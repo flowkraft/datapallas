@@ -4555,6 +4555,9 @@ SHA=$(git rev-parse --short HEAD)
 [ -z "$(git status --porcelain)" ] || SHA="$SHA-dirty"
 echo "E2E_COMMIT=$SHA"
 
+# this container's memory ceiling, set at its creation, on this host's engine as in a runner (release-machines.sh, THE MEMORY
+# CEILINGS); what the tests start stays as the e2e proved it
+CI_CONTAINER_LIMIT_GB="${RELEASE_CI_CONTAINER_LIMIT_GB:-12}"
 E2E_FLAGS=""
 if [ "$TASK" = "e2e" ]; then
   # host network: specs start app containers whose published ports must answer on localhost
@@ -4608,6 +4611,7 @@ fi
 # in frend/reporting/, one `git add -A` away from being committed. Crashes still show up as
 # "[RENDERER crash]" in the run log, which is the part worth keeping.
 docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --ulimit core=0 \
+  --memory "${CI_CONTAINER_LIMIT_GB}g" --memory-swap "${CI_CONTAINER_LIMIT_GB}g" \
   -v "$REPO":"$REPO" -w "$REPO" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v dp-ci-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \

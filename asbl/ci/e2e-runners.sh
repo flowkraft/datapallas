@@ -65,7 +65,7 @@
 #   E2E_RUNNERS_HOME [/var/kraft-internalsystems/projects/dp-ci-runners]   each runner's checkout folder <home>/<n>
 #   E2E_RUNNER_SOCKET_DIR [/run/dp-ci-runners]   each runner's socket folder <dir>/<n>
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci]   this host's; a runner's is <LOG_DIR>/runners/<n>
-#   RELEASE_RUNNER_LIMIT_GB [64]   each runner's memory ceiling (machines file key). It reserves nothing, a runner takes
+#   RELEASE_RUNNER_LIMIT_GB [32]   each runner's memory ceiling (machines file key). It reserves nothing, a runner takes
 #                                  what it needs; it only stops a runaway from taking the memory of other apps. Keep it
 #                                  well above the need: at 10 GB the full set hit it at the Rundeck test and the runner
 #                                  stalled for hours with no failure, on 16.6.3's first full set in a runner
@@ -95,7 +95,7 @@ RUNNERS_MAX=4
 RUNNERS_HOME="${E2E_RUNNERS_HOME:-/var/kraft-internalsystems/projects/dp-ci-runners}"
 SOCKET_DIR="${E2E_RUNNER_SOCKET_DIR:-/run/dp-ci-runners}"
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
-LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-64}"
+LIMIT_GB="${RELEASE_RUNNER_LIMIT_GB:-32}"
 ENGINE_WAIT_SECS="${E2E_RUNNER_ENGINE_WAIT_SECS:-300}"
 CI_IMAGE=datapallas-ci
 SERVER_IMAGE_REPO=flowkraft/datapallas-server

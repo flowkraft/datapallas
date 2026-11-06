@@ -105,6 +105,9 @@
 #                      peak since boot, the commit limit, physical total and available, in bytes, over dp-ci.sh win ps
 #                      with WIN_VM=<name>; machine windows-vm for VM a, windows-vm-<name> for another; a VM virsh says is
 #                      off is not asked); one tab-separated line each: <UTC> <TAB> <machine> <TAB> <what> <TAB> <values>
+#   caps-reached.log   a real run only, when a box of the run on this host reached its memory ceiling or a ceiling killed a
+#                      process of it, read at each sample and at the run's end: one line per box the first time, as
+#                      memory.log's (<what> names the box); the SUMMARY repeats them
 #
 # INPUTS (environment):
 #   ORCH_STARTED_BY        REQUIRED, who started it: the first line of the log and the history line (none: MISSING, exit 2)
@@ -122,6 +125,7 @@
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs], RELEASE_STATE_DIR,
 #   RELEASE_ARTIFACTS_DIR  as the step scripts read them (a dry run may point them at scratch copies)
 #   MEMORY_EVERY [300]     seconds between two samples of memory.log
+#   RELEASE_CGROUP_DIR [/sys/fs/cgroup/system.slice]   where this host's containers' memory counters are
 #   Advanced (Parallelization), the job's two values (release-rehearsal.sh passes them on), 1 to 4 each:
 #     SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS [1]   step 1's full set in that many runners (HOW, runners)
 #     USE_N_NUMBER_OF_WINDOWS_VMS [1]                         the Windows lanes over that many VMs
@@ -130,8 +134,9 @@
 #   N = 1), the memory per host test server and per VM, the VMs and the
 #   lanes each runs. Checked before anything starts (exit 2 with a REFUSED line per broken rule); every run prints the
 #   SCHEDULE it expects, each part's time from the last release runs' marks.
-#   THE VMS (release-machines.sh, A ROUND'S VMS): before anything starts, each VM the parts use gets WIN_VM_MEMORY_GB
-#   (--config) when its definition differs; before its first part, a VM that is off is started and waited for (its
+#   THE VMS (release-machines.sh, A ROUND'S VMS): before anything starts, KSM is on and each VM the parts use gets
+#   WIN_VM_MEMORY_GB and its memory placement (--config) when its definition differs; before its first part, a VM that is
+#   off is started and waited for, then its Docker (its
 #   started.txt line: part vm-<name>, kind domain), else its parts are red ("VM <name> did not start"); after its last
 #   part, a VM this run started is shut down (<PARTS>/vm-<name>.rc then); a running VM is left running. With one VM, VM a
 #   (win10-dev) runs every Windows part; with M, the first M of RELEASE_WINDOWS_VMS, each its lanes (HOW, VMs). A dry run
@@ -269,14 +274,15 @@ for part, report in zip(args[0::2], args[1::2]):
 PY
 }
 
-# containers_of_the_run <run folder>: the running containers started.txt names (real lines), and those of its compose folders
+# containers_of_the_run <run folder>: the running containers started.txt names (real lines), and those of its compose
+# folders and of the folders below them (the Rundeck and AI Hub stacks are under the bundle's _apps)
 containers_of_the_run() {
   local running
   running=$(docker ps --format '{{.Names}}|{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null) || return 0
   awk -F'\t' '$5 == "real" && ($3 == "container" || $3 == "compose") { print $3 "\t" $4 }' "$1/started.txt" 2>/dev/null | sort -u |
     while IFS=$'\t' read -r kind name; do
       printf '%s\n' "$running" | awk -F'|' -v kind="$kind" -v name="$name" \
-        '(kind == "container" && $1 == name) || (kind == "compose" && $2 == name) { print $1 }'
+        '(kind == "container" && $1 == name) || (kind == "compose" && ($2 == name || index($2, name "/") == 1)) { print $1 }'
     done | sort -u
 }
 # The VM's own memory, from Windows itself (GetPerformanceInfo): what it committed, the peak of that since boot, the
@@ -324,11 +330,37 @@ sample_memory_once() {
     # (one call for all of them: each docker stats --no-stream takes about two seconds)
     [ -z "$names" ] || docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' $names 2>/dev/null |
       awk -F'|' -v t="$now" '{ printf "%s\thost\tcontainer %s\tcpu=%s mem=%s mem_percent=%s\n", t, $1, $2, $3, $4 }'
+    report_caps_reached "$dir"
     [ "${#vm_pids[@]}" = 0 ] || wait "${vm_pids[@]}"
     for vm_name in $sample_vms; do cat "$dir/.memory-$vm_name.line" 2>/dev/null; rm -f "$dir/.memory-$vm_name.line"; done
   } >> "$dir/memory.log"
 }
 
+# ---- the memory ceilings reached ----
+# cap_reached_once <run folder> <where> <what> <values>: a line in caps-reached.log and on stdout, the first time only: a
+# box at its ceiling can stall with no failure (16.6.3's first full set in a runner, at 10 GB), so it must leave a trace
+cap_reached_once() {
+  local line
+  grep -qF "$(printf '%s\t%s\t' "$2" "$3")" "$1/caps-reached.log" 2>/dev/null && return 0
+  line=$(printf '%s\t%s\t%s\t%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$3" "$4")
+  printf '%s\n' "$line" | tee -a "$1/caps-reached.log"
+}
+# report_caps_reached <run folder>: the kernel's own counters of the run's boxes on this host and of all inside them (a
+# runner's containers are groups below its own): memory.events.local's max (its own ceiling reached, the box's alone, not
+# what is below it) and oom_kill (a process of it killed)
+report_caps_reached() {
+  local dir="$1" box id group file inside max killed
+  for box in $({ docker ps --filter 'name=^dp-ci-runner-[0-9]+$' --format '{{.Names}}' 2>/dev/null; containers_of_the_run "$dir"; } | sort -u); do
+    id=$(docker inspect -f '{{.Id}}' "$box" 2>/dev/null) || continue
+    group="${RELEASE_CGROUP_DIR:-/sys/fs/cgroup/system.slice}/docker-$id.scope"
+    while read -r file; do
+      read -r max killed < <(awk '$1 == "max" { m = $2 } $1 == "oom_kill" { k = $2 } END { print m + 0, k + 0 }' "$file")
+      inside=${file#"$group"}; inside=${inside%/memory.events.local}
+      [ "$max" = 0 ] || cap_reached_once "$dir" host "reached its ceiling: $box$inside" "max=$max"
+      [ "$killed" = 0 ] || cap_reached_once "$dir" host "killed by a ceiling: $box$inside" "oom_kill=$killed"
+    done < <(find "$group" -name memory.events.local 2>/dev/null)
+  done
+}
 # the memory sampler: memory.log every MEMORY_EVERY seconds while this run lasts (a real run only)
 MEMORY_SAMPLER_PID=""
 start_memory_sampler() {
@@ -375,6 +407,8 @@ WINDOWS_VMS_USED="${USE_N_NUMBER_OF_WINDOWS_VMS:-1}"
 machines_answer=$(machines_load && machines_check "$FULL_SET_JOBS" "$WINDOWS_VMS_USED") ||
   { printf '%s\n' "$machines_answer"; echo "REFUSED: the machines file (${RELEASE_REHEARSAL_CONF:-/root/release-rehearsal.conf}) does not allow N=$FULL_SET_JOBS M=$WINDOWS_VMS_USED (above). Nothing done"; exit 2; }
 machines_load
+# asbl/ci/e2e-runners.sh and dp-ci.sh do not read the machines file: these two reach them from here
+export RELEASE_RUNNER_LIMIT_GB RELEASE_CI_CONTAINER_LIMIT_GB
 STEPS="$RELEASE_STEPS"   # together or in-order (HOW, above)
 # step 1's full set in runners (HOW, runners): with the steps together, unless the machines file says RELEASE_RUNNERS=no
 RUNNERS=$([ "$STEPS" = together ] && [ "$RELEASE_RUNNERS" = yes ] && echo yes || echo no)
@@ -446,7 +480,8 @@ vm_order() {
   done
   printf '%s' "${out%, }"
 }
-for vm in $RUN_VMS; do machines_vm_memory_set "$vm" "$([ "$DRY" = yes ] && echo dry)"; done
+machines_host_memory_sharing_on "$([ "$DRY" = yes ] && echo dry)"
+for vm in $RUN_VMS; do machines_vm_memory_rules "$vm" "$([ "$DRY" = yes ] && echo dry)"; done
 start_memory_sampler
 
 # ---- the parts: run one, or in a dry run say what it would run and write the marks it would leave ----
@@ -720,9 +755,11 @@ write_run_files() {
 finish() {  # finish <rc>: the summary with the flaky tests, result.txt and flaky.txt, the history line, the exit
   local s parts flaky_count
   stop_memory_sampler
+  [ "$DRY" = yes ] || report_caps_reached "$PARTS" >> "$PARTS/memory.log"
   echo
   echo "SUMMARY execution $EXECUTION on ${PIN:+${PIN:0:8}}$([ "$DRY" = yes ] && echo ' (dry run)'):"
   for s in "${SUMMARY[@]}"; do echo "$s"; done
+  [ ! -s "$PARTS/caps-reached.log" ] || { echo "MEMORY  ceilings reached in this run:"; cut -f2- "$PARTS/caps-reached.log"; }
   parts=$(result_part_lines)
   write_run_files "$1" "$parts"
   flaky_count=$(grep -c . "$PARTS/flaky.txt")
@@ -981,6 +1018,7 @@ vm_up() {
   fi
   machines_vm_start "$1" | tee "$PARTS/vm-$1.log"; rc=${PIPESTATUS[0]}
   VM_WHY=$(tail -1 "$PARTS/vm-$1.log")
+  [ "$rc" != 0 ] || machines_vm_docker_wait "$1" | tee -a "$PARTS/vm-$1.log"
   return "$rc"
 }
 # vm_down <name>: after the VM's last part: shut down when this run started it (its started.txt line), once

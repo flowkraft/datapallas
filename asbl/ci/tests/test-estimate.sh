@@ -18,7 +18,7 @@
 #      1 and 1 as before the runners (this host's parts in a row, the full set last);
 #   4. the memory line follows the host's memory (a stand-in /proc/meminfo): no warning with exactly RELEASE_MIN_FREE_GB
 #      left, a warning with 1 GB less, "unknown" without the file;
-#   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 6 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
+#   5. WIN_VM_MEMORY_GB=10 makes 4 and 4 need 42 GB less; with RELEASE_WINDOWS_VMS="a b", 3 and 4 VMs are "not created
 #      yet" and not drawn;
 #   6. the form's Groovy script, run by the Groovy of this host's Jenkins image in a throwaway container (no network,
 #      the scratch folder read-only), draws exactly what the shell draws, for the 16 choices and the cases of 4 and 5,
@@ -70,7 +70,7 @@ print(p[sys.argv[-1]])' "$@"; }   # json_field <file> [<N> <M>] <field>
 
 [ -d "$RUNS" ] || { echo "FAIL  no run folders in $RUNS (TEST_ESTIMATE_RUNS)"; exit 1; }
 cp asbl/ci/release-layout.example.conf "$SCRATCH/conf" && chmod 600 "$SCRATCH/conf" || exit 2
-unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
+unset RELEASE_STEPS RELEASE_SERVER_GB RELEASE_RUNNERS RELEASE_RUNNER_LIMIT_GB RELEASE_WINDOWS_VMS WIN_VM_MEMORY_GB WIN_VM_DOCKER_MEMORY_GB RELEASE_CI_CONTAINER_LIMIT_GB RELEASE_MIN_FREE_GB RELEASE_ESTIMATES_FROM
 export RELEASE_REHEARSAL_CONF="$SCRATCH/conf" RUN_RECORD_DIR="$RUNS" RELEASE_MEMINFO="$SCRATCH/meminfo"
 export RELEASE_ESTIMATES_FILE="$SCRATCH/estimates/release-estimates.json"
 JSON="$RELEASE_ESTIMATES_FILE"
@@ -363,10 +363,10 @@ check "no /proc/meminfo: the available memory unknown, the rest drawn" \
 
 # ---- 5. WIN_VM_MEMORY_GB=10; two VMs named ----
 WIN_VM_MEMORY_GB=10 RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate > /dev/null
-check "WIN_VM_MEMORY_GB=10: 4 and 4 need 6 GB less ($need GB with 12)" \
-  same $((need - 6)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
+check "WIN_VM_MEMORY_GB=10: 4 and 4 need 42 GB less ($need GB with 24)" \
+  same $((need - 42)) "$(json_field "$SCRATCH/estimates-vm10.json" 4 4 need_gb)"
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-vm10.json" bash "$ROUND" estimate 4 4 > "$SCRATCH/shell-vm10.txt"
-check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 6)) GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
+check "WIN_VM_MEMORY_GB=10: the block says it" has "Memory  needs +$((need - 42)) GB: 5 host test servers x 5 GB (runners 1 to 4 and this host's engine); VMs b, c, d at 10 GB" "$(cat "$SCRATCH/shell-vm10.txt")"
 RELEASE_WINDOWS_VMS="a b" RELEASE_ESTIMATES_FILE="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate > /dev/null
 check "RELEASE_WINDOWS_VMS=\"a b\": 3 and 4 VMs not created yet, refused and not drawn; 1 and 2 VMs drawn" python3 -I -c 'import json, sys
 d = json.load(open(sys.argv[1]))
@@ -377,7 +377,7 @@ RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 3 >
 RELEASE_ESTIMATES_FROM="$SCRATCH/estimates-ab.json" bash "$ROUND" estimate 1 2 > "$SCRATCH/shell-ab-1-2.txt"
 check "RELEASE_WINDOWS_VMS=\"a b\", 3 VMs: the block says not created yet, with its memory" \
   bash -c 'grep -q "^REFUSED at the press: USE_N_NUMBER_OF_WINDOWS_VMS=3, .*not created yet" "$1" &&
-    grep -qx "Memory  needs +34 GB: 2 host test servers x 5 GB (runner 1 and this host'"'"'s engine); 2 VMs at 12 GB (1 of them not created yet)" "$1" &&
+    grep -qx "Memory  needs +58 GB: 2 host test servers x 5 GB (runner 1 and this host'"'"'s engine); 2 VMs at 24 GB (1 of them not created yet)" "$1" &&
     grep -q "^Total   not estimated" "$1"' _ "$SCRATCH/shell-ab-1-3.txt"
 RELEASE_ESTIMATES_FROM="$SCRATCH/no-estimates.json" bash "$ROUND" estimate 1 1 > "$SCRATCH/shell-nojson.txt"
 check "no estimates file: one line saying so" \
