@@ -93,6 +93,15 @@
 					</dependency>
 				</dependencies>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- AssemblerTest packs the whole product (its nested mvn install runs every module's tests): 85-95 min
+					     on the Windows VM beside a release's other work. The CI still stops a silent pack (2 h) and caps it (8 h). -->
+					<forkedProcessTimeoutInSeconds>14400</forkedProcessTimeoutInSeconds>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>
