@@ -2285,6 +2285,9 @@ win_server_e2e() {
     WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
       win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat ||
       { echo "FAIL  the pack failed: asbl\\pack-datapallas.log on the VM (dp-ci.sh win poll release-pack)"; return 1; }
+    # a green pack keeps the VM's e2e package, as win_release does: its clean removed the stamp win_prepare_package reads
+    # below, and a re-run that reuses that package (E2E_REUSE_BUILD) may not build it again
+    win_stamp_package_after_pack "$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)"
     sha=$(win_dist_sha datapallas-server.zip)
     new_pack_dir=$(mktemp -d "${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/.win-server-pack.XXXXXX") || return 2
     kept="$new_pack_dir"
