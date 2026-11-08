@@ -470,7 +470,7 @@ export class ProcessingComponent implements OnInit {
             c.filePath.includes(params.prefilledSelectedMailMergeClassicReport),
           );
       if (this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport) {
-        this.settingsService.loadReportDetails(
+        this.loadSelectedReportDetails(
           this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport,
         );
       }
@@ -1544,6 +1544,18 @@ export class ProcessingComponent implements OnInit {
   //  Report selection & validation
   // ==========================================================================
 
+  // The list holds no report parameters: they come with the selected report's details.
+  private reportDetailsLoads = 0;
+
+  private async loadSelectedReportDetails(report: CfgTmplFileInfo) {
+    this.reportDetailsLoads++;
+    try {
+      await this.settingsService.loadReportDetails(report);
+    } finally {
+      this.reportDetailsLoads--;
+    }
+  }
+
   async onReportSelectionChange($event: any) {
     // Reset View Data state when report selection changes
     this.isViewDataLoading = false;
@@ -1585,7 +1597,7 @@ export class ProcessingComponent implements OnInit {
       $event.type === 'config-jasper-reports' ||
       $event.type === 'config-jasper-legacy-reports'
     )) {
-      await this.settingsService.loadReportDetails($event);
+      await this.loadSelectedReportDetails($event);
     }
   }
 
@@ -1643,6 +1655,9 @@ export class ProcessingComponent implements OnInit {
         .selectedMailMergeClassicReport;
 
     if (!selectedReport) return true;
+
+    // Its parameters come with its details: a click before they are here runs it without them.
+    if (this.reportDetailsLoads > 0) return true;
 
     const requiresInput = this.requiresInputFile();
 
