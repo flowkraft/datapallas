@@ -765,13 +765,18 @@ async function assertVisualizeAs(
   const mainGridEl = page.locator('#visualizeAsGrid');
   await mainGridEl.waitFor({ state: 'visible', timeout: 5_000 });
 
-  const actualMainIds: string[] = await mainGridEl
+  const readMainIds = (): Promise<string[]> => mainGridEl
     .locator('[id^="btnVisualizeAs-"]')
     .evaluateAll((els) => els.map((el) => el.id.replace('btnVisualizeAs-', '')));
   // mainGrid = expected recommended widgets. Assert they lead #visualizeAsGrid
   // in exact order. Sensible (non-recommended) widgets may follow — their count
   // varies by vendor column-type classification and is tested by Jasmine unit tests.
-  expect(actualMainIds.slice(0, mainGrid.length)).toEqual(mainGrid);
+  // Polled, not read once: each Summarize change runs its own query, and #sparklesBadge
+  // is already on the palette of an earlier one (the aggregations before the group-by:
+  // number, tabulator, detail). A vendor slower than configureSummarize's 2 s pause
+  // (ibmdb2, 16.6.4) left that palette on screen when it was read.
+  await expect.poll(async () => (await readMainIds()).slice(0, mainGrid.length), { timeout: 15_000 })
+    .toEqual(mainGrid);
 
   // ── Check "More widgets" ORDER (unconditional — missing button = test failure) ──
   if (moreWidgets.length > 0) {
