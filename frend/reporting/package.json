@@ -98,7 +98,7 @@
     "precustom:start-server-and-e2e-electron": "npm run custom:test-jasmine",
     "_custom:e2e-generate-let-me-update-baseline-for-exe-update.robot": "rimraf testground && mkdirp testground/upgrade && cross-env PORTABLE_EXECUTABLE_DIR=testground/upgrade ts-node --project e2e/tsconfig.e2e-baseline.json e2e/utils/baseline.ts",
     "_custom:compile-server": "cd ../../bkend/server && mvn clean install -DskipTests",
-    "_custom:ng:serve": "ng serve -c web --port 4201 --proxy-config proxy.conf.js",
+    "_custom:ng:serve": "ng serve -c web --host 127.0.0.1 --port 4201 --proxy-config proxy.conf.js",
     "_custom:ng:serve-open": "ng serve -c web --port 4201 -o --proxy-config proxy.conf.js",
     "_custom:ng:serve:electron": "cross-env TARGET=electron NODE_ENV=development NG_DEBUG=verbose ng serve --verbose",
     "_custom:debug:electron": "cross-env TARGET=electron NG_VERBOSE=true DEBUG=* ng serve --verbose",
@@ -113,7 +113,7 @@
     "_custom:start-ui-electron-local": "cross-env NG_DEBUG=true ENABLE_DEVELOPMENT_FEATURES=true PORTABLE_EXECUTABLE_DIR=testground/e2e npm run electron:local",
     "_custom:start-ui-both": "npm-run-all -p _custom:start-ui-web _custom:start-ui-electron",
     "_custom:playwright-scripts-electron": "npm run build:prod && cross-env TEST_ENV=electron TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e playwright test -c e2e/playwright.config.ts e2e/",
-    "_custom:playwright-tests-web": "wait-on tcp:4201 && cross-env TEST_ENV=web TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e playwright test -c e2e/playwright.config.ts e2e/",
+    "_custom:playwright-tests-web": "wait-on tcp:127.0.0.1:4201 && cross-env TEST_ENV=web TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e playwright test -c e2e/playwright.config.ts e2e/",
     "_custom:playwright-scripts-web": "npm-run-all -p --race _custom:ng:serve _custom:playwright-tests-web",
     "_custom:electron:windows": "npm run build:prod && npm run electron:install-app-deps && electron-builder build --windows --ia32"
   },
