@@ -10,8 +10,9 @@
 #      no copy, said at the first look; a copy red (the archive brought here is not the VM's): no copy, no archive left
 #      here;
 #   3. package on VM b: its stamp the pin's already: nothing copied; the record there: the old package and stamp removed
-#      first, the archive put and unpacked (the same files), the stamp written last; <archive>.none, the pull ended with no
-#      record, a copy red on the VM (sha256): the VM prepares its own (pack-prepare-for-e2e.bat), no stamp of the copy;
+#      first, the archive put and unpacked (the same files), the parent POMs installed (step package-poms), the stamp
+#      written last; <archive>.none, the pull ended with no record, a copy red on the VM (sha256), the POMs' step red: the
+#      VM prepares its own (pack-prepare-for-e2e.bat), no stamp of the copy;
 #   4. package-archive by hand: refused when the VM's stamp is not its checkout's commit.
 # The stubs (ssh, scp: python3, first on PATH) keep each VM's checkout, stamp, package folder and pack log in a scratch
 # folder; PowerShell scripts are decoded and answered as the VM would. Nothing reaches a VM or this host's folders. About
@@ -119,9 +120,14 @@ if script is not None:
         subprocess.run(["tar", "-xf", tar, "-C", PKG], check=True); os.remove(tar)
         log("unpack " + name)
         print("FILES %d" % files(os.path.join(PKG, "verified-db-noexe"))); sys.exit(0)
-    if "schtasks /create" in script:   # win_run: the VM's own prepare starts here; refused, so it ends at once
-        log("task " + (re.search(r'/tn "dp-ci-([a-z0-9-]+)"', script) or re.search("()", "")).group(1))
+    if "schtasks /create" in script:   # win_run: the copy's package-poms starts; the VM's own prepare is refused, so it ends at once
+        task = (re.search(r'/tn "dp-ci-([a-z0-9-]+)"', script) or re.search("()", "")).group(1)
+        log("task " + task)
+        if task == "package-poms":
+            print("STARTED " + task); sys.exit(0)
         print("FAIL  could not create the task"); sys.exit(1)
+    if '"@@EXIT " + $m' in script:   # win_run_poll: package-poms ended, with the exit code in the VM's poms_rc (0)
+        print("@@EXIT EXIT=" + rd("poms_rc", "0")); sys.exit(0)
     sys.exit(0)
 cmd = " ".join(words)
 if cmd == "query session":   # win_run's check: the CI account's console session
@@ -303,8 +309,12 @@ out=$(WIN_VM=b WIN_PACKAGE_ARCHIVE="$ARCHIVE" WIN_PACKAGE_PULL_RC="$SCRATCH/pull
 check "the record there: exit 0, copied, the stamp the pin's" bash -c \
   '[ "$1" = 0 ] && grep -q "^WIN_E2E_PACKAGE=copied from the pack ($2): 3 files, sha256 .* took=" <<< "$3" && [ "$(cat "$4")" = "$2" ]' \
   _ "$rc" "$SHORT" "$out" "$STUB/vm-b/fs/pkg/.built-from"
-check "  in order: the old stamp and package removed, the archive put, unpacked, the stamp written last" same \
-  "b remove-stamp|b remove-package|b put e2e-package.tar|b unpack e2e-package.tar|b stamp $SHORT" "$(calls)"
+check "  in order: the old stamp and package removed, the archive put, unpacked, the POMs' step, the stamp written last" same \
+  "b remove-stamp|b remove-package|b put e2e-package.tar|b unpack e2e-package.tar|b put step.cmd|b put run.cmd|b task package-poms|b stamp $SHORT" "$(calls)"
+check "  the POMs' step: in the checkout, the grandparent POM, then the root POM alone (-N), as pack-prepare-for-e2e.bat" bash -c \
+  'grep -q "^cd /d \"C:/ci/repo\" " "$1" &&
+   grep -q "^call mvn -B -ntp install -f xtra-tools/bild/common-scripts/maven/pom.xml && call mvn -B -ntp install -N -f pom.xml.$" "$1"' \
+  _ "$STUB/vm-b/fs/other/step.cmd"
 check "  VM b's package is VM a's, file for file" diff -r "$STUB/vm-a/fs/pkg/verified-db-noexe" "$STUB/vm-b/fs/pkg/verified-db-noexe"
 check "  nothing left in VM b's C:\\dp-ci\\tmp; no prepare" bash -c '[ -z "$(ls -A "$1")" ] && ! grep -q "pack-prepare-for-e2e" <<< "$2"' \
   _ "$STUB/vm-b/fs/tmp" "$out"
@@ -333,6 +343,16 @@ check "a copy red on the VM (sha256): the copy failed, its own prepare, no stamp
   'grep -q "^FAIL  the package unpacked on VM b: FAIL the archive on the VM is not the pack.s" <<< "$1" &&
    grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the copy failed (above)): VM b prepares its own" <<< "$1" &&
    grep -q "running pack-prepare-for-e2e.bat" <<< "$1" && grep -q "b sha-refused" <<< "$2" && ! grep -q "stamp $3" <<< "$2"' \
+  _ "$out" "$(calls)" "$SHORT"
+
+fresh put-poms-red
+WIN_VM=a dp package-pull "$ARCHIVE" "$PIN" 5000 > /dev/null; : > "$STUB/calls"
+vm_state b poms_rc=1
+out=$(WIN_VM=b WIN_PACKAGE_ARCHIVE="$ARCHIVE" dp package); rc=$?
+check "the POMs' step red: the copy failed, its own prepare, no stamp of the copy" bash -c \
+  'grep -q "^FAIL  the parent POMs of $3 not installed on VM b (step package-poms, above)" <<< "$1" &&
+   grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the copy failed (above)): VM b prepares its own" <<< "$1" &&
+   grep -q "running pack-prepare-for-e2e.bat" <<< "$1" && grep -q "b task package-poms" <<< "$2" && ! grep -q "stamp $3" <<< "$2"' \
   _ "$out" "$(calls)" "$SHORT"
 
 fresh put-other-commit

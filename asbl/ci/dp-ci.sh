@@ -1278,7 +1278,8 @@ win_package_pull() {
 # win_package_put <archive on this host>: on a VM of the round (WIN_VM), the pack's e2e package from the archive and the
 # record win_package_archive wrote, for the commit the record names, which the VM's checkout must be on: the old package
 # and its stamp removed first, the archive copied and checked (sha256), unpacked into asbl\target\package and counted,
-# then the stamp (.built-from) written last, as win_prepare_package writes it. Exit 1 with nothing stamped on any failure.
+# the two POMs of that commit installed into the VM's Maven repository (step package-poms, below), then the stamp
+# (.built-from) written last, as win_prepare_package writes it. Exit 1 with nothing stamped on any failure.
 win_package_put() {
   local archive="$1" pkg="$WIN_REPO\\asbl\\target\\package" sha files commit vm short remote_tar out t0
   t0=$(date +%s)
@@ -1317,6 +1318,14 @@ PS
 )
   [ "$(sed -n 's/^FILES //p' <<< "$out" | tail -1)" = "$files" ] ||
     { echo "FAIL  the package unpacked on VM $WIN_VM: $(grep -E '^(FAIL|FILES)' <<< "$out" | tail -1) (the pack's: $files files)"; return 1; }
+  # The parent POMs, as pack-prepare-for-e2e.bat and the Linux lane's maven_setup install them: the Electron lane's server
+  # start (custom:compile-and-stage-backend-jars) builds bkend/common, reporting and server one by one, outside the
+  # reactor, and each resolves its parent rb-product-DataPallas of this version from the VM's Maven repository. A VM that
+  # only took copies has there the parents of its own last build: 16.6.4's first round on 2 VMs found 16.6.2's on VM b,
+  # whose Electron light set then stopped in Maven before any test ("rb-product-DataPallas:pom:16.6.4 ... absent").
+  WIN_RUN_TIMEOUT=1800 win_run package-poms "$WIN_REPO" \
+    'mvn -B -ntp install -f xtra-tools/bild/common-scripts/maven/pom.xml && call mvn -B -ntp install -N -f pom.xml' ||
+    { echo "FAIL  the parent POMs of $short not installed on VM $WIN_VM (step package-poms, above)"; return 1; }
   win_ssh ">\"$pkg\\.built-from\" echo $short" >/dev/null 2>&1 || { echo "FAIL  could not write the stamp on VM $WIN_VM"; return 1; }
   echo "WIN_E2E_PACKAGE=copied from the pack ($short): $files files, sha256 ${sha:0:16}..., took=$(( $(date +%s) - t0 ))s"
 }
