@@ -92,6 +92,8 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
   const [cubeSqlError, setCubeSqlError] = useState<string | null>(null);
   /** The cube whose saved selection has already been put back into the tree: once per load. */
   const restoredFor = useRef("");
+  /** How many selections the tree has asked SQL for: only the newest one's answer is taken. */
+  const selectionsAsked = useRef(0);
 
   // Fetch cubes once and filter by current connectionId.
   useEffect(() => {
@@ -216,6 +218,10 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
       // it (`cube-selection.ts`). An empty tree is not a question.
       const reported = selectionOfEvent(e);
       if (!reported) return;
+      // Two selections close together (a sort clicked, then a limit typed) ask for their SQL at
+      // once, and the server may answer the older one last: taken as it came, that answer put the
+      // older question back on the widget, the rows uncut (M70). So only the newest one counts.
+      const asking = ++selectionsAsked.current;
       const selection = reported.selection;
       // The cube the renderer is showing travels with the selection, so a file of several
       // cubes generates SQL for the one on screen — and a saved canvas keeps it.
@@ -254,6 +260,8 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
             cubeName,
           );
         }
+        // A newer selection was made while this SQL was being generated: its answer is the one taken.
+        if (asking !== selectionsAsked.current) return;
         const asked: CubeSelection = bindings?.length
           ? { ...selection, paramBindings: bindings }
           : selection;
@@ -269,7 +277,9 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
       } catch (err) {
         // What the server said, under the picker: a cube that cannot answer names the member and
         // what is wrong with it, and silence left the widget showing the previous SQL's rows with
-        // nothing to explain why the new tick changed nothing.
+        // nothing to explain why the new tick changed nothing. An older selection's refusal is not
+        // the newest one's.
+        if (asking !== selectionsAsked.current) return;
         setCubeSqlError(err instanceof Error ? err.message : "Failed to generate SQL");
       }
     };
