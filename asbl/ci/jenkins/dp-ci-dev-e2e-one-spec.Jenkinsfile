@@ -1,5 +1,6 @@
 // Job datapallas/dp-ci-dev-e2e-one-spec: the fix-and-retry loop, dp-ci.sh e2e-loop: one spec file, or some of its tests, on web or
-// electron-linux, never a package rebuild (E2E_PACKAGE says what happens to the package). Never counts for a release.
+// electron-linux, never a package rebuild (E2E_PACKAGE says what happens to the package), or on a production-packaged lane
+// (docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron), as the nightly runs them. Never counts for a release.
 // The work is the plain script asbl/ci/jenkins/one-spec.sh, run on the host over SSH exactly as it is run by hand (the
 // parameters are its environment); this file only starts it, shows its log and its reports, and pauses for a review. The
 // run is a detached container owned by the Docker daemon, so closing the browser or restarting Jenkins never stops it.
@@ -18,6 +19,17 @@ String firstLineStartingWith(String text, String prefix) {
     }
   }
   return ''
+}
+
+// lastLineStartingWith(<text>, <prefix>): the last such line, or '' (after a fix round the second run is the verdict)
+String lastLineStartingWith(String text, String prefix) {
+  String found = ''
+  for (String line : text.readLines()) {
+    if (line.startsWith(prefix)) {
+      found = line
+    }
+  }
+  return found
 }
 
 // fixCall(<fix-round.sh arguments, shell words>): one short SSH call to fix-round.sh on the host, its output in the
@@ -70,6 +82,8 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC")
               String out = fileExists('one-spec.out') ? readFile('one-spec.out') : ''
               env.ONE_SPEC_RUN_FOLDER = firstLineStartingWith(out, 'ONE_SPEC_RUN_FOLDER=').replaceFirst('^ONE_SPEC_RUN_FOLDER=', '')
               env.ONE_SPEC_FIX_WAITS = (env.ONE_SPEC_RUN_FOLDER && firstLineStartingWith(out, 'FIX_ROUND state=waiting ')) ? 'yes' : ''
+              // the last run's Playwright JSON report: its JUnit XML and HTML folder are named after it, on every target
+              env.ONE_SPEC_JSON = lastLineStartingWith(out, 'ONE_SPEC_JSON=').replaceFirst('^ONE_SPEC_JSON=', '')
               String result = firstLineStartingWith(out, 'ONE_SPEC_RESULT=')
               if (result) {
                 currentBuild.description = result.replaceFirst('^ONE_SPEC_RESULT=', '')
@@ -83,7 +97,10 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC")
             sh '''#!/bin/bash
 rm -rf reports; mkdir -p reports
 q() { printf '%q' "$1"; }
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/jenkins/pull-reports.sh $REPORT_PATHS" | tar xzf - -C reports || echo "Reports: nothing pulled"
+# the run's reports, named after its JSON report (a packaged Windows lane's too); else, as before, after the newest run log
+paths="$REPORT_PATHS"
+[ -z "$ONE_SPEC_JSON" ] || paths="$(q "${ONE_SPEC_JSON%.json}.xml") $(q "${ONE_SPEC_JSON%.json}-html")"
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/jenkins/pull-reports.sh $paths" | tar xzf - -C reports || echo "Reports: nothing pulled"
 # the run's files are named after its log (<ts>-e2e-<sha>-playwright...): give them the fixed names the publishers need
 for f in reports/*-playwright.xml; do [ -e "$f" ] && mv "$f" reports/playwright.xml; done
 for d in reports/*-playwright-html; do [ -e "$d" ] && rm -rf reports/playwright-html && mv "$d" reports/playwright-html; done

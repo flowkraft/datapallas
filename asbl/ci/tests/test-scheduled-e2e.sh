@@ -8,6 +8,8 @@
 #     server lane's part, the Electron-only file in the desktop's part);
 #   - each reason to skip (the CI busy, an unreadable busy check, a night still going), and the wrong inputs; a skipped,
 #     dry or stopped night leaves its pair next, a night that ran (green or red) moves the rotation on;
+#   - the switch: on by default; off and on (who, since; a dry one writes nothing); a timed night while off does nothing
+#     and leaves the rotation as it was; a press with off only switches, with on switches on and runs (here: skipped busy);
 #   - the builds: f9624daf to 02af0216 (CI and tests only) builds nothing; 3f5c21f0 to 889001e6 builds only the Windows
 #     pack, so a Windows server night packs again; bc6ee866 to d3ffd94b (product code) builds the image; none here builds;
 #   - the clean-up on a scratch LOG_DIR with dated folders: only the HTML reports older than 14 days go, nothing in evidence/
@@ -212,6 +214,35 @@ check "DRY_RUN must be yes or no (exit 2)" bash -c 'DRY_RUN=maybe bash "$0" star
 check "who starts it is required (exit 2)" bash -c 'SCHEDULED_STARTED_BY= bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
 rm -f "$LOG_DIR/scheduled-e2e-rotation"
 
+echo "---- the switch: on and off ----"
+SW="$LOG_DIR/scheduled-e2e-switch"
+check "never switched: on by default (plan, status)" bash -c 'bash "$0" plan 2>&1 | grep -qx "SWITCH  on (never switched: on by default)" &&
+  bash "$0" status | grep -q " switch=on"' "$NIGHT_SCRIPT"
+check "off needs who switches (exit 2)" bash -c 'SCHEDULED_STARTED_BY= bash "$0" off >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
+check "a dry off writes nothing" bash -c 'DRY_RUN=yes bash "$0" off | grep -q "^WOULD   switch the nights off" && [ ! -e "$1" ]' "$NIGHT_SCRIPT" "$SW"
+check "off: its line, since when, by whom" bash -c 'SCHEDULED_STARTED_BY=alice bash "$0" off | grep -qP "^SWITCH  off since \d{4}-\d\d-\d\dT[\d:]+Z, by alice$"' "$NIGHT_SCRIPT"
+before=$(ls "$RUN_RECORD_DIR" | wc -l); pair_before=$(next_pair); rm -f "$STUB/busy-calls"
+t0=$SECONDS; out=$(night start); rc=$?
+check "a timed night while off: exit 0 at once, OFF since when and by whom" bash -c '[ "$0" = 0 ] && [ "$2" -le 5 ] &&
+  grep -qP "^OFF     off since \S+, by alice: no night " <<< "$1"' "$rc" "$out" "$((SECONDS - t0))"
+check "  no night folder, the rotation as it was" bash -c '[ "$(ls "$0" | wc -l)" = "$1" ] && [ "$2" = "$3" ]'   "$RUN_RECORD_DIR" "$before" "$pair_before" "$(next_pair)"
+check "  status shows the switch" has " switch=off" "$(night status)"
+check "RUN_EVERY_NIGHT must be on or off (exit 2)" bash -c 'RUN_EVERY_NIGHT=maybe bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
+echo "BUSY a test" > "$STUB/busy-answer"
+out=$(RUN_EVERY_NIGHT=on SCHEDULED_STARTED_BY=carol night start); rc=$?
+check "a press with on: on, by whom, then the night's checks (here: the CI busy, skipped)" bash -c '[ "$0" = 0 ] &&
+  grep -qP "^SWITCH  on since \S+, by carol$" <<< "$1" && grep -q "^SKIPPED: the CI is busy: a test" <<< "$1" && grep -qx state=on "$2"' "$rc" "$out" "$SW"
+cp "$SW" "$SCRATCH/switch.before"; sleep 1
+RUN_EVERY_NIGHT=on SCHEDULED_STARTED_BY=dave night start >/dev/null
+check "  a press with on while on: the switch as it was (since, by)" cmp -s "$SW" "$SCRATCH/switch.before"
+rm -f "$STUB/busy-answer"
+out=$(RUN_EVERY_NIGHT=off SCHEDULED_STARTED_BY=bob night start); rc=$?
+check "a press with off: off, by whom, nothing run" bash -c '[ "$0" = 0 ] && grep -qP "^SWITCH  off since \S+, by bob$" <<< "$1" &&
+  grep -q "^OFF     the nights are off from now, by bob" <<< "$1" && [ "$(ls "$2" | wc -l)" = "$3" ]' "$rc" "$out" "$RUN_RECORD_DIR" "$before"
+check "on: its line, by whom; status on" bash -c 'SCHEDULED_STARTED_BY=erin bash "$0" on | grep -qP "^SWITCH  on since \S+, by erin$" &&
+  bash "$0" status | grep -q " switch=on"' "$NIGHT_SCRIPT"
+rm -f "$SW" "$LOG_DIR/scheduled-e2e-rotation"
+
 echo "---- the clean-up of old HTML reports ----"
 mkdir -p "$LOG_DIR/20261001T000000Z-e2e-aaaa-playwright-html" "$LOG_DIR/win-docker-e2e-20261002T000000Z-playwright-html" \
   "$LOG_DIR/20261030T000000Z-e2e-bbbb-playwright-html" "$LOG_DIR/20260916T223230Z-evidence/x/old-playwright-html" \
@@ -248,7 +279,7 @@ check "  its lane's log as the part's log" bash -c 'grep -P "^part\tdocker-serve
 check "  in the orchestrator's format, a scheduled run that counts for no release" \
   bash -c 'grep -qx run_kind=scheduled "$0" && grep -qx step1=not-run "$0" && grep -qx kept= "$0" && grep -q "^pin=02af0216" "$0"' "$NIGHT/result.txt"
 check "  status: green, exit 0" bash -c 'out=$(bash "$0" status); [ $? = 0 ] &&
-  [[ "$out" == "NIGHT state=green night=2026-11-15-Sunday pair=1/16 sets=docker-server-part-1,docker-server-auth-authorization-server commit=02af0216 "* ]]' "$NIGHT_SCRIPT"
+  [[ "$out" == "NIGHT state=green switch=on night=2026-11-15-Sunday pair=1/16 sets=docker-server-part-1,docker-server-auth-authorization-server commit=02af0216 "* ]]' "$NIGHT_SCRIPT"
 check "  label" same "2026-11-15 Sunday, pair 1/16: docker-server-part-1 PASS, docker-server-auth-authorization-server PASS" "$(night label)"
 out=$(night follow); rc=$?
 check "  follow: the console to its end, exit 0" bash -c '[ "$0" = 0 ] && grep -q "NIGHT END result=green" <<< "$1" && [[ "$(tail -1 <<< "$1")" == "FOLLOW next="*" state=green ended=yes" ]]' "$rc" "$out"

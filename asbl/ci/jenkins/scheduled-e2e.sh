@@ -36,10 +36,17 @@
 #                   REBUILD_PACK=yes, the lane packs first
 #   A build checked here is checked again where the lane takes it (dp-ci.sh reuse_build_ok). A night after a CI- or
 #   test-only commit builds nothing. No lane here takes an e2e package: the packaged mode tests the shipped files.
+#   The lanes' builds and launchers are asbl/ci/jenkins/packaged-lane.sh, shared with one-spec.sh.
+#
+# THE SWITCH: the nights are on or off (<LOG_DIR>/scheduled-e2e-switch: state, since, by; no file: on). A timed night
+#   only reads it: while off it does nothing at all, not even the clean-up, and says "OFF off since <date>, by <who>".
+#   A press sets it (RUN_EVERY_NIGHT): on switches the nights on and runs one now, off switches them off and runs
+#   nothing. Off stays off until someone switches it on (on, or a press with on).
 #
 # SUBCOMMANDS
-#   start      first the clean-up (see clean), then the checks; then the night starts detached and this returns.
-#              Exit 5 started (a "log:" line), 0 skipped (SKIPPED: <why>), 2 a wrong input (nothing started). It skips:
+#   start      first the switch (THE SWITCH), then the clean-up (see clean), then the checks; then the night starts
+#              detached and this returns. Exit 5 started (a "log:" line), 0 skipped (SKIPPED: <why>) or off (OFF ...),
+#              2 a wrong input (nothing started). It skips:
 #              - while a night is still going, its fix round included when the night waits for it
 #                (fix-prove-then-rerun-automatically; the pid file below);
 #              - while the CI is busy: a dp-ci run, a Windows run, a release run, or a release round open until the
@@ -47,8 +54,10 @@
 #   follow [--from <byte>] [--for <seconds>]   the newest night's console from that byte; without --for, until the night's
 #              tests end (its NIGHT END line); with it, at most that long (the job's polls). The last line is
 #              FOLLOW next=<byte to go on from> state=<state> ended=<yes: the NIGHT END line is out, no>
-#   status     one line:  NIGHT state=<state> night=<date>-<day> pair=<k>/16 sets=<sets> commit=<commit> result=<its result.txt>
-#              [fix=<its fix round's state>]
+#   status     one line:  NIGHT state=<state> switch=on|off night=<date>-<day> pair=<k>/16 sets=<sets> commit=<commit>
+#              result=<its result.txt> [fix=<its fix round's state>]
+#   on|off     the nights switched on or off, by SCHEDULED_STARTED_BY (THE SWITCH); a night going goes on. Prints
+#              SWITCH <on|off> since <UTC>, by <who>
 #   label [<night folder>]   the build's label for the job's build list, of that night (the newest by default):
 #              "2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going"
 #   reports [<night folder>]   the report files of that night (the newest by default), as its result.txt lists them:
@@ -60,8 +69,8 @@
 #   fix status|wait|proceed|abort <night folder> [--for <seconds> | <who>]   the night's fix round (asbl/ci/jenkins/fix-round.sh,
 #              its header: the record and its states). proceed (only when its fix waits for review): that diff committed
 #              and pushed, then the night's pair runs first the next night. abort: nothing reaches main
-#   plan       the next 16 nights' pairs, in the order they run, then the next night's sets and each build's answer,
-#              reuse or rebuild. Runs nothing
+#   plan       the switch, the next 16 nights' pairs, in the order they run, then the next night's sets and each
+#              build's answer, reuse or rebuild. Runs nothing
 #   clean      the Playwright HTML reports older than 14 days go: the *-playwright-html folders at the top of LOG_DIR,
 #              never anything under evidence/, runs/, release-artifacts/ or another folder, and no log or report file
 #   help       this header
@@ -81,7 +90,9 @@
 #                       With no fixer set, both fix values act as report-only and say so
 #   DRY_RUN [no]        yes: the night prints each set's builds and the command it would run, and runs, builds and starts
 #                       nothing (the fixer gets DRY_RUN=yes); clean only lists
-#   SCHEDULED_STARTED_BY   REQUIRED by start: who starts it (the job passes its build's cause, "Started by timer" at night)
+#   RUN_EVERY_NIGHT [empty: a timed night]   on|off: a press's switch (THE SWITCH); the job passes it on a press only
+#   SCHEDULED_STARTED_BY   REQUIRED by start, on and off: who starts it or switches (the job passes its build's cause,
+#                       "Started by timer" at night)
 #   STOP_BY [someone]   for stop: who stops it, written in the night's log and state (a release press, a build's Abort)
 #   LOG_DIR [/var/kraft-internalsystems/logs/datapallas-ci], RUN_RECORD_DIR [<LOG_DIR>/runs],
 #   RELEASE_ARTIFACTS_DIR [<LOG_DIR>/release-artifacts], RELEASE_REHEARSAL_CONF [/root/release-rehearsal.conf]
@@ -112,6 +123,7 @@
 #   SCHEDULED_STARTED_BY=<name> DRY_RUN=yes bash asbl/ci/jenkins/scheduled-e2e.sh start
 #   bash asbl/ci/jenkins/scheduled-e2e.sh plan                       # the next 16 pairs, the next night's builds
 #   SCHEDULED_STARTED_BY=<name> ON_FAILURES=report-only bash asbl/ci/jenkins/scheduled-e2e.sh start
+#   SCHEDULED_STARTED_BY=<name> bash asbl/ci/jenkins/scheduled-e2e.sh off  # no nights until switched on again
 #   bash asbl/ci/jenkins/scheduled-e2e.sh follow
 #   DRY_RUN=yes bash asbl/ci/jenkins/scheduled-e2e.sh clean
 #
@@ -133,8 +145,8 @@ ON_FAILURES="${ON_FAILURES:-fix-prove-then-wait-for-review}"
 DRY_RUN="${DRY_RUN:-no}"
 NIGHT_PID="$LOG_DIR/scheduled-e2e.pid"   # release-rehearsal.sh reads it: a night going is stopped before a release
 ROTATION_FILE="$LOG_DIR/scheduled-e2e-rotation"   # next=<1-16>: the pair the next night runs
-WIN_PID="$LOG_DIR/win-e2e.pid"           # win-e2e.sh's one pid file for every Windows lane
-DOCKER_SERVER_BUNDLE="$REPO/frend/reporting/testground/docker-server/DataPallas"   # dp-ci.sh docker_server_up's folder
+SWITCH_FILE="$LOG_DIR/scheduled-e2e-switch"       # state=on|off since= by=: the nights' switch (no file: on)
+RUN_EVERY_NIGHT="${RUN_EVERY_NIGHT:-}"
 HTML_REPORTS_KEPT_DAYS=14                # the plan's design: old HTML reports go, so the disk stays free
 FIX_ROUND="${SCHEDULED_FIX_ROUND:-bash asbl/ci/jenkins/fix-round.sh}"
 
@@ -144,7 +156,6 @@ print_header() { sed -n '2,/^set -uo pipefail$/p' "$SELF" | sed '$d'; }
 usage() { print_header; exit 2; }
 
 # ---- the rotation: the pair a night runs, its sets, and what each set takes ----
-PACKAGED_LANES=(docker-server windows-vm-docker windows-vm-server windows-vm-electron)
 ROTATION_PAIRS=16
 AUTH_SPEC=specs/features/auth-authorization-server.spec.ts               # server lanes only, alone after the part
 UPDATE_SPEC=specs/features/let-me-update-migrate-configuration.spec.ts   # the desktop only, with the part
@@ -189,82 +200,13 @@ set_spec_files() {
     *)            echo "$AUTH_SPEC" ;;
   esac
 }
-# set_builds <set>: the build its lane takes in production-packaged mode (release-rerun.sh's part_builds)
-set_builds() {
-  case "$(set_lane "$1")" in
-    docker-server|windows-vm-docker) echo image-and-zips ;;
-    *)                               echo windows-pack ;;
-  esac
-}
-set_machine() { case "$1" in windows-*) echo windows-vm ;; *) echo host ;; esac; }
-# lane_vm_steps <lane>: the VM's scheduled tasks (dp-ci-<step>) its packaged run starts: a pack first when REBUILD_PACK=yes
-lane_vm_steps() {
-  case "$1" in
-    windows-vm-docker)   echo docker-e2e ;;
-    windows-vm-server)   echo "release-pack server-e2e dp-server" ;;
-    windows-vm-electron) echo "release-pack desktop-e2e" ;;
-  esac
-}
-
-# newest_kept_pack: the newest kept folder holding a Windows pack (its MANIFEST has windows.file lines), or nothing
-newest_kept_pack() {
-  local dir
-  for dir in $(ls -1dt "$RELEASE_ARTIFACTS_DIR"/*/ 2>/dev/null); do
-    grep -q '^windows\.file=' "$dir/MANIFEST.txt" 2>/dev/null && { echo "${dir%/}"; return 0; }
-  done
-}
-# build_origin <build> <set>: "<commit> <what it is>" of the build that set would take, or "- <why there is none>"
-build_origin() {
-  local f tag commit dir
-  case "$1/$2" in
-    image-and-zips/*)
-      for f in $(ls -1 "$LOG_DIR"/*-build-*.log 2>/dev/null | sort -r); do
-        grep -aq '^PIPELINE_RESULT=SUCCESS' "$f" || continue
-        tag=$(grep -aoP '^IMAGE_TAG=\K\S+' "$f" | tail -1)
-        [ -n "$tag" ] && { echo "${tag#*-} the build $tag ($f)"; return; }
-      done
-      echo "- no successful build log in $LOG_DIR" ;;
-    windows-pack/*)
-      dir=$(newest_kept_pack)
-      if [ -n "$dir" ]; then echo "$(sed -n 's/^commit=//p' "$dir/MANIFEST.txt" | head -1) the kept pack $dir"
-      else echo "- no kept folder in $RELEASE_ARTIFACTS_DIR holds a Windows pack"; fi ;;
-  esac
-}
-# build_answer <build> <set> <commit under test>: prints "BUILD <build>: reuse|rebuild ..." and sets BUILD_ANSWER
-build_answer() {
-  local from what answer why
-  read -r from what <<< "$(build_origin "$1" "$2")"
-  case "$from" in
-    -)       from="" ;;
-    *-dirty) what="$what (a build of a dirty tree is of no commit)" from="" ;;
-  esac
-  if [ -z "$from" ]; then
-    answer=rebuild why="none to reuse: $what"
-  else
-    reuse_or_rebuild "$from" "$3"
-    case "$1" in
-      image-and-zips) answer=$RR_IMAGE_AND_ZIPS why=$RR_WHY_IMAGE_AND_ZIPS ;;
-      windows-pack)   answer=$RR_WINDOWS_PACK why=$RR_WHY_WINDOWS_PACK ;;
-    esac
-    if [ -n "$RR_NOTE" ]; then answer=rebuild why="the rule cannot answer: $RR_NOTE"
-    elif [ "$answer" = reuse ]; then why="$what, built from ${from:0:8}: nothing it ships changed since"
-    else why="$what, built from ${from:0:8}: it ships what changed since: $why"; fi
-  fi
-  BUILD_ANSWER=$answer
-  echo "BUILD   $1: $answer ($why)"
-}
-# shellcheck source=../reuse-or-rebuild.sh
-. asbl/ci/reuse-or-rebuild.sh
 # shellcheck source=run-result.sh
 . asbl/ci/jenkins/run-result.sh
+# the lanes: their builds and their launchers, shared with one-spec.sh
+LANE_DP_CI="$SCHEDULED_DP_CI" LANE_FOLLOW_CI="$SCHEDULED_FOLLOW_CI" LANE_COMMIT="${SCHEDULED_COMMIT:-}"
+# shellcheck source=packaged-lane.sh
+. asbl/ci/jenkins/packaged-lane.sh
 
-# commit_under_test: origin/main fetched, as the lanes' own sync takes it (HEAD when this checkout is ahead); a dry run
-# fetches nothing; SCHEDULED_COMMIT replaces it
-commit_under_test() {
-  if [ -n "${SCHEDULED_COMMIT:-}" ]; then git rev-parse --verify -q "$SCHEDULED_COMMIT^{commit}"; return; fi
-  [ "$DRY_RUN" = yes ] || git fetch -q origin || return 1
-  if git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then git rev-parse origin/main; else git rev-parse HEAD; fi
-}
 
 # ---- the night's folder ----
 newest_night() { ls -1d "$RUN_RECORD_DIR"/*-scheduled-e2e/ 2>/dev/null | sort | tail -1 | sed 's#/$##'; }
@@ -289,75 +231,30 @@ night_state() {
 exit_code_of_state() { case "$1" in green) echo 0 ;; red|fixing) echo 1 ;; stopped) echo 4 ;; running) echo 5 ;; *) echo 2 ;; esac; }
 status_line() {
   local dir="$1"
-  [ -n "$dir" ] || { echo "NIGHT state=none: no night yet"; return; }
-  echo "NIGHT state=$(night_state "$dir") night=$(state_get "$dir" night | tr ' ' '-') pair=$(state_get "$dir" pair)/$ROTATION_PAIRS sets=$(state_get "$dir" sets | tr ' ' ',') commit=$(state_get "$dir" commit | cut -c1-8) result=$dir/result.txt$([ ! -f "$dir/fix-round.state" ] || echo " fix=$(sed -n 's/^state=//p' "$dir/fix-round.state" | tail -1)")"
+  [ -n "$dir" ] || { echo "NIGHT state=none switch=$(switch_state): no night yet"; return; }
+  echo "NIGHT state=$(night_state "$dir") switch=$(switch_state) night=$(state_get "$dir" night | tr ' ' '-') pair=$(state_get "$dir" pair)/$ROTATION_PAIRS sets=$(state_get "$dir" sets | tr ' ' ',') commit=$(state_get "$dir" commit | cut -c1-8) result=$dir/result.txt$([ ! -f "$dir/fix-round.state" ] || echo " fix=$(sed -n 's/^state=//p' "$dir/fix-round.state" | tail -1)")"
 }
 
 # ---- one set ----
-# what_set_starts <set>: what it starts that outlives this script's processes, one "<kind> TAB <name> TAB <what>" line
-# each, as release-orchestrator.sh's what_part_starts names them
-what_set_starts() {
-  local lane; lane=$(set_lane "$1")
-  case "$lane" in
-    docker-server) printf 'container\tdp-ci\tthe run container of dp-ci.sh\ncompose\t%s\tthe docker-server bundle under test\n' "$DOCKER_SERVER_BUNDLE" ;;
-    *)             printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh\nvm\t%s\tthe VM steps: %s\n' "$WIN_PID" "$lane" "$(lane_vm_steps "$lane")" ;;
-  esac
-}
-# run_set <night folder> <n> <of> <set> <commit>: the set's builds, then its lane through follow-ci.sh; its .rc and its
-# part line (SET_LINE). Returns the lane's exit code
+# run_set <night folder> <n> <of> <set> <commit>: its lane run (packaged-lane.sh: its build, then its launcher through
+# follow-ci.sh); its .rc and its part line (SET_LINE). Returns the lane's exit code
 run_set() {
-  local dir="$1" n="$2" of="$3" set="$4" under="$5" build reuse="" kept="" rebuild_pack=no lane_env launcher pidfile link
-  local lane files spec="" t0 rc log json kind name what why=""
+  local dir="$1" n="$2" of="$3" set="$4" under="$5" lane files spec kind name what
+  lane=$(set_lane "$set")
   say "SET $n/$of START $set"
   state_set "$dir" set="$set"
   while IFS=$'\t' read -r kind name what; do
     [ -n "$kind" ] && printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(now)" "$set" "$kind" "$name" "$([ "$DRY_RUN" = yes ] && echo dry-run || echo real)" "$what" >> "$dir/started.txt"
-  done <<< "$(what_set_starts "$set")"
-  for build in $(set_builds "$set"); do
-    build_answer "$build" "$set" "$under"
-    case "$build/$BUILD_ANSWER" in
-      image-and-zips/reuse) reuse="${reuse:+$reuse }$build" ;;
-      image-and-zips/rebuild)
-        if [ "$DRY_RUN" = yes ]; then echo "WOULD   $SCHEDULED_DP_CI build-if-needed"
-        elif ! $SCHEDULED_DP_CI build-if-needed; then why="the build failed (dp-ci.sh build-if-needed, above)"; fi ;;
-      windows-pack/reuse)   kept=$(newest_kept_pack) ;;
-      windows-pack/rebuild) kept=$(newest_kept_pack) rebuild_pack=yes ;;
-    esac
-  done
-  files=$(set_spec_files "$set") && spec=$(python3 asbl/ci/full-set-runners.py spec $files) ||
-    why="${why:-its spec files could not be read (asbl/ci/full-set-runners.py, above)}"
-  lane=$(set_lane "$set")
-  lane_env=(E2E_MODE=production-packaged E2E_SPEC="$spec")
-  case "$lane" in
-    docker-server)
-      lane_env+=(E2E_TARGET=docker-server) launcher=(bash asbl/ci/dp-ci.sh e2e)
-      pidfile="" link="$LOG_DIR/latest.log" ;;
-    *)
-      launcher=(bash asbl/ci/jenkins/win-e2e.sh "$(case "$lane" in windows-vm-docker) echo docker-e2e ;; windows-vm-server) echo server-e2e ;; *) echo e2e ;; esac)")
-      [ "$(set_builds "$set")" != windows-pack ] || lane_env+=(RELEASE_KEPT="$kept" REBUILD_PACK="$rebuild_pack")
-      case "$set" in *-part-*) lane_env+=(WIN_RUN_TIMEOUT="$WINDOWS_PART_TIMEOUT") ;; esac
-      pidfile="$WIN_PID" link="$LOG_DIR/win-e2e-latest.log" ;;
-  esac
-  lane_env+=(E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE= E2E_PACKAGE= E2E_DOCKER_FROM_URL= E2E_DOCKER_ONE_COMMAND=
-             E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD= E2E_BUILD_IMAGE_FILE= FOLLOW_PIDFILE="$pidfile")
-  if [ -n "$why" ]; then rc=1 log=""
-  elif [ "$DRY_RUN" = yes ]; then
-    echo "WOULD   $(printf '%q ' "${lane_env[@]}")bash asbl/ci/jenkins/follow-ci.sh run ${launcher[*]}"; rc=0 log=""
+  done <<< "$(what_lane_starts "$lane")"
+  if files=$(set_spec_files "$set") && spec=$(python3 asbl/ci/full-set-runners.py spec $files); then
+    run_packaged_lane "$lane" "$spec" "" 1 "$(case "$set" in windows-*-part-*) echo "$WINDOWS_PART_TIMEOUT" ;; esac)" "$under"
   else
-    t0=$(date +%s)
-    env "${lane_env[@]}" $SCHEDULED_FOLLOW_CI run "${launcher[@]}"; rc=$?
-    log=$(newest_log_since "$link" "$t0")
-    [ "$rc" = 0 ] || why="rc=$rc"
+    LANE_RC=1 LANE_LOG="" LANE_JSON="" LANE_WHY="its spec files could not be read (asbl/ci/full-set-runners.py, above)"
   fi
-  echo "$rc" > "$dir/$set.rc"
-  case "$set" in
-    windows-*) json=$([ -n "$log" ] && grep -aoP '^WIN_E2E_REPORT=\K\S+' "$log" | tail -1)
-               [ -n "$json" ] || json="${log:+${log%.log}-step-playwright.json}" ;;
-    *)         json="${log:+${log%.log}-playwright.json}" ;;
-  esac
-  SET_LINE=$(part_line "$set" "$(set_machine "$set")" "$rc" "${log:-$dir/run.log}" "$json" "$why")
-  say "SET $n/$of END $set rc=$rc${log:+ log $log}"
-  return "$rc"
+  echo "$LANE_RC" > "$dir/$set.rc"
+  SET_LINE=$(part_line "$set" "$(lane_machine "$lane")" "$LANE_RC" "${LANE_LOG:-$dir/run.log}" "$LANE_JSON" "$LANE_WHY")
+  say "SET $n/$of END $set rc=$LANE_RC${LANE_LOG:+ log $LANE_LOG}"
+  return "$LANE_RC"
 }
 
 # write_result <night folder> <green|red> <part lines>: result.txt and flaky.txt, as the release orchestrator writes them
@@ -476,6 +373,31 @@ clean_html_reports() {
   echo "CLEAN   $found Playwright HTML report(s) older than $HTML_REPORTS_KEPT_DAYS days $([ "$DRY_RUN" = yes ] && echo "would go (dry run)" || echo gone) (the top of $LOG_DIR only)"
 }
 
+# ---- the nights' switch ----
+switch_get() { sed -n "s/^$1=//p" "$SWITCH_FILE" 2>/dev/null | tail -1; }
+switch_state() { [ "$(switch_get state)" = off ] && echo off || echo on; }
+switch_line() {
+  if [ ! -f "$SWITCH_FILE" ]; then echo "SWITCH  on (never switched: on by default)"
+  else echo "SWITCH  $(switch_state) since $(switch_get since), by $(switch_get by)"; fi
+}
+# switch_set on|off <who>: the switch written in one move (a dry run prints it, writes nothing), then its line
+switch_set() {
+  local tmp
+  if [ "$DRY_RUN" = yes ]; then echo "WOULD   switch the nights $1 (by $2)"; return 0; fi
+  tmp=$(mktemp "$SWITCH_FILE.XXXXXX") || return 1
+  printf 'state=%s\nsince=%s\nby=%s\n' "$1" "$(now)" "$2" > "$tmp" && mv -f "$tmp" "$SWITCH_FILE" || return 1
+  switch_line
+}
+# switch_cmd on|off: SCHEDULED_STARTED_BY switches the nights; a night going is not stopped (stop does that)
+switch_cmd() {
+  local who="${SCHEDULED_STARTED_BY:-}"
+  case "$DRY_RUN" in yes|no) ;; *) echo "FAIL  DRY_RUN must be yes or no (got '$DRY_RUN')"; exit 2 ;; esac
+  [ -n "$who" ] || { echo "MISSING SCHEDULED_STARTED_BY: who switches the nights"; exit 2; }
+  switch_set "$1" "$who" || { echo "FAIL  cannot write $SWITCH_FILE"; exit 2; }
+  [ "$1" = on ] || ! night_process_alive || echo "a night is going: it goes on (bash asbl/ci/jenkins/scheduled-e2e.sh stop stops it)"
+  exit 0
+}
+
 start_night() {
   local who night date pair sets dir out
   [ "$ON_FAILURES" != fix ] || ON_FAILURES=fix-prove-then-wait-for-review   # the old job's value: a fix pushed only after a proceed
@@ -485,6 +407,17 @@ start_night() {
   case "$DRY_RUN" in yes|no) ;; *) echo "FAIL  DRY_RUN must be yes or no (got '$DRY_RUN')"; exit 2 ;; esac
   who="${SCHEDULED_STARTED_BY:-}"
   [ -n "$who" ] || { echo "MISSING SCHEDULED_STARTED_BY: who starts this night (the job passes its build's cause)"; exit 2; }
+  # the switch (D11): a timed night only reads it; a press with on switches the nights on and runs one, with off only
+  # switches them off. While off, a timed night does nothing at all
+  case "$RUN_EVERY_NIGHT" in
+    "")  if [ "$(switch_state)" = off ]; then
+           echo "OFF     off since $(switch_get since), by $(switch_get by): no night (on again: a press with RUN_EVERY_NIGHT=on, or scheduled-e2e.sh on)"; exit 0
+         fi ;;
+    on)  [ "$(switch_state)" = on ] || switch_set on "$who" || { echo "FAIL  cannot write $SWITCH_FILE"; exit 2; } ;;
+    off) switch_set off "$who" || { echo "FAIL  cannot write $SWITCH_FILE"; exit 2; }
+         echo "OFF     the nights are off from now, by $who: no night (on again: a press with RUN_EVERY_NIGHT=on, or scheduled-e2e.sh on)"; exit 0 ;;
+    *)   echo "FAIL  RUN_EVERY_NIGHT must be on or off, or empty for a timed night (got '$RUN_EVERY_NIGHT')"; exit 2 ;;
+  esac
   clean_html_reports
   if night_process_alive; then
     dir=$(newest_night)
@@ -647,7 +580,8 @@ plan_night() {
   [ "$#" = 0 ] || usage
   place=$(rotation_place) red_first=$(rotation_value first)
   under=$(DRY_RUN=yes commit_under_test) || { echo "FAIL  no commit under test"; exit 2; }
-  echo "PLAN    the next $ROTATION_PAIRS nights, in the order they run (a skipped night leaves its pair next), on ${under:0:8}"
+  switch_line
+  echo "PLAN    the next $ROTATION_PAIRS nights, in the order they run (a skipped or off night leaves its pair next), on ${under:0:8}"
   pairs=$(for n in $(seq 0 $((ROTATION_PAIRS - 1))); do echo $(((place + n - 1) % ROTATION_PAIRS + 1)); done)
   [ -z "$red_first" ] || pairs=$(printf '%s\n%s\n' "$red_first" "$pairs" | head -n "$ROTATION_PAIRS")
   n=0
@@ -657,8 +591,8 @@ plan_night() {
       "$([ "$n" = 1 ] && [ -n "$red_first" ] && echo " (again: its fix is on main)")"
   done
   for set in $(pair_sets "$(rotation_next)"); do
-    echo "SET     the next night's $set ($(set_machine "$set")): $(set_spec_files "$set" | grep -c .) spec file(s)"
-    for build in $(set_builds "$set"); do build_answer "$build" "$set" "$under"; done
+    echo "SET     the next night's $set ($(lane_machine "$(set_lane "$set")")): $(set_spec_files "$set" | grep -c .) spec file(s)"
+    for build in $(lane_builds "$(set_lane "$set")"); do build_answer "$build" "$under"; done
   done
 }
 
@@ -688,6 +622,7 @@ case "$cmd" in
   stop)    stop_night ;;
   plan)    plan_night "$@" ;;
   fix)     night_fix "$@" ;;
+  on|off)  switch_cmd "$cmd" ;;
   clean)   case "$DRY_RUN" in yes|no) ;; *) echo "FAIL  DRY_RUN must be yes or no"; exit 2 ;; esac; clean_html_reports ;;
   help|-h|--help) print_header ;;
   *) usage ;;
