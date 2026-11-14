@@ -584,6 +584,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `release-demos.sh` | on the host: job `dp-ci-release-step4-demo-public` (`DEMO=demo.datapallas.com`: `asbl/ci/demo-public/install-release.sh`), masked |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
 | `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`), `parameter-separator` (the group lines of the release round's form) and `uno-choice` (Active Choices: the live estimate under the form's Advanced choices) |
+| `init.groovy.d/location.groovy` | a Jenkins startup script, copied once into the Jenkins home's `init.groovy.d/` (see "Setting it up"): sets the Jenkins URL `https://jenkins.bkstg.flowkraft.com/` at every start, so build links and redirects use the public address behind the proxy |
 | `pull-reports.sh` | on the host: streams the report files of a run as a tar.gz, which the `Reports` stage of a Jenkinsfile unpacks into the build's workspace (see "Reports") |
 
 Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
@@ -693,6 +694,9 @@ Both are report only: nothing here gates a merge or a Jenkins build.
 4. **Seed job** (see "The seed job" below): the only job made by hand. Freestyle, named `seed`, source = this repository, branch `main`,
    one build step "Process Job DSLs" with `asbl/ci/jenkins/seed.groovy`. Run it after any change to the jobs.
 5. **Executors**: one on the built-in node, so only one build runs at a time.
+6. **Jenkins URL**: `init.groovy.d/location.groovy` copied into the Jenkins home, then Jenkins restarted:
+   `docker cp asbl/ci/jenkins/init.groovy.d/location.groovy ints-jenkins:/var/jenkins_home/init.groovy.d/location.groovy`
+   (done 2026-10-03; the file in this folder since 2026-11-14).
 
 ## Which build an e2e tests
 
