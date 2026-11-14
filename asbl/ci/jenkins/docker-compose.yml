@@ -1,0 +1,28 @@
+# The Jenkins of the DataPallas CI (container ints-jenkins, https://jenkins.bkstg.flowkraft.com behind the proxy and
+# Authelia). The live copy is /var/kraft-internalsystems/apps/program-files/custom-jenkins/docker-compose.yml on the
+# host; Jenkins' data (jobs, builds, credentials) is the home folder mounted below, never in git.
+# After a change here: copy it over the live file, then in that folder `docker compose up -d --force-recreate` when
+# no build runs (asbl/ci/jenkins/jenkins.md, "Setting it up").
+# - image: pinned, so a restart never upgrades Jenkins by itself;
+# - the two time files: the build times and the timer (cron) in the host's time zone;
+# - JAVA_OPTS: the CSP that lets the published HTML reports (Playwright, Javadoc, Compodoc, Swagger UI) run their
+#   scripts (jenkins.md, "One-time steps for the owner", step 2);
+# - the network: the host's bridge, so jobs reach the host over SSH at its gateway 172.19.0.1.
+services:
+  ints-jenkins:
+    image: jenkins/jenkins:2.580.1-lts-jdk21
+    container_name: ints-jenkins
+    volumes:
+      - /var/kraft-internalsystems/apps/cvs/custom-jenkins/home:/var/jenkins_home
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    environment:
+      - "JAVA_OPTS=-Dhudson.model.DirectoryBrowserSupport.CSP=\"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; worker-src 'self' blob:\""
+    networks:
+      - bridge_current_host_cross_containers_net
+
+networks:
+  bridge_current_host_cross_containers_net:
+    driver: bridge
+    external: true

@@ -584,11 +584,13 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `release-demos.sh` | on the host: job `dp-ci-release-step4-demo-public` (`DEMO=demo.datapallas.com`: `asbl/ci/demo-public/install-release.sh`), masked |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
 | `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`), `parameter-separator` (the group lines of the release round's form) and `uno-choice` (Active Choices: the live estimate under the form's Advanced choices) |
+| `docker-compose.yml` | the Jenkins container itself (`ints-jenkins`: the pinned image, the time files, the CSP for the HTML reports, the host's bridge network); its live copy is `apps/program-files/custom-jenkins/docker-compose.yml` on the host (see "Setting it up") |
 | `init.groovy.d/location.groovy` | a Jenkins startup script, copied once into the Jenkins home's `init.groovy.d/` (see "Setting it up"): sets the Jenkins URL `https://jenkins.bkstg.flowkraft.com/` at every start, so build links and redirects use the public address behind the proxy |
 | `pull-reports.sh` | on the host: streams the report files of a run as a tar.gz, which the `Reports` stage of a Jenkinsfile unpacks into the build's workspace (see "Reports") |
 
-Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
-file, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials included), never edited by hand.
+Nothing else is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the live copy of
+`docker-compose.yml` above, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials included), never edited
+by hand (except the copy of `init.groovy.d/location.groovy` in it).
 
 ## Reports
 
@@ -686,6 +688,8 @@ Both are report only: nothing here gates a merge or a Jenkins build.
 
 ## Setting it up
 
+0. **The container**: `docker-compose.yml` in this folder, copied to `/var/kraft-internalsystems/apps/program-files/custom-jenkins/docker-compose.yml`,
+   then `docker compose up -d --force-recreate` in that folder, when no build runs (the file in this folder since 2026-11-14).
 1. **Job DSL plugin** installed (done 2026-10-03).
 2. **Service user and API token**: user `ci-agent`; its token is in the root-only file `/root/jenkins-ci.env`
    on the host (done).
