@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { randomBytes } from 'crypto';
 import * as jetpack from 'fs-jetpack';
+import * as path from 'path';
 
 import { FluentTester } from '../../helpers/fluent-tester';
 import helpers from '../../upgrade/updater.helpers';
@@ -23,7 +24,8 @@ test.describe('', async () => {
       // the installation under test: testground/e2e in dev, the unzipped datapallas.zip in production-packaged
       helpers.updateDestinationDirectoryPath = PATHS.EXECUTABLE_DIR_PATH;
 
-      const UPGRADE_DIR = 'testground/upgrade';
+      // beside it: the app takes the folder typed as 'playwright/' for <its folder's parent>/upgrade/baseline/DocumentBurster
+      const UPGRADE_DIR = path.join(path.dirname(PATHS.EXECUTABLE_DIR_PATH), 'upgrade');
 
       await jetpack.dirAsync(UPGRADE_DIR, { empty: true });
 
