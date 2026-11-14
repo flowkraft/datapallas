@@ -1,5 +1,5 @@
 #!/bin/bash
-# The fix round of a red nightly or one-spec run (asbl/ci/jenkins/fix-round.sh) with a stub fixer and a scratch git origin:
+# The fix round of a red nightly or by-hand run (asbl/ci/jenkins/fix-round.sh) with a stub fixer and a scratch git origin:
 # the script runs from a scratch clone of a scratch repository, so its proceed commits and pushes only there. The cases:
 #   - the wrong calls: no result.txt, a wrong kind, no fixer set, a second start on the same run;
 #   - review: start (the fixer told FIX_MODE=review), fixing while it runs, waiting once it is DONE with a diff, a dry

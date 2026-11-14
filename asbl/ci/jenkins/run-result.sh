@@ -1,4 +1,4 @@
-# Sourced, from the repository's root, by scheduled-e2e.sh and one-spec.sh: a run's result.txt and flaky.txt in the release
+# Sourced, from the repository's root, by scheduled-e2e.sh and e2e-by-hand.sh: a run's result.txt and flaky.txt in the release
 # orchestrator's format (asbl/ci/jenkins/release-orchestrator.sh, THE RUN FOLDER), so the fixer (fix-round.sh) and the jobs
 # read them as they read a release run's.
 

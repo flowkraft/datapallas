@@ -19,11 +19,10 @@ folder('datapallas') {
   description('DataPallas CI. Each job runs a plain script of the repository (asbl/ci) on the CI host, the same command as by hand. The jobs are defined in asbl/ci/jenkins/seed.groovy: change them there, not here. The guide: ' + guideUrl +
     '\n\nWhich job, and when (each job\'s own description says how, with examples):' +
     '\n  dp-ci-release-steps-0-3-rehearsal: a release in one press: steps 0 to 3 as a rehearsal, a fix round after a red run, until ready to upload (the upload stays a separate press)' +
-    '\n  dp-ci-dev-e2e-one-spec: after a fix: one spec file, or some of its tests, on web, electron-linux or a packaged lane' +
     '\n  dp-ci-dev-junit: after a Java change: one test class or method, or all' +
     '\n  dp-ci-dev-quality-report: any time: lint, bug finder, format, complexity; never blocks anything' +
-    '\n  dp-ci-dev-scheduled-e2e: by itself every night: main tested on the packaged lanes, one part of the full set a night, building only what changed; never counts for a release' +
     '\n  dp-ci-dev-server: to look at a change in a browser: start, restart or stop a dev server: dp-dev (live or pinned) or dp-kate' +
+    '\n  dp-ci-e2e-nightly-or-by-hand: the e2e of main. By hand, any time: after a fix, one spec file or some of its tests, or a quarter of the full set, on any target, dev or production-packaged. By itself every night while NIGHTLY_ON is ticked (Configure): one quarter a night on a packaged lane, production-packaged. Never counts for a release' +
     '\n  dp-ci-release-step0-set-version: a release starts here: the new version committed (left as it is: nothing done)' +
     '\n  dp-ci-release-step1-e2e-prerelease: the e2e: the trunk\'s check, and a release\'s two lanes, both on this host (the full set on one side, web or docker-server, alternating per release; the sign-in file)' +
     '\n  dp-ci-release-step2-release-docker: the Docker release: the day before MODE=rehearsal UPLOAD=no (build, prove, keep), release day MODE=upload then MODE=public' +
@@ -142,14 +141,14 @@ def roundVersionText = 'Always. The new version x.y.z: step 0 sets it, then step
 
 // name -> [what it is, parameters]; the Jenkinsfile is asbl/ci/jenkins/<name>.Jenkinsfile. Add an entry to add a job.
 // A parameter's text: the first line says what it is and its default, then when to change it, then examples.
-// ON_FAILURES: the same three values, the same meaning, in the release round, the nightly and one-spec; each job says what
+// ON_FAILURES: the same three values, the same meaning, in the release round and dp-ci-e2e-nightly-or-by-hand; each job says what
 // its red run is and what each fix value leads to there (more: a line of its own before the last one)
 def fixValues = ['fix-prove-then-wait-for-review', 'fix-prove-then-rerun-automatically', 'report-only']
 def onFailures = { String red, String review, String rerun, String more ->
   [choices: fixValues, text: "Sometimes. If ${red} is red: every failure is collected, its root cause found in the code and the git history, a plan with real fixes written, and each fix proven by re-running only the tests that failed. Then:\nfix-prove-then-wait-for-review (default) = ${review}\nfix-prove-then-rerun-automatically = ${rerun}\nreport-only = it ends red with the failure report. No agent.\n${more}Leave the default to review each fix round."]
 }
 def fixerNeed = 'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER), as for the release round; without it, both fix values act as report-only and say so.'
-// a fix waiting for review in the nightly and one-spec: what Proceed and Abort do
+// a fix waiting for review in dp-ci-e2e-nightly-or-by-hand (a night or a run by hand): what Proceed and Abort do
 def reviewedFix = 'the fixes are made and proven in a scratch clone and nothing reaches main: the build pauses with Proceed, showing the fix report and its diff (also on the build page, reports/). Proceed = that diff committed and pushed to main as one commit; Abort = the fix dropped.'
 
 // DRY_RUN, the same in every job that has it: no does the work, yes shows what it would do and changes nothing
@@ -157,7 +156,7 @@ def dryRun = { String does, String shows, String use ->
   [choices: ['no', 'yes'], text: 'no (default) = do it: ' + does + '.\nyes = ' + shows + '.\nUse yes ' + use + '.\nExample: DRY_RUN=yes']
 }
 
-// E2E_SPEC, E2E_GREP and E2E_TARGET, the same in one-spec and step 1: one meaning, the same values and examples; each job
+// E2E_SPEC, E2E_GREP and E2E_TARGET, the same in dp-ci-e2e-nightly-or-by-hand and step 1: one meaning, the same values and examples; each job
 // adds what it does with them (empty, use, and its own lines)
 def e2eSpecText = { String empty, String use, String more, String moreExamples ->
   'WHICH FILE(S) to run: a regex on the spec file\'s path (the files are under frend/reporting/e2e/specs/); end it with $ to match one file only. ' + empty +
@@ -194,7 +193,7 @@ def jobs = [
       ORDER: 'it runs steps 0 to 3 in one press (each step job stays, for a step alone). After it is green: dp-ci-release-step2-release-docker and dp-ci-release-step3-release-windows-vm with MODE=upload UPLOAD=yes, then MODE=public on each, then dp-ci-release-step4-demo-public. One round at a time.',
       NEEDS: [
         'checked first, within seconds (REFUSED: <why>. Nothing started):',
-        'the CI free: no dp-ci run, no Windows run, no release run, no round going (bash asbl/ci/jenkins/release-rehearsal.sh busy says FREE); a scheduled run (dp-ci-dev-scheduled-e2e) is stopped first: a release goes before it;',
+        'the CI free: no dp-ci run, no Windows run, no release run, no round going (bash asbl/ci/jenkins/release-rehearsal.sh busy says FREE); a night of dp-ci-e2e-nightly-or-by-hand is stopped first: a release goes before it;',
         'the version not public on both channels already; this host\'s Docker engine and the Windows VM (asbl/ci/release-publish.sh preflight docker, UPLOAD=no);',
         'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER); without it, ON_FAILURES acts as report-only and the round says so;',
         'for "ready to upload" only, not to start: the upload credentials, checked by name (asbl/ci/release-publish.sh preflight docker public, preflight files public).',
@@ -227,35 +226,8 @@ def jobs = [
       SEPARATOR_ADVANCED: [separator: 'Advanced (Parallelization)'],
       SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS: [choices: ['1', '2', '3', '4'], text: 'Advanced. Step 1\'s full e2e set in this many runners at once, each a Docker engine of its own on this host (one engine runs one DataPallas e2e set at a time), each with its list of asbl/ci/full-set-runners.txt (by area, each spec file whole in one runner), all started when the build ends, while a runner of their own (the host lanes\' runner) runs the auth file, then step 2\'s Linux proof. The memory rule counts each runner and the host lanes\' runner at the most it really reached in the last rounds, RELEASE_SERVER_GB until a round recorded it; each runner takes what it needs, up to RELEASE_RUNNER_LIMIT_GB (24 GB). Each runner also takes /var disk (about 40 GB the first time: the images and caches copied in; a few GB in later rounds). The block below estimates the round\'s time and memory for the two values.\n1 (default) = the whole full set in one runner.\n2 to 4 = the full set shared out over that many runners.\nWith RELEASE_RUNNERS=no in the machines file (/root/release-rehearsal.conf) the full set runs whole on this host\'s engine, as before the runners (the fallback when a runner fails for its own reason): only 1 then; the press refuses more (exit 2, nothing started).'],
       USE_N_NUMBER_OF_WINDOWS_VMS: [choices: ['1', '2', '3', '4'], text: 'Advanced. The Windows lanes (the pack, the Windows Docker proof, the light sets, Robot) spread over this many VMs, each running its lanes of the machines file (/root/release-rehearsal.conf) at once with the others. The round starts each VM after the first, one at a time (a VM holds all its memory while it boots), and shuts it down after its last lane; each one takes what it needs of the host\'s memory, up to WIN_VM_MEMORY_GB (24 GB). The block below estimates the round\'s time and memory for the two values.\n1 (default) = VM a runs every Windows lane in a row.\nThe press refuses (exit 2, nothing started) more VMs than exist. A choice that would leave less than RELEASE_MIN_FREE_GB (16) of the host\'s memory free, by the real peaks of the last rounds, shows REFUSED by memory in the block below, and you can still press: the choice is yours.'],
-      ESTIMATED_TIME_AND_MEMORY: [estimate: ['SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS', 'USE_N_NUMBER_OF_WINDOWS_VMS'], text: 'Redrawn when either choice above changes, nothing to fill in: the round\'s parts per machine, the total and the gain against 1 and 1, from the last release runs\' marks, and the memory the two values need against the host\'s available memory now. The same in a terminal: bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>; the build\'s first lines print it too.'],
+      ESTIMATED_TIME_AND_MEMORY: [block: 'asbl/ci/jenkins/release-estimate-block.groovy', refs: ['SPLIT_E2E_FULL_SET_EXECUTION_INTO_N_PARALLEL_JOBS', 'USE_N_NUMBER_OF_WINDOWS_VMS'], fallback: 'The estimate could not be drawn here: bash asbl/ci/jenkins/release-rehearsal.sh estimate N M on the host', text: 'Redrawn when either choice above changes, nothing to fill in: the round\'s parts per machine, the total and the gain against 1 and 1, from the last release runs\' marks, and the memory the two values need against the host\'s available memory now. The same in a terminal: bash asbl/ci/jenkins/release-rehearsal.sh estimate <N> <M>; the build\'s first lines print it too.'],
       USE_UP_TO_N_GB_OF_ZRAM_COMPRESSED_SWAP: [choices: ['0', '32', '64', '128'], text: 'Advanced. 0 = off. Up to this many GB of idle memory can move into compressed swap in RAM when RAM runs short. Use it when the memory line above shows REFUSED. On at each run\'s start, off at its end or stop.'],
-    ],
-  ],
-  'dp-ci-dev-e2e-one-spec': [
-    about: describe(
-      WHAT: 'The fix-and-retry loop (asbl/ci/jenkins/one-spec.sh, which runs dp-ci.sh e2e-loop): one spec file, or some of its tests, on the web or electron-linux target, with no retries. A red run: ON_FAILURES, as in the release round and the nightly. The jars and the Angular UI are built from the tree on every run; the package (the content the tests start from: sample apps, db-template, config, samples, scripts) is never rebuilt: E2E_PACKAGE says what happens to it (built first only when there is none). On a production-packaged lane (E2E_TARGET docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron) the same spec and tests run just like a user over the shipped DataPallas, as the nightly runs them (asbl/ci/jenkins/packaged-lane.sh): the build the lane takes reused when nothing it ships changed, else built (the image and zips) or packed again (the Windows pack), on origin/main. It never counts for a release.',
-      WHEN: 'after a fix: the failed tests (E2E_GREP), then the whole file. On the shipped DataPallas, Linux Docker or the Windows VM: E2E_TARGET=<a packaged lane>. To confirm a file for a release, on a package built from this exact commit: dp-ci-release-step1-e2e-prerelease (with E2E_SPEC, or E2E_GREP). Commit the fix first: the run puts this checkout on origin/main (a fast-forward) and stops on local changes to tracked files; commits not pushed yet are tested as they are.',
-      ORDER: 'any time. One build at a time: while one pauses for a review, the next waits in the queue.',
-      NEEDS: [needsDocker, 'a windows-vm-* lane: the Windows VM (the lane checks it first);', fixerNeed],
-      TIME: 'about 4 min of setup, then the tests: one test about 5 min in all; over the last 40 runs a median of 16 min, from seconds up to 4.8 h for several big files at once (measured). package-repackage: about 3.5 min more; no package yet: about 30 min more. A packaged lane: not measured for one file yet; its build when one is needed about 40 min, a pack about 1 h 30, and the Windows VM about twice as slow as Linux.',
-      EXAMPLES: [
-        'one failed test after a fix: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_GREP=02_dashboard_demos',
-        'a whole file: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$',
-        'after a fix to a db-template sample: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_PACKAGE=package-rsync-simple-file-changes',
-        'a desktop-only spec: E2E_SPEC=/features/let-me-update-migrate-configuration\\.spec\\.ts$  E2E_TARGET=electron-linux',
-        'the failures only, no agent: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$  ON_FAILURES=report-only',
-        'one file on the shipped desktop app on Windows: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_TARGET=windows-vm-electron',
-      ],
-      LOG: playwrightLog + '\n  Which package it ran on: E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.\n  The verdict: ONE_SPEC_RESULT=green|red ...; a red run\'s folder: ONE_SPEC_RUN_FOLDER=<folder> (its result.txt); a fix round\'s state: FIX_ROUND state=...',
-      MORE: guide('dp-ci-dev-e2e-one-spec', 'asbl/ci/jenkins/one-spec.sh')
-    ),
-    params: [
-      E2E_SPEC  : [text: e2eSpecText('No default: needed unless E2E_GREP is set (then every file is searched for those titles, slower).', 'every run, a different file each time. Leave E2E_GREP empty to run the whole file (the normal case).', 'On a windows-vm lane the path has backslashes: each / is turned into [\\\\/] for you (a regex already written with [\\\\/] is kept).\n', '')],
-      E2E_GREP  : [text: e2eGrepText('Empty (the default) = every test of the file(s) (the normal case).', 'to re-run only the test or tests that failed after a fix. Run the whole file again (empty) before you call the file green.')],
-      E2E_TARGET: [choices: e2eTargets, text: e2eTargetText([:], 'docker-server and the three windows-vm lanes run production-packaged, just like a user over the shipped DataPallas: the build each takes (the image and zips, or the kept Windows pack) is reused when nothing it ships changed since, else built or packed again; windows-vm-electron starts the pack\'s datapallas.zip, DataPallas.exe. E2E_PACKAGE does not apply to them.\nDay to day: web.')],
-      ON_FAILURES: onFailures('the run', reviewedFix + ' While it waits, the next one-spec build waits in the queue.',
-        'the fixer pushes each proven fix to main itself, then the same spec and grep run again once: that run is the verdict.', ''),
-      E2E_PACKAGE: [choices: ['package-reuse-as-is', 'package-rsync-simple-file-changes', 'package-repackage'], text: 'WHAT HAPPENS TO THE PACKAGE before the run (web and electron-linux only: a packaged lane takes no e2e package). package-reuse-as-is (default): run on the package exactly as it stands. The package holds the content the tests start from (sample apps, db-template, config, samples, scripts, sample databases); the jars and the Angular UI are always built from the tree, so a fix to Java, the UI, specs or helpers needs nothing more.\npackage-reuse-as-is: instant. Use it for almost every run.\npackage-rsync-simple-file-changes: copy the plain db-template files changed since the package was built (commits, and new untracked files) into the package and the testground. A few seconds. Use it after a small fix under db-template (for example a sample or the AI Hub app). If a changed file is not a plain copy in the package (generated, transformed or checked by the assembler), the run stops with: use package-repackage. With nothing changed it copies 0 files.\npackage-repackage: package the content again on the jars already built (AssemblerTest#refreshContentForE2E), about 3.5 min. Use it after a fix to config, samples or scripts that the rsync mode refuses. It is not a full rebuild: that is dp-ci.sh build (about 40 min).\nIf you forget the package after a content fix, the run tests the OLD content and its result is wrong. The log says which package ran: the line E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.\nIf there is no package yet, one is built first (about 30 min).'],
     ],
   ],
   'dp-ci-dev-junit': [
@@ -292,45 +264,10 @@ def jobs = [
     ),
     params: [:],
   ],
-  'dp-ci-dev-scheduled-e2e': [
-    about: 'It runs by itself every night (18:00 UTC): nothing to press. Pressed by hand, it runs the next night\'s pair now.\nA red night\'s fix waits for your Proceed on its build.\nTo stop the nights: Disable on this job\'s page (or the Enabled switch in Configure, then Save): no build runs, no night until Enable. Its runs and settings stay.\n\n' + describe(
-      WHAT: [
-        'The nightly e2e of main (asbl/ci/jenkins/scheduled-e2e.sh): each night the next pair of a 16-night rotation: one part of the full set (its 4-job layout, asbl/ci/full-set-runners.txt) on one production-packaged lane, the shipped files started as a user starts them: docker-server (Linux), windows-vm-docker, windows-vm-server (the pack\'s server zip) or windows-vm-electron (the pack\'s datapallas.zip, DataPallas.exe). Every pair runs once in 16 nights; four nights in a row take the four lanes and the four parts. A server lane\'s night then runs auth-authorization-server alone; a desktop night runs let-me-update-migrate-configuration with its part. Retries 1, as the release.',
-        'The rotation moves by nights run: a skipped, dry, stopped or off night leaves its pair next. bash asbl/ci/jenkins/scheduled-e2e.sh plan lists the next 16 pairs.',
-        'The nights are on or off: this job\'s own Disable / Enable (saved at once, no build; seed keeps it). From a shell, without Jenkins: scheduled-e2e.sh off|on, a switch kept on this host (a timed night while it is off does nothing, its label says since when and by whom).',
-        'It builds only what changed (asbl/ci/reuse-or-rebuild.sh, as release-rerun.sh): the build a lane takes (the image and zips for the docker lanes, the kept Windows pack for the others) is reused when nothing it ships changed since its commit. A night after a CI- or test-only commit builds nothing.',
-        'It never counts for a release: nothing in the release record. A red night: ON_FAILURES. Each night, run or skipped, the Playwright HTML reports older than 14 days go (the top of the log folder only).',
-      ],
-      WHEN: 'by itself, every night. By hand: to run the next pair now; DRY_RUN=yes after a change to the scheduled job.',
-      ORDER: 'any time. It skips, green ("SKIPPED: <why>"), while the CI is busy: a dp-ci run, a Windows run, a release run, a release round open until its version is public, or the night before still going (its fix round included, with ON_FAILURES=fix-prove-then-rerun-automatically). A release press stops a night going: a release goes before it.',
-      NEEDS: [
-        'nothing to provide; the lanes check their own needs (this host\'s Docker engine, the Windows VM on a Windows lane\'s night) and a set that cannot run ends red;',
-        fixerNeed,
-      ],
-      TIME: 'from the 16.6.1 full set on docker-server (10 h 20 min) cut by the 4-job layout: a part about 2 h 10 min to 2 h 40 min on Linux, about twice that on the Windows VM (a Windows part\'s cap: 16 h); the auth file about 20 min. A build when needed: about 40 min; a pack: about 1 h 30. A fix round: hours, at most 48 h (its own cap).',
-      EXAMPLES: [
-        'the next pair, now: nothing to set',
-        'no nights until further notice: Disable on this job\'s page (no build); again: Enable',
-        'the failures only, no agent: ON_FAILURES=report-only',
-        'its fixes pushed by the fixer with no review, the red pair first the next night: ON_FAILURES=fix-prove-then-rerun-automatically',
-        'check the job after a change, nothing run: DRY_RUN=yes',
-      ],
-      LOG: '^NIGHT (the night\'s own lines: the sets, SET n/N START and END, NIGHT END with the verdict, FIX ROUND 1 END), ^FIX_ROUND (a fix round\'s state: fixing, waiting, done, ended, no-fix, proceeded, aborted), ^BUILD (each build\'s answer: reuse or rebuild, and why), then each lane\'s console. The build list labels each build (2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going; SKIPPED: <why>; off since <date>, by <who>). The reports on the build page: the artifacts reports/ (the night\'s result.txt, run.log, flaky tests, the Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: bash asbl/ci/jenkins/scheduled-e2e.sh status (or plan, follow, stop; fix status|proceed|abort <the night\'s folder> <who> decides a waiting fix as the pause does).',
-      MORE: guide('dp-ci-dev-scheduled-e2e', 'asbl/ci/jenkins/scheduled-e2e.sh')
-    ),
-    // the night starts at 18:00 UTC; a Windows part may take up to 16 h, so it ends before the next night
-    cron: 'TZ=UTC\n0 18 * * *',
-    params: [
-      ON_FAILURES: onFailures('the night',
-        reviewedFix + ' After a Proceed the red pair runs first the next night. The night ends at once: the next nights run meanwhile (a timed one takes this default); while a fix waits, a red night only reports.',
-        'the fixer pushes each proven fix to main itself; the night waits for it (the next night skips meanwhile), then the red pair runs first the next night.', ''),
-      DRY_RUN: dryRun('the night runs', 'each set\'s builds (reuse or rebuild) and the command it would run; nothing runs, builds or starts, and the clean-up only lists', 'rarely, to check the job after a change'),
-    ],
-  ],
   'dp-ci-dev-server': [
     about: describe(
       WHAT: 'Starts, restarts or stops a dev web server (dp-ci.sh dev) and prints its URL. live: the CI host\'s checkout as it is saved right now, hot-reloading (Java in about 10 s, the UI at once), https://dp-dev-live.bkstg.flowkraft.com (https://dp-dev.bkstg.flowkraft.com is the same site). pinned: a separate clone parked at one commit (PINNED_SHA), no hot reload, https://dp-dev-pinned.bkstg.flowkraft.com. TARGET=dp-kate.bkstg.flowkraft.com: the same for Kate\'s own clone (agents-headquarter/office-kate/projects/src/products/reportburster), live only, https://dp-kate.bkstg.flowkraft.com. It keeps running after the build ends, until ACTION=stop; a build, JUnit or e2e run stops the live one for its length and starts it again afterwards. A second start prints "already running at <URL>" and starts nothing; restart starts it again (dp-ci.sh dev replaces the running container).',
-      WHEN: 'to look at a change in a browser. It is for looking, never a proof: only the e2e jobs prove (dp-ci-dev-e2e-one-spec, dp-ci-release-step1-e2e-prerelease), and no e2e runs against this server (an e2e cleans the testground it reads and starts its own).',
+      WHEN: 'to look at a change in a browser. It is for looking, never a proof: only the e2e jobs prove (dp-ci-e2e-nightly-or-by-hand, dp-ci-release-step1-e2e-prerelease), and no e2e runs against this server (an e2e cleans the testground it reads and starts its own).',
       ORDER: 'any time; it refuses to start while a dp-ci run holds the server.',
       NEEDS: 'checked first, within seconds, at a start: this host\'s Docker engine (dp-ci.sh prereq docker). live (either TARGET) also needs its checkout\'s Linux package (asbl/target/package/verified-db-noexe, which an e2e run builds when there is none): it is not checked, and without it the start fails after the backend build (cp ... ENOENT, server exited).',
       TIME: 'start or restart: about 3.5 min until the site answers (measured 3.2 to 3.7 min; pinned: longer the first time for a commit, which it assembles first, not measured yet); already running: seconds; stop: seconds.',
@@ -349,6 +286,77 @@ def jobs = [
       ACTION    : [choices: ['start', 'restart', 'stop'], text: 'WHAT to do. start (default): bring the server up and print its URL; when it is already running, only print the URL.\nrestart: start it again, also when it runs (dp-ci.sh dev removes the running container first).\nstop: stop it (nothing to do when it is not running).'],
       DEV_MODE  : [choices: ['live', 'pinned'], text: 'WHICH dev site. live (default): the checkout as it is saved right now, hot-reloading (Java in about 10 s, the UI at once, an edited db-template file at once; a new sample or dataset needs dp-ci.sh dev --refresh-content, by hand).\npinned: a separate clone parked at the commit in PINNED_SHA, so nothing committed meanwhile changes it; it does not hot-reload; TARGET=dp-dev.bkstg.flowkraft.com only.\nUse pinned for a test session that must not move.'],
       PINNED_SHA: [text: 'The commit to park the pinned site at (a sha, e.g. c3d1c29c). Empty by default; needed for DEV_MODE=pinned with ACTION=start or restart, ignored otherwise.\nIt must be a commit this checkout has (made here, or pushed and pulled here). A pinned site that is already running stays at its commit on a start: restart it to pin another one.'],
+    ],
+  ],
+  'dp-ci-e2e-nightly-or-by-hand': [
+    about: 'The e2e of main, two ways in one job:\n' +
+      '  BY HAND: Build with Parameters, any time, the nightly on or off. One spec file or some of its tests, or a quarter of the full set, on any target (E2E_TARGET), dev or production-packaged (E2E_MODE).\n' +
+      '  THE NIGHTLY: by itself at 18:00 UTC while NIGHTLY_ON is ticked. Always production-packaged: the next pair (quarter, lane) of a 16-night rotation.\n' +
+      'The nightly on or off: Configure, tick or untick NIGHTLY_ON, Save. Saved at once, nothing runs. Unticked, the 18:00 build only says "nightly off" (grey) and runs nothing; a press by hand still runs.\n' +
+      'A red run (or night): ON_FAILURES. By default its fix waits for your Proceed on its build.\n\n' + describe(
+      WHAT: [
+        'BY HAND (asbl/ci/jenkins/e2e-by-hand.sh). WHAT_TO_RUN says what: spec-and-grep = the files of E2E_SPEC and the tests of E2E_GREP, no retries; full-set-quarter-1 to 4 = a quarter of the full set as the nightly takes it, retries 1. E2E_TARGET says where, E2E_MODE how:',
+        '  web, electron-linux (dev only): the fix-and-retry loop (dp-ci.sh e2e-loop). The jars and the Angular UI are built from the tree on every run; the package (the content the tests start from: sample apps, db-template, config, samples, scripts) is never rebuilt: E2E_PACKAGE says what happens to it (built first only when there is none).',
+        '  docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron (either mode): the lane as the nightly runs it (asbl/ci/jenkins/packaged-lane.sh). production-packaged = the shipped DataPallas, started just like a user starts it; dev = the same lane, each test\'s clean state from the dev e2e package (windows-vm-electron: the app built from the VM\'s tree, no pack). The build a lane takes is reused when nothing it ships changed since, else built (the image and zips) or packed again (the Windows pack), on origin/main.',
+        'THE NIGHTLY (asbl/ci/jenkins/scheduled-e2e.sh). Each night the next pair of a 16-night rotation: one quarter of the full set (its 4-job layout, asbl/ci/full-set-runners.txt) on one production-packaged lane: docker-server (Linux), windows-vm-docker, windows-vm-server (the pack\'s server zip) or windows-vm-electron (the pack\'s datapallas.zip, DataPallas.exe). Every pair runs once in 16 nights; four nights in a row take the four lanes and the four quarters. A server lane\'s night then runs auth-authorization-server alone; a desktop night runs let-me-update-migrate-configuration with its quarter. Retries 1, as the release. It builds only what changed, as above: a night after a CI- or test-only commit builds nothing.',
+        '  The rotation moves by nights run: a skipped, dry, stopped or off night leaves its pair next. bash asbl/ci/jenkins/scheduled-e2e.sh plan lists the next 16 pairs. Each night, run or skipped, the Playwright HTML reports older than 14 days go (the top of the log folder only).',
+        '  On or off: NIGHTLY_ON (Configure -> Save, seed keeps it). From a shell, without Jenkins: scheduled-e2e.sh off|on, a switch kept on this host (a timed night while it is off does nothing; its label says since when and by whom).',
+        'Before either runs, the build puts the CI host\'s checkout on origin/main (a fast-forward), so the scripts and the tests are main as pushed; the nightly only while the CI is free (a release round\'s checkout is never moved).',
+        'It never counts for a release: nothing in the release record.',
+      ],
+      WHEN: [
+        'BY HAND: after a fix, the failed tests (E2E_GREP), then the whole file. On the shipped DataPallas, Linux Docker or the Windows VM: a packaged E2E_TARGET with E2E_MODE=production-packaged. A quarter of the full set: to look ahead on one lane, or after a fix that touches many files. To confirm a file for a release, on a package built from this exact commit: dp-ci-release-step1-e2e-prerelease (with E2E_SPEC, or E2E_GREP).',
+        'Commit and push the fix first: the run tests origin/main, and stops on local changes to tracked files of the CI checkout.',
+        'THE NIGHTLY: by itself. By hand: WHAT_TO_RUN=next-nightly-pair runs the next pair now; DRY_RUN=yes after a change to it.',
+      ],
+      ORDER: 'any time, the nightly on or off. One run at a time on the CI: while a dp-ci run, a Windows run or a night goes, a second one is refused within seconds and says why. A build paused for a review holds nothing: the next press runs. The nightly skips, green ("SKIPPED: <why>"), while the CI is busy: a dp-ci run, a Windows run, a release run, a release round open until its version is public, or the night before still going (its fix round included, with ON_FAILURES=fix-prove-then-rerun-automatically). A release press stops a night going: a release goes before it.',
+      NEEDS: [needsDocker, 'a windows-vm-* target: the Windows VM (the lane checks it first);', fixerNeed],
+      TIME: [
+        'BY HAND, one file: about 4 min of setup, then the tests: one test about 5 min in all; over the last 40 runs a median of 16 min, from seconds up to 4.8 h for several big files at once (measured). package-repackage: about 3.5 min more; no package yet: about 30 min more.',
+        'A quarter: about 2 h 10 to 2 h 40 on Linux (the 16.6.1 full set, 10 h 20 on docker-server, cut in four), about twice that on the Windows VM (capped at 16 h).',
+        'A packaged lane\'s build, when one is needed: about 40 min; a pack: about 1 h 30. The Windows VM is about twice as slow as Linux.',
+        'THE NIGHTLY: a quarter as above, plus the auth file (about 20 min) on a server lane\'s night. A fix round: hours, at most 48 h (its own cap).',
+      ],
+      EXAMPLES: [
+        'one failed test after a fix: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_GREP=02_dashboard_demos',
+        'a whole file: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$',
+        'after a fix to a db-template sample: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_PACKAGE=package-rsync-simple-file-changes',
+        'a desktop-only spec: E2E_SPEC=/features/let-me-update-migrate-configuration\\.spec\\.ts$  E2E_TARGET=electron-linux',
+        'one file on the shipped Docker bundle: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_TARGET=docker-server  E2E_MODE=production-packaged',
+        'one file on the shipped desktop app on Windows: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_TARGET=windows-vm-electron  E2E_MODE=production-packaged',
+        'a quarter of the full set on the Windows server zip: WHAT_TO_RUN=full-set-quarter-2  E2E_TARGET=windows-vm-server  E2E_MODE=production-packaged',
+        'the failures only, no agent: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$  ON_FAILURES=report-only',
+        'the next nightly pair, now: WHAT_TO_RUN=next-nightly-pair',
+        'the nightly off until further notice: Configure, untick NIGHTLY_ON, Save (nothing runs); on again: tick it, Save',
+        'what a press would do, nothing run: the values as for the run, plus DRY_RUN=yes',
+      ],
+      LOG: playwrightLog +
+        '\n  BY HAND: what it took: BY_HAND what=... target=... mode=...; which package it ran on (web, electron-linux): E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>; the verdict: BY_HAND_RESULT=green|red|dry-run ...; a red run\'s folder: BY_HAND_RUN_FOLDER=<folder> (its result.txt); a fix round\'s state: FIX_ROUND state=...; a wrong input: FAIL  <why> (nothing ran, exit 2). On the build page: Test Result, Playwright report (the HTML), and the artifacts reports/ (result.txt, fix-report.md, fix.diff).' +
+        '\n  THE NIGHTLY: ^NIGHT (the night\'s own lines: the sets, SET n/N START and END, NIGHT END with the verdict, FIX ROUND 1 END), ^FIX_ROUND (a fix round\'s state: fixing, waiting, done, ended, no-fix, proceeded, aborted), ^BUILD (each build\'s answer: reuse or rebuild, and why), then each lane\'s console. The build list labels each build (2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going; SKIPPED: <why>; nightly off). On the build page: the artifacts reports/ (the night\'s result.txt, run.log, flaky tests, the Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: bash asbl/ci/jenkins/scheduled-e2e.sh status (or plan, follow, stop; fix status|proceed|abort <the night\'s folder> <who> decides a waiting fix as the pause does).',
+      MORE: guide('dp-ci-e2e-nightly-or-by-hand', 'asbl/ci/jenkins/e2e-by-hand.sh (by hand) or asbl/ci/jenkins/scheduled-e2e.sh (the nightly)')
+    ),
+    // the night starts at 18:00 UTC; a Windows quarter may take up to 16 h, so it ends before the next night. A timed
+    // build runs the nightly only while NIGHTLY_ON (its default, set in Configure) is ticked
+    cron: 'TZ=UTC\n0 18 * * *',
+    params: [
+      SEPARATOR_NIGHTLY: [separator: 'The nightly: on or off (set in Configure, then Save)'],
+      // a new job starts with the nights off: the owner's choice on 2026-11-14
+      NIGHTLY_ON: [tick: false, text: 'THE NIGHTLY ON OR OFF. Set it in Configure: tick or untick it, then Save. Saved at once, nothing runs; seed keeps it.\nTicked = every night at 18:00 UTC the nightly runs: the next pair of its rotation, production-packaged, with ON_FAILURES and DRY_RUN at their defaults (WHAT_TO_RUN, E2E_TARGET, E2E_MODE, E2E_SPEC, E2E_GREP and E2E_PACKAGE do not apply to it).\nUnticked = no nightly: the 18:00 build only says "nightly off (NIGHTLY_ON unticked in Configure)" and runs nothing (grey, not red).\nOn or off, a press by hand (Build with Parameters) always runs what you choose below: ticking or unticking this box on the Build with Parameters page changes nothing.'],
+      SEPARATOR_BY_HAND: [separator: 'A run by hand: what, where, how'],
+      WHAT_TO_RUN: [choices: ['spec-and-grep', 'full-set-quarter-1', 'full-set-quarter-2', 'full-set-quarter-3', 'full-set-quarter-4', 'next-nightly-pair'], text: 'WHAT RUNS.\nspec-and-grep (default) = the files of E2E_SPEC and the tests of E2E_GREP (one of the two is needed): the everyday run after a fix. No retries.\nfull-set-quarter-1 to full-set-quarter-4 = one quarter of the full set, the 4-job layout of asbl/ci/full-set-runners.txt (by area, each spec file whole), as the nightly takes it: about 2 h 10 to 2 h 40 on Linux, about twice that on the Windows VM. The block below shows the chosen quarter: its spec files, its tests and its time. Retries 1. Leave E2E_SPEC empty (the quarter chooses the files; a spec is refused); E2E_GREP may narrow it. On windows-vm-electron the quarter also runs let-me-update-migrate-configuration, as the nightly does.\nnext-nightly-pair = the nightly now, whether NIGHTLY_ON is ticked or not: the next pair of its rotation, production-packaged. Only ON_FAILURES and DRY_RUN apply; the others are ignored.\nExample: WHAT_TO_RUN=full-set-quarter-3  E2E_TARGET=docker-server  E2E_MODE=production-packaged'],
+      QUARTER_FILES_TESTS_AND_TIME: [block: 'asbl/ci/jenkins/e2e-quarters-block.groovy', refs: ['WHAT_TO_RUN'], fallback: 'The quarter could not be drawn here: python3 asbl/ci/release-estimate.py quarters --runs /var/kraft-internalsystems/logs/datapallas-ci/runs --quarter N on the host', text: 'Redrawn when WHAT_TO_RUN changes, nothing to fill in. For a quarter: its spec files with their tests and test minutes, its tests in all, and its time by estimate on Linux and on the Windows VM, from the newest passed full set; the job writes them after each build. The same in a terminal on the CI host: python3 asbl/ci/release-estimate.py quarters --runs /var/kraft-internalsystems/logs/datapallas-ci/runs --quarter <n>'],
+      E2E_TARGET: [choices: e2eTargets, text: e2eTargetText([:], 'web and electron-linux test the dev tree: E2E_MODE=dev only. docker-server and the three windows-vm lanes take either mode.\nDay to day: web.')],
+      E2E_MODE: [choices: ['dev', 'production-packaged'], text: 'HOW the target runs (a run by hand; the nightly is always production-packaged).\ndev (default) = the tests start from the dev e2e package. On web and electron-linux (dev only), the fix-and-retry loop: the jars and the Angular UI built from this tree, the package per E2E_PACKAGE. On docker-server and the windows-vm lanes, the same lane as production-packaged, each test\'s clean state from the dev e2e package; windows-vm-electron then runs the app built from the VM\'s tree (no pack).\nproduction-packaged = just like a user over the shipped DataPallas: docker-server = the docker-server bundle (datapallas-server-docker.zip) and its image; windows-vm-docker = that bundle in Docker Desktop; windows-vm-server = the pack\'s datapallas-server.zip; windows-vm-electron = the pack\'s datapallas.zip, DataPallas.exe. The build each takes is reused when nothing it ships changed since, else built (about 40 min) or packed again (about 1 h 30), on origin/main. web and electron-linux refuse it (they test the dev tree).\nUse production-packaged to see a test the way a user meets it; dev to look for the cause of a difference between the two.\nExample: E2E_TARGET=windows-vm-electron  E2E_MODE=production-packaged'],
+      E2E_SPEC  : [text: e2eSpecText('Needed with WHAT_TO_RUN=spec-and-grep unless E2E_GREP is set (then every file is searched for those titles, slower). Empty with a quarter: the quarter chooses its files.', 'every run by hand, a different file each time. Leave E2E_GREP empty to run the whole file (the normal case).', 'On a windows-vm lane the path has backslashes: each / is turned into [\\\\/] for you (a regex already written with [\\\\/] is kept).\n', '')],
+      E2E_GREP  : [text: e2eGrepText('Empty (the default) = every test of the file(s), or of the quarter (the normal case).', 'to re-run only the test or tests that failed after a fix. Run the whole file again (empty) before you call the file green. With a quarter: only its tests whose title matches.')],
+      SEPARATOR_SOMETIMES: [separator: 'Sometimes'],
+      E2E_PACKAGE: [choices: ['package-reuse-as-is', 'package-rsync-simple-file-changes', 'package-repackage'], text: 'WHAT HAPPENS TO THE PACKAGE before the run (web and electron-linux only: the other targets take no e2e package from this checkout and refuse another value). package-reuse-as-is (default): run on the package exactly as it stands. The package holds the content the tests start from (sample apps, db-template, config, samples, scripts, sample databases); the jars and the Angular UI are always built from the tree, so a fix to Java, the UI, specs or helpers needs nothing more.\npackage-reuse-as-is: instant. Use it for almost every run.\npackage-rsync-simple-file-changes: copy the plain db-template files changed since the package was built (commits, and new untracked files) into the package and the testground. A few seconds. Use it after a small fix under db-template (for example a sample or the AI Hub app). If a changed file is not a plain copy in the package (generated, transformed or checked by the assembler), the run stops with: use package-repackage. With nothing changed it copies 0 files.\npackage-repackage: package the content again on the jars already built (AssemblerTest#refreshContentForE2E), about 3.5 min. Use it after a fix to config, samples or scripts that the rsync mode refuses. It is not a full rebuild: that is dp-ci.sh build (about 40 min).\nIf you forget the package after a content fix, the run tests the OLD content and its result is wrong. The log says which package ran: the line E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.\nIf there is no package yet, one is built first (about 30 min).\nExample: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_PACKAGE=package-rsync-simple-file-changes'],
+      ON_FAILURES: onFailures('the run (or the night)',
+        reviewedFix + ' After a Proceed on a night, its red pair runs first the next night. A night ends at once: the next nights run meanwhile; while a night\'s fix waits, a red night only reports.',
+        'the fixer pushes each proven fix to main itself. By hand: then the same run again, once: that run is the verdict. A night: the night waits for it (the next night skips meanwhile), then the red pair runs first the next night.',
+        'The nightly at 18:00 takes the default.\n'),
+      SEPARATOR_RARELY: [separator: 'Rarely'],
+      DRY_RUN: dryRun('the run or the night runs', 'the inputs checked (a wrong one refused), each build\'s answer (reuse or rebuild) and the command it would run; nothing runs, builds or starts (a night\'s clean-up only lists)', 'to see what a press would do, or to check the job after a change'),
     ],
   ],
   'dp-ci-release-step0-set-version': [
@@ -380,7 +388,7 @@ def jobs = [
         'any day: the whole trunk on Linux (web) or on Windows (windows-vm-electron), E2E_SPEC empty;',
         'one spec file on a package built from this exact commit (E2E_SPEC), or a test on Windows or Docker by its title (E2E_GREP).',
         'It tests origin/main (this checkout is fast-forwarded to it first; local changes to tracked files stop it): push the fix first.',
-        'For the quick fix-and-retry loop on Linux: dp-ci-dev-e2e-one-spec.',
+        'For the quick fix-and-retry loop: dp-ci-e2e-nightly-or-by-hand, pressed by hand.',
       ],
       ORDER: 'step 1 of a release: after dp-ci-release-step0-set-version (its version commit or a later one), before dp-ci-release-step2-release-docker and dp-ci-release-step3-release-windows-vm, which refuse unless the two lanes count for their commit (or their E2E_APPROVAL says owner approved: the owner\'s written decision to go on without them). It never needs step 0 and never skips.',
       NEEDS: [
@@ -412,10 +420,10 @@ def jobs = [
       MORE: guide('dp-ci-release-step1-e2e-prerelease', 'asbl/ci/jenkins/release-step1.sh (asbl/ci/dp-ci.sh e2e, or dp-ci.sh win e2e|docker-e2e|server-e2e through asbl/ci/jenkins/win-e2e.sh)')
     ),
     params: [
-      E2E_SPEC  : [text: e2eSpecText('EMPTY (THE DEFAULT), WITH E2E_GREP EMPTY TOO, IS THE FULL SUITE: ABOUT 10.5 HOURS ON LINUX, ABOUT 25 HOURS ON windows-vm-electron, AND THE CI SERVER DOES NOTHING ELSE UNTIL IT ENDS. On windows-vm-docker and windows-vm-server, empty is the light set instead (asbl/ci/light-set.txt: the 23 samples and one test per zone, about 2 h on windows-vm-docker by estimate).\nlight = the light set on any windows-vm target; on windows-vm-electron it is what step 3 runs of that lane (the full set alternates between web and docker-server), with auth-authorization-desktop whole.', 'empty for a release lane or the trunk; a file to confirm it on a package built from this exact commit.', 'What a full run leaves out, to run on its own: auth-authorization-server on every target (it changes the accounts and roles that later specs sign in with), and on Linux also let-me-update-migrate-configuration (desktop only: run it on electron-linux); windows-vm-electron keeps let-me-update-migrate-configuration. Name a file in the regex to run it.\nOn the windows-vm targets the path has backslashes: write the separator as [\\\\/].\n', '\n  /features/   -> every spec file of the features folder (Linux)\n  [\\\\/]samples\\.spec\\.ts$   -> samples.spec.ts on any target, Windows too\nFor a quick fix-and-retry loop use dp-ci-dev-e2e-one-spec instead.')],
+      E2E_SPEC  : [text: e2eSpecText('EMPTY (THE DEFAULT), WITH E2E_GREP EMPTY TOO, IS THE FULL SUITE: ABOUT 10.5 HOURS ON LINUX, ABOUT 25 HOURS ON windows-vm-electron, AND THE CI SERVER DOES NOTHING ELSE UNTIL IT ENDS. On windows-vm-docker and windows-vm-server, empty is the light set instead (asbl/ci/light-set.txt: the 23 samples and one test per zone, about 2 h on windows-vm-docker by estimate).\nlight = the light set on any windows-vm target; on windows-vm-electron it is what step 3 runs of that lane (the full set alternates between web and docker-server), with auth-authorization-desktop whole.', 'empty for a release lane or the trunk; a file to confirm it on a package built from this exact commit.', 'What a full run leaves out, to run on its own: auth-authorization-server on every target (it changes the accounts and roles that later specs sign in with), and on Linux also let-me-update-migrate-configuration (desktop only: run it on electron-linux); windows-vm-electron keeps let-me-update-migrate-configuration. Name a file in the regex to run it.\nOn the windows-vm targets the path has backslashes: write the separator as [\\\\/].\n', '\n  /features/   -> every spec file of the features folder (Linux)\n  [\\\\/]samples\\.spec\\.ts$   -> samples.spec.ts on any target, Windows too\nFor a quick fix-and-retry loop use dp-ci-e2e-nightly-or-by-hand instead.')],
       E2E_GREP  : [text: e2eGrepText('Empty (the default) = every test of those files (the normal case).', 'to run named tests on a package built from this exact commit, or on the Windows VM. Set, the run is recorded as targeted and never counts for a release.')],
-      E2E_TARGET: [choices: e2eTargets, text: e2eTargetText(['docker-server': 'Built first when origin/main is not built yet.', 'windows-vm-docker': 'Empty E2E_SPEC = the light set (asbl/ci/light-set.txt): the server\'s code is proven by docker-server, this checks where it meets Windows. Built first when origin/main (what the VM tests) is not built yet.', 'windows-vm-server': 'The same light set, on a Windows pack: a kept pack (RELEASE_KEPT) or a new one (REBUILD_PACK=yes), which this job does not pass, so here it refuses within seconds. Step 3 runs it (RELEASE STEP 2/5); bash asbl/ci/release-rerun.sh run windows-vm-server --kept <kept folder> runs it again by itself.', 'windows-vm-electron': 'Here built from this tree on the VM (step 1 runs in E2E_MODE=dev).'], 'Day to day: web. The others: a release, or a check on Windows or Docker (on the shipped DataPallas, a few tests: dp-ci-dev-e2e-one-spec).')],
-      E2E_ROTATION_DATE: [text: 'WHICH DAY\'s variant to run, YYYY-MM-DD. Empty (the default) = today, UTC. Some specs test a different app or database vendor depending on the day (the choice is seeded from the date, so two days in a row cover every combination). A day\'s variant only, not the nightly\'s rotation (dp-ci-dev-scheduled-e2e runs its own 16-night rotation of (part, lane) pairs).\nUse it only to repeat the variant of another day, for example the day a run failed.\nExample: 2026-09-22 (that day: sqlserver and duckdb).'],
+      E2E_TARGET: [choices: e2eTargets, text: e2eTargetText(['docker-server': 'Built first when origin/main is not built yet.', 'windows-vm-docker': 'Empty E2E_SPEC = the light set (asbl/ci/light-set.txt): the server\'s code is proven by docker-server, this checks where it meets Windows. Built first when origin/main (what the VM tests) is not built yet.', 'windows-vm-server': 'The same light set, on a Windows pack: a kept pack (RELEASE_KEPT) or a new one (REBUILD_PACK=yes), which this job does not pass, so here it refuses within seconds. Step 3 runs it (RELEASE STEP 2/5); bash asbl/ci/release-rerun.sh run windows-vm-server --kept <kept folder> runs it again by itself.', 'windows-vm-electron': 'Here built from this tree on the VM (step 1 runs in E2E_MODE=dev).'], 'Day to day: web. The others: a release, or a check on Windows or Docker (on the shipped DataPallas, a few tests: dp-ci-e2e-nightly-or-by-hand, E2E_MODE=production-packaged).')],
+      E2E_ROTATION_DATE: [text: 'WHICH DAY\'s variant to run, YYYY-MM-DD. Empty (the default) = today, UTC. Some specs test a different app or database vendor depending on the day (the choice is seeded from the date, so two days in a row cover every combination). A day\'s variant only, not the nightly\'s rotation (dp-ci-e2e-nightly-or-by-hand\'s nightly runs its own 16-night rotation of (quarter, lane) pairs).\nUse it only to repeat the variant of another day, for example the day a run failed.\nExample: 2026-09-22 (that day: sqlserver and duckdb).'],
       E2E_RETRIES: [text: 'HOW MANY TIMES a failed test is run again. Empty (the default) = the lane\'s own: a full run 2 on Linux (web, electron-linux, docker-server) and 1 on windows-vm-electron; the light set of windows-vm-docker and windows-vm-server 1; any run with E2E_SPEC or E2E_GREP set 0.\nUse it: 0 to see each failure as it is; 1 or 2 to tell flaky tests from red ones (a pass on a retry is reported as flaky, failing every try as failed).\nThe run goes on to the end whatever fails.'],
     ],
   ],
@@ -530,22 +538,49 @@ try {
 }
 println "Parameter separators: ${separatorsAvailable ? 'shown' : 'left out (the parameter-separator plugin is not active)'}"
 
-// The Active Choices plugin (uno-choice, plugins.txt) draws the live estimate under the Advanced choices: a reactive
-// reference parameter (its Job DSL name: activeChoiceReactiveReferenceParam) whose Groovy script is its own file, read
-// from the seed's workspace (a script-console apply: a copy of it in that workspace). A seed without the plugin, or
-// without the file, leaves the block out, so it never fails; the build's first lines print the estimate anyway
-def estimateBlockScript = null
+// The Active Choices plugin (uno-choice, plugins.txt) draws the live blocks under some choices (the round's estimate, the
+// quarter of dp-ci-e2e-nightly-or-by-hand): a reactive reference parameter (its Job DSL name:
+// activeChoiceReactiveReferenceParam) whose Groovy script is its own file (block:), read from the seed's workspace (a
+// script-console apply: a copy of it in that workspace), redrawn when a choice it names (refs:) changes. A seed without the
+// plugin, or without the file, leaves the block out, so it never fails; the build's first lines print the estimate anyway
+def unoChoiceActive = false
 try {
-  if (jenkins.model.Jenkins.instance.pluginManager.getPlugin('uno-choice')?.isActive()) {
-    estimateBlockScript = readFileFromWorkspace('asbl/ci/jenkins/release-estimate-block.groovy')
-  } else {
-    println 'The estimate block: left out (the uno-choice plugin is not active)'
-  }
+  unoChoiceActive = jenkins.model.Jenkins.instance.pluginManager.getPlugin('uno-choice')?.isActive() ?: false
 } catch (e) {
-  println "The estimate block: left out (asbl/ci/jenkins/release-estimate-block.groovy was not read: ${e})"
+  println "The live blocks: left out (the plugin list was not read: ${e})"
 }
-if (estimateBlockScript) {
-  println 'The estimate block: shown'
+def blockScripts = [:]
+def blockScript = { String path ->
+  if (!blockScripts.containsKey(path)) {
+    String text = null
+    if (!unoChoiceActive) {
+      println "The block ${path}: left out (the uno-choice plugin is not active)"
+    } else {
+      try {
+        text = readFileFromWorkspace(path)
+        println "The block ${path}: shown"
+      } catch (e) {
+        println "The block ${path}: left out (not read: ${e})"
+      }
+    }
+    blockScripts[path] = text
+  }
+  return blockScripts[path]
+}
+
+// A tick box's default is a person's setting (Configure -> Save, for example NIGHTLY_ON): a seed run keeps it as it finds it;
+// a new job (or one where it cannot be read) gets the default written in its entry (tick:)
+def keptTick = { String jobName, String pname, boolean whenNew ->
+  try {
+    def saved = jenkins.model.Jenkins.get().getItemByFullName("datapallas/${jobName}")?.getProperty(hudson.model.ParametersDefinitionProperty)?.getParameterDefinition(pname)
+    if (saved?.getClass()?.getName() == 'hudson.model.BooleanParameterDefinition') {   // by name: the seed parses without Jenkins's classes
+      println "${jobName}: ${pname} kept as saved: ${saved.isDefaultValue() ? 'ticked' : 'unticked'}"
+      return saved.isDefaultValue()
+    }
+  } catch (e) {
+    println "${jobName}: ${pname} not read (${e}): ${whenNew ? 'ticked' : 'unticked'}"
+  }
+  return whenNew
 }
 
 jobs.each { jobName, job ->
@@ -562,21 +597,24 @@ jobs.each { jobName, job ->
               sectionHeaderStyle('')
             }
           }
-        } else if (p.estimate) {
-          if (estimateBlockScript) {
+        } else if (p.block) {
+          String drawn = blockScript(p.block)
+          if (drawn) {
             activeChoiceReactiveReferenceParam(pname) {
               description(p.text)
               omitValueField(true)
               choiceType('FORMATTED_HTML')
               groovyScript {
-                script(estimateBlockScript)
-                fallbackScript("return '<pre>The estimate could not be drawn here: bash asbl/ci/jenkins/release-rehearsal.sh estimate N M on the host</pre>'")
+                script(drawn)
+                fallbackScript("return '<pre>${p.fallback}</pre>'")
               }
-              for (String referenced : p.estimate) {
+              for (String referenced : p.refs) {
                 referencedParameter(referenced)
               }
             }
           }
+        } else if (p.containsKey('tick')) {
+          booleanParam(pname, keptTick(jobName, pname, p.tick), p.text)
         } else if (p.choices) {
           choiceParam(pname, p.choices, p.text)
         } else {
@@ -607,7 +645,7 @@ jobs.each { jobName, job ->
       }
     }
     logRotator { numToKeep(200) }
-    // Disable / Enable on a job's page is a person's choice (the nightly's off switch): a seed run keeps it
+    // Disable / Enable on a job's page is a person's choice: a seed run keeps it
     disabled(jenkins.model.Jenkins.get().getItemByFullName("datapallas/${jobName}")?.isDisabled() ?: false)
   }
 }

@@ -1,26 +1,50 @@
-# Sourced, from the repository's root, by scheduled-e2e.sh and one-spec.sh: one run on a production-packaged lane
-# (E2E_MODE=production-packaged: the shipped files, started as a user starts them), with the launchers and environment
-# release-rerun.sh gives the same lanes. The build the lane takes is reused, or built again, by the one rule
-# (asbl/ci/reuse-or-rebuild.sh); then its launcher runs, followed by follow-ci.sh.
+# Sourced, from the repository's root, by scheduled-e2e.sh and e2e-by-hand.sh: one run on a docker or Windows lane
+# (docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron), with the launchers and environment
+# release-rerun.sh gives the same lanes. These are the lanes that ship packaged: by default E2E_MODE=production-packaged
+# (the shipped files, started as a user starts them; the nightly always runs so); LANE_E2E_MODE=dev runs the same lane in
+# dev mode (each test's clean state from the dev e2e package; windows-vm-electron then builds from the VM's tree and takes
+# no pack). The build the lane takes is reused, or built again, by the one rule (asbl/ci/reuse-or-rebuild.sh); then its
+# launcher runs, followed by follow-ci.sh. Also the full set's quarters (quarter_files), as the nightly and a run by hand
+# take them.
 # The caller sets first: LOG_DIR, RELEASE_ARTIFACTS_DIR, DRY_RUN (yes: the builds' answers and the command printed,
 # nothing built or run). It may set LANE_DP_CI [bash asbl/ci/dp-ci.sh] (the image build), LANE_FOLLOW_CI
-# [bash asbl/ci/jenkins/follow-ci.sh] (what runs the launcher) and LANE_COMMIT (the commit under test, nothing fetched);
-# the tests set stubs. run-result.sh is sourced first (newest_log_since).
+# [bash asbl/ci/jenkins/follow-ci.sh] (what runs the launcher), LANE_COMMIT (the commit under test, nothing fetched) and
+# LANE_E2E_MODE [production-packaged]; the tests set stubs. run-result.sh is sourced first (newest_log_since).
 
 PACKAGED_LANES=(docker-server windows-vm-docker windows-vm-server windows-vm-electron)
 WIN_PID="$LOG_DIR/win-e2e.pid"   # win-e2e.sh's one pid file for every Windows lane
 DOCKER_SERVER_BUNDLE="$PWD/frend/reporting/testground/docker-server/DataPallas"   # dp-ci.sh docker_server_up's folder
 
+LANE_E2E_MODE="${LANE_E2E_MODE:-production-packaged}"
+# the full set's quarters: the 4-job layout of asbl/ci/full-set-runners.txt; the desktop's own spec runs with a Windows
+# desktop quarter; a Windows quarter may take 16 h (a quarter of the full Electron set's 64 h cap, dp-ci.sh win_electron_caps)
+QUARTER_UPDATE_SPEC=specs/features/let-me-update-migrate-configuration.spec.ts
+WINDOWS_QUARTER_TIMEOUT=57600
+# quarter_files <lane> <1-4>: the spec files of that quarter on that lane, paths under frend/reporting/e2e/
+quarter_files() {
+  python3 asbl/ci/full-set-runners.py files 4 "$2" || return 1
+  [ "$1" != windows-vm-electron ] || echo "$QUARTER_UPDATE_SPEC"
+}
+# quarter_spec <lane> <1-4>: E2E_SPEC for that quarter (one regex matching its files)
+quarter_spec() { local files; files=$(quarter_files "$1" "$2") && python3 asbl/ci/full-set-runners.py spec $files; }
+
 is_packaged_lane() { local lane; for lane in "${PACKAGED_LANES[@]}"; do [ "$lane" = "$1" ] && return 0; done; return 1; }
 # lane_builds <lane>: the build it takes (release-rerun.sh's part_builds)
-lane_builds() { case "$1" in docker-server|windows-vm-docker) echo image-and-zips ;; *) echo windows-pack ;; esac; }
+# (dev mode: windows-vm-electron builds from the VM's tree and takes none)
+lane_builds() {
+  case "$1/$LANE_E2E_MODE" in
+    docker-server/*|windows-vm-docker/*) echo image-and-zips ;;
+    windows-vm-electron/dev) ;;
+    *) echo windows-pack ;;
+  esac
+}
 lane_machine() { case "$1" in windows-*) echo windows-vm ;; *) echo host ;; esac; }
 # lane_vm_steps <lane>: the VM's scheduled tasks (dp-ci-<step>) its run starts: a pack first when REBUILD_PACK=yes
 lane_vm_steps() {
   case "$1" in
     windows-vm-docker)   echo docker-e2e ;;
     windows-vm-server)   echo "release-pack server-e2e dp-server" ;;
-    windows-vm-electron) echo "release-pack desktop-e2e" ;;
+    windows-vm-electron) [ "$LANE_E2E_MODE" = dev ] && echo desktop-e2e || echo "release-pack desktop-e2e" ;;
   esac
 }
 # what_lane_starts <lane>: what its run starts that outlives the caller's processes, one "<kind> TAB <name> TAB <what>"
@@ -116,7 +140,7 @@ run_packaged_lane() {
       windows-pack/rebuild) kept=$(newest_kept_pack) rebuild_pack=yes ;;
     esac
   done
-  lane_env=(E2E_MODE=production-packaged E2E_SPEC="$(lane_spec "$lane" "$spec")")
+  lane_env=(E2E_MODE="$LANE_E2E_MODE" E2E_SPEC="$(lane_spec "$lane" "$spec")")
   case "$lane" in
     docker-server)
       lane_env+=(E2E_TARGET=docker-server) launcher=(bash asbl/ci/dp-ci.sh e2e)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The nightly e2e of main. The Jenkins job dp-ci-dev-scheduled-e2e starts it every night on its timer (seed.groovy); a person
+# The nightly e2e of main. The Jenkins job dp-ci-e2e-nightly-or-by-hand starts it every night on its timer while NIGHTLY_ON is ticked; a person
 # or an agent runs the same from a shell. It tests main between releases with the release's own lanes, and builds only what
 # changed since the builds already here. It never counts for a release: it writes nothing in the release record
 # (asbl/ci/release-state.sh) or the re-run record (asbl/ci/release-rerun.sh).
@@ -36,10 +36,10 @@
 #                   REBUILD_PACK=yes, the lane packs first
 #   A build checked here is checked again where the lane takes it (dp-ci.sh reuse_build_ok). A night after a CI- or
 #   test-only commit builds nothing. No lane here takes an e2e package: the packaged mode tests the shipped files.
-#   The lanes' builds and launchers are asbl/ci/jenkins/packaged-lane.sh, shared with one-spec.sh.
+#   The lanes' builds and launchers are asbl/ci/jenkins/packaged-lane.sh, shared with e2e-by-hand.sh.
 #
-# THE SWITCH: in Jenkins the nights' on/off is the job's own Disable / Enable (a disabled job runs nothing; seed keeps
-#   it). Without Jenkins, this host's switch: the nights on or off (<LOG_DIR>/scheduled-e2e-switch: state, since, by; no
+# THE SWITCH: in Jenkins the nights' on/off is the job's tick box NIGHTLY_ON (Configure -> Save; unticked, a timed build
+#   runs nothing and never calls this script; seed keeps it). Without Jenkins, this host's switch: the nights on or off (<LOG_DIR>/scheduled-e2e-switch: state, since, by; no
 #   file: on). A night only reads it: while off it does nothing at all, not even the clean-up, and says "OFF off since
 #   <date>, by <who>". Set by the on and off subcommands, or RUN_EVERY_NIGHT on start: on switches the nights on and
 #   runs one now, off switches them off and runs nothing. Off stays off until someone switches it on.
@@ -128,7 +128,7 @@
 #   bash asbl/ci/jenkins/scheduled-e2e.sh follow
 #   DRY_RUN=yes bash asbl/ci/jenkins/scheduled-e2e.sh clean
 #
-# Callers: the Jenkins job dp-ci-dev-scheduled-e2e; release-rehearsal.sh (stop, before a release); a person or an agent.
+# Callers: the Jenkins job dp-ci-e2e-nightly-or-by-hand; release-rehearsal.sh (stop, before a release); a person or an agent.
 set -uo pipefail
 cd "$(dirname "$0")/../../.." || exit 2
 REPO=$PWD
@@ -159,8 +159,6 @@ usage() { print_header; exit 2; }
 # ---- the rotation: the pair a night runs, its sets, and what each set takes ----
 ROTATION_PAIRS=16
 AUTH_SPEC=specs/features/auth-authorization-server.spec.ts               # server lanes only, alone after the part
-UPDATE_SPEC=specs/features/let-me-update-migrate-configuration.spec.ts   # the desktop only, with the part
-WINDOWS_PART_TIMEOUT=57600   # 16 h: a quarter of the full Electron set's 64 h cap (dp-ci.sh win_electron_caps)
 
 pair_lane() { echo "${PACKAGED_LANES[$((($1 - 1) % 4))]}"; }
 pair_part() { local i=$(($1 - 1)); echo $(((i % 4 + i / 4) % 4 + 1)); }
@@ -196,15 +194,14 @@ set_lane() { case "$1" in *-part-[1-4]) echo "${1%-part-*}" ;; *) echo "${1%-aut
 # set_spec_files <set>: the spec files it runs, paths under frend/reporting/e2e/
 set_spec_files() {
   case "$1" in
-    *-part-[1-4]) python3 asbl/ci/full-set-runners.py files 4 "${1##*-part-}" || return 1
-                  [ "$(set_lane "$1")" != windows-vm-electron ] || echo "$UPDATE_SPEC" ;;
+    *-part-[1-4]) quarter_files "$(set_lane "$1")" "${1##*-part-}" ;;   # packaged-lane.sh
     *)            echo "$AUTH_SPEC" ;;
   esac
 }
 # shellcheck source=run-result.sh
 . asbl/ci/jenkins/run-result.sh
-# the lanes: their builds and their launchers, shared with one-spec.sh
-LANE_DP_CI="$SCHEDULED_DP_CI" LANE_FOLLOW_CI="$SCHEDULED_FOLLOW_CI" LANE_COMMIT="${SCHEDULED_COMMIT:-}"
+# the lanes: their builds and their launchers, shared with e2e-by-hand.sh
+LANE_DP_CI="$SCHEDULED_DP_CI" LANE_FOLLOW_CI="$SCHEDULED_FOLLOW_CI" LANE_COMMIT="${SCHEDULED_COMMIT:-}" LANE_E2E_MODE=production-packaged   # a night: always the shipped files
 # shellcheck source=packaged-lane.sh
 . asbl/ci/jenkins/packaged-lane.sh
 
@@ -248,7 +245,7 @@ run_set() {
     [ -n "$kind" ] && printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(now)" "$set" "$kind" "$name" "$([ "$DRY_RUN" = yes ] && echo dry-run || echo real)" "$what" >> "$dir/started.txt"
   done <<< "$(what_lane_starts "$lane")"
   if files=$(set_spec_files "$set") && spec=$(python3 asbl/ci/full-set-runners.py spec $files); then
-    run_packaged_lane "$lane" "$spec" "" 1 "$(case "$set" in windows-*-part-*) echo "$WINDOWS_PART_TIMEOUT" ;; esac)" "$under"
+    run_packaged_lane "$lane" "$spec" "" 1 "$(case "$set" in windows-*-part-*) echo "$WINDOWS_QUARTER_TIMEOUT" ;; esac)" "$under"
   else
     LANE_RC=1 LANE_LOG="" LANE_JSON="" LANE_WHY="its spec files could not be read (asbl/ci/full-set-runners.py, above)"
   fi

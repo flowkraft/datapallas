@@ -31,6 +31,11 @@ Playwright JSON reports, and writes nothing.
       the block the job's form draws under the two choices: what the press refuses, the memory line (the host's
       available memory now), the Gantt chart, the total and the gain. asbl/ci/jenkins/release-estimate-block.groovy
       draws the same text from the same JSON in the form (keep the two in step: asbl/ci/tests/test-estimate.sh)
+  release-estimate.py quarters --runs <RUN_RECORD_DIR> [--quarter <n>]
+      the 4 quarters of the full set (full-set-runners.txt, 4 jobs) as dp-ci-e2e-nightly-or-by-hand's form shows them
+      under WHAT_TO_RUN: each quarter's spec files with their tests and test minutes, its tests and its time by estimate,
+      from the newest passed full set (web or docker-server). As JSON on stdout (the job writes it after each build to
+      E2E_QUARTERS_FILE, which asbl/ci/jenkins/e2e-quarters-block.groovy reads); --quarter n: that quarter's text
 
 Where the memory comes from: the same run folders' memory.log. The memory rule counts each kind of box (a runner, the host
 lanes' runner, a VM) at the highest it really reached over the newest MEMORY_PEAK_ROUNDS rounds that sampled it, and at its
@@ -522,19 +527,21 @@ def what_each_part_runs(rows, counts, target, groups=None, lanes=None):
     return lines
 
 
-def full_set_files(runs, target):
-    """the newest passed full set of a target: ({file: minutes}, setup minutes, ratio, where from), or None"""
+def full_set_files(runs, target, reports_out=None):
+    """the newest passed full set of a target: ({file: minutes}, setup minutes, ratio, where from), or None. reports_out:
+    a list that also gets that full set's Playwright JSON reports"""
     for folder in real_run_folders(runs):
         parts = part_minutes(read_text(os.path.join(folder, "run.log")))
         lane_parts = [p for p in parts if re.match(r"lane1-%s-full(-\d+of\d+)?$" % re.escape(target), p) and passed(folder, p)]
         if not lane_parts:
             continue
-        per_file, wall_total, test_total, setups = {}, 0.0, 0.0, []
+        per_file, wall_total, test_total, setups, used = {}, 0.0, 0.0, [], []
         for part in lane_parts:
             reports = lane_reports(folder, part)
             if not reports:
                 break
             for report, setup in reports:
+                used.append(report)
                 files, wall = playwright_files(report)
                 for f, minutes in files.items():
                     per_file[f] = per_file.get(f, 0.0) + minutes
@@ -543,8 +550,88 @@ def full_set_files(runs, target):
                 setups.append(max(0.0, parts[part] - wall) if setup is None else setup)
         else:
             if per_file and test_total > 0:
+                if reports_out is not None:
+                    reports_out.extend(used)
                 return per_file, sum(setups) / len(setups), wall_total / test_total, os.path.basename(folder)
     return None
+
+
+def playwright_tests(report):
+    """{file: tests} of one Playwright JSON report: each test once (its retries are tries of the same test)"""
+    per_file = {}
+
+    def walk(suite, file_name):
+        file_name = suite.get("file") or file_name
+        for spec in suite.get("specs", []):
+            f = spec.get("file") or file_name
+            per_file[f] = per_file.get(f, 0) + len(spec.get("tests", []))
+        for child in suite.get("suites", []):
+            walk(child, file_name)
+
+    for top in json.loads(read_text(report) or "{}").get("suites", []):
+        walk(top, None)
+    return per_file
+
+
+QUARTERS = 4
+WINDOWS_FACTOR = 2   # the Windows VM runs the same tests about twice as slowly as Linux (the nightly's quarters' caps)
+DESKTOP_ONLY_SPEC = "specs/features/let-me-update-migrate-configuration.spec.ts"
+
+
+def quarters(runs):
+    """The 4 quarters of the full set (asbl/ci/full-set-runners.txt, 4 jobs: what dp-ci-e2e-nightly-or-by-hand runs as
+    full-set-quarter-<n>), each as the text the job's form shows under WHAT_TO_RUN: its spec files with their tests and
+    test minutes, the quarter's tests and its time by estimate (its list's setup plus Playwright's ratio times its files'
+    test minutes, as runner_groups counts a runner), on Linux and on the Windows VM. The times and counts are those of the
+    newest passed full set, web or docker-server. Returns {"written", "from", "quarters": {"1": text, ...}}"""
+    best = None
+    for target in ("docker-server", "web"):
+        reports = []
+        full = full_set_files(runs, target, reports)
+        if full is not None and (best is None or full[3] > best[1][3]):
+            best = (target, full, reports)
+    lists, why = runner_lists(QUARTERS)
+    written = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    out = {"written": written, "quarters": {}}
+    if lists is None:
+        out["from"] = "the quarters' lists could not be read (asbl/ci/full-set-runners.py check): %s" % why
+        for n in range(1, QUARTERS + 1):
+            out["quarters"][str(n)] = out["from"]
+        return out
+    if best is None:
+        out["from"] = "no passed full set in %s: no counts or times yet, only the files" % runs
+        per_file, setup, ratio, counts = {}, 0.0, 1.0, {}
+    else:
+        target, (per_file, setup, ratio, where), reports = best
+        counts = {}
+        for report in reports:
+            for f, c in playwright_tests(report).items():
+                counts[f] = counts.get(f, 0) + c
+        out["from"] = ("From the newest passed full set, %s on %s: each file's test minutes (retries included), the "
+                       "quarter's time = %.1f min of setup + %.3f (Playwright's overhead) x its test minutes; the Windows "
+                       "VM about %d times Linux. Written %s." % (where, target, setup, ratio, WINDOWS_FACTOR, written))
+    mean = sum(per_file.values()) / len(per_file) if per_file else 0.0
+    for n, files in enumerate(lists, 1):
+        tests = sum(counts.get(f, 0) for f in files)
+        minutes = setup + ratio * sum(per_file.get(f, mean) for f in files)
+        known = per_file and all(f in per_file for f in files)
+        lines = ["full-set-quarter-%d: %d spec files, %s tests" % (n, len(files), tests if counts else "?")]
+        if per_file:
+            lines.append("Time, by estimate: about %s on Linux; about %s on the Windows VM (capped at 16 h)%s"
+                         % (duration(minutes), duration(minutes * WINDOWS_FACTOR),
+                            "" if known else " (a file not in that full set counted at the mean)"))
+        lines.append("Plus, when the lane needs one, its build (about 40 min) or a Windows pack (about 1 h 30).")
+        lines.append("")
+        lines.append("  tests   test min   spec file (under frend/reporting/e2e/)")
+        for f in sorted(files, key=lambda f: (-per_file.get(f, 0.0), f)):
+            lines.append("  %5s   %8s   %s" % (counts.get(f, "?") if counts else "?",
+                                             "%.1f" % per_file[f] if f in per_file else "?", f))
+        lines.append("")
+        lines.append("On windows-vm-electron also %s (desktop only: not in a Linux full set, so not counted above)."
+                     % DESKTOP_ONLY_SPEC)
+        lines.append(out["from"])
+        out["quarters"][str(n)] = "\n".join(lines)
+    return out
 
 
 def shard_files(per_file, n, files=None):
@@ -986,7 +1073,7 @@ def block(data, n, m, meminfo):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("what", choices=("lanes", "files", "schedule", "estimates", "block", "peaks", "run-peaks"))
+    ap.add_argument("what", choices=("lanes", "files", "schedule", "estimates", "block", "peaks", "run-peaks", "quarters"))
     ap.add_argument("--runs", help="every subcommand but block: the run folders whose marks give the times")
     ap.add_argument("--target", default="docker-server", choices=("web", "docker-server"))
     ap.add_argument("--jobs", type=int, default=1)
@@ -1006,6 +1093,7 @@ def main():
     ap.add_argument("--refused", action="append", default=[], help='estimates: <N>:<M>="<why the press refuses it>"')
     ap.add_argument("--estimates", help="block: the JSON estimates wrote")
     ap.add_argument("--meminfo", default="/proc/meminfo")
+    ap.add_argument("--quarter", type=int, choices=range(1, QUARTERS + 1), help="quarters: that quarter's text only")
     args = ap.parse_args()
     if args.what == "block":
         try:
@@ -1021,6 +1109,10 @@ def main():
         ap.error("--runs is required")
     if args.what == "estimates":
         print(json.dumps(estimates(args), indent=1, sort_keys=True))
+        return 0
+    if args.what == "quarters":
+        data = quarters(args.runs)
+        print(data["quarters"][str(args.quarter)] if args.quarter else json.dumps(data, indent=1, sort_keys=True))
         return 0
     if args.what == "peaks":
         counted = memory_counted(args)

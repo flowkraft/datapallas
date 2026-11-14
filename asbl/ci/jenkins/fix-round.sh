@@ -1,5 +1,5 @@
 #!/bin/bash
-# The fix round of a red nightly run (asbl/ci/jenkins/scheduled-e2e.sh) or of a red one-spec run (asbl/ci/jenkins/one-spec.sh),
+# The fix round of a red nightly run (asbl/ci/jenkins/scheduled-e2e.sh) or of a red run by hand (asbl/ci/jenkins/e2e-by-hand.sh),
 # by their ON_FAILURES; a person or an agent runs the same from a shell. The release round has its own
 # (asbl/ci/jenkins/release-rehearsal.sh); both hand the run's folder to the same fixer (RELEASE_FIXER in the settings file).
 #
@@ -49,7 +49,7 @@
 #   bash asbl/ci/jenkins/fix-round.sh proceed <LOG_DIR>/runs/20261115T180000Z-scheduled-e2e "<name>"
 #   DRY_RUN=yes bash asbl/ci/jenkins/fix-round.sh proceed <run folder> "<name>"
 #
-# Callers: scheduled-e2e.sh, one-spec.sh (and through them the jobs dp-ci-dev-scheduled-e2e and dp-ci-dev-e2e-one-spec);
+# Callers: scheduled-e2e.sh, e2e-by-hand.sh (and through them the job dp-ci-e2e-nightly-or-by-hand);
 # a person or an agent. Test: asbl/ci/tests/test-fix-round.sh.
 set -uo pipefail
 cd "$(dirname "$0")/../../.." || exit 2

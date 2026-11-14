@@ -9,7 +9,7 @@
 #   start      the checks, then the round starts detached and this returns (exit 5, running). Refused, nothing started
 #              (exit 2): the CI is busy (see busy), the version is public on both channels already, or a prerequisite is
 #              missing (an input, the settings file, the Docker engine or the Windows VM: release-publish.sh preflight
-#              docker, UPLOAD=no). A scheduled run going (dp-ci-dev-scheduled-e2e) is stopped first: a release goes before it.
+#              docker, UPLOAD=no). A night going (dp-ci-e2e-nightly-or-by-hand) is stopped first: a release goes before it.
 #              So is a dead newest round (its process gone while its state says running, fixing or waiting: a crash):
 #              what it started is stopped first (stop), then the CI is asked.
 #   status     one line:  ROUND state=<state> version=<v> run=<n> pin=<commit> result=<the newest run's result.txt>

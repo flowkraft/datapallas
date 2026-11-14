@@ -8,7 +8,7 @@
 #   build-if-needed                        origin/main, then `build` only when it is not built yet: dp-ci-release-step1-e2e-prerelease,
 #                                          dp-ci-release-step2-release-docker
 #   e2e                                    the real e2e (web, electron-linux, docker-server): dp-ci-release-step1-e2e-prerelease
-#   e2e-loop                               the fix-and-retry loop, one spec file: dp-ci-dev-e2e-one-spec
+#   e2e-loop                               the fix-and-retry loop, one spec file: dp-ci-e2e-nightly-or-by-hand (by hand)
 #   junit                                  the Java unit tests: dp-ci-dev-junit
 #   quality                                the quality tools, never gating: dp-ci-dev-quality-report
 #   dev [--live | --pinned <sha> | --refresh-content [--pinned]]
@@ -3510,7 +3510,7 @@ if [ "${1:-}" = "--inside" ]; then
       echo "package: none needed (E2E_MODE=production-packaged: each test's clean state comes from the installation's own copy)"
       return 0
     fi
-    # E2E_PACKAGE (the loop job dp-ci-dev-e2e-one-spec, targeted runs only; empty = the stamp rule below, unchanged). Every e2e run compiles the
+    # E2E_PACKAGE (the loop: job dp-ci-e2e-nightly-or-by-hand by hand, targeted runs only; empty = the stamp rule below, unchanged). Every e2e run compiles the
     # jars and serves the UI from the tree; the package only supplies the CONTENT (_apps, db-template, config, samples, scripts, sample
     # databases). So a fix that changes none of that need not rebuild it:
     #   package-reuse-as-is               = run on the package exactly as it stands (specs, helpers, Java, Angular UI);
@@ -4477,10 +4477,10 @@ fi
 # LAUNCHER (on the host)
 # -----------------------------------------------------------------------------
 TASK="${1:-}"
-# e2e-loop = the fix-and-retry loop: the same run as e2e, targeted, web or electron-linux, never a package rebuild (job dp-ci-dev-e2e-one-spec).
+# e2e-loop = the fix-and-retry loop: the same run as e2e, targeted, web or electron-linux, never a package rebuild (job dp-ci-e2e-nightly-or-by-hand, by hand).
 # e2e = the real e2e, the release check (job dp-ci-release-step1-e2e-prerelease): E2E_PACKAGE does not apply to it, so a stray value in the environment
 # cannot skip the package rule.
-[ "$TASK" = e2e-dev ] && { echo "FAIL  e2e-dev is now e2e-loop (Jenkins job dp-ci-dev-e2e-one-spec)"; exit 2; }
+[ "$TASK" = e2e-dev ] && { echo "FAIL  e2e-dev is now e2e-loop (Jenkins job dp-ci-e2e-nightly-or-by-hand, by hand)"; exit 2; }
 if [ "$TASK" = e2e-loop ]; then
   if [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then echo "FAIL  e2e-loop runs one spec file: set E2E_SPEC (e.g. /variables\.spec\.ts\$) or E2E_GREP. The full suite is the real e2e (dp-ci.sh e2e)."; exit 2; fi
   E2E_PACKAGE="${E2E_PACKAGE:-package-reuse-as-is}"
