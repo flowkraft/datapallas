@@ -542,24 +542,60 @@ export class Helpers {
       );
   };
 
+  /**
+   * Where each test's clean state comes from (E2E_MODE, paths.ts): `installFolder`, whose config (with _defaults)
+   * is copied over the installation under test, and `launcherScript`, copied back over its datapallas.bat.
+   *   dev: the DataPallas folder of verified-db-noexe and the e2e resources' default datapallas.bat, as always.
+   *   production-packaged: the untouched copy of the shipped installation and its own datapallas.bat - none in the
+   *   Docker server's zip, so there nothing is copied.
+   */
+  static cleanStateSource = async (
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<{ installFolder: string; launcherScript?: string }> => {
+    if (PATHS.e2eMode(env) === 'dev') {
+      return {
+        installFolder: await Helpers.installFolderIn(PATHS.E2E_ASSEMBLY_FOLDER_PATH),
+        launcherScript: `${PATHS.E2E_RESOURCES_PATH}/java-versions/documentburster-java-default.bat`,
+      };
+    }
+
+    const pristineInstallDir = env.E2E_PRISTINE_INSTALL_DIR;
+    if (!pristineInstallDir || !(await jetpack.existsAsync(`${pristineInstallDir}/${PATHS.CONFIG_PATH}`)))
+      throw new Error(
+        `E2E_MODE=production-packaged needs E2E_PRISTINE_INSTALL_DIR, an untouched copy of the unzipped installation ` +
+        `(got '${pristineInstallDir ?? ''}')`,
+      );
+    const launcherScript = `${pristineInstallDir}/datapallas.bat`;
+    return {
+      installFolder: pristineInstallDir,
+      launcherScript: (await jetpack.existsAsync(launcherScript)) ? launcherScript : undefined,
+    };
+  };
+
+  /** The DataPallas* installation folder directly inside `parentFolder`. */
+  static installFolderIn = async (parentFolder: string): Promise<string> => {
+    const found = await jetpack.findAsync(path.resolve(parentFolder), {
+      matching: 'DataPallas*',
+      files: false,
+      directories: true,
+      recursive: false,
+    });
+    if (!found.length) throw new Error(`no DataPallas* folder in ${path.resolve(parentFolder)}`);
+    return found[0];
+  };
+
   static restoreDocumentBursterCleanState = async (
     shouldDeactivateLicense: boolean,
   ) => {
-    /*
-    console.log(
-      `PATHS.E2E_ASSEMBLY_FOLDER_PATH: ${path.resolve(
-        PATHS.E2E_ASSEMBLY_FOLDER_PATH
-      )}`
-    );
-    */
+    const cleanStateSource = await Helpers.cleanStateSource();
 
-    //copy back the default datapallas.bat file
-    await jetpack.copyAsync(
-      PATHS.E2E_RESOURCES_PATH +
-      '/java-versions/documentburster-java-default.bat',
-      process.env.PORTABLE_EXECUTABLE_DIR + '/datapallas.bat',
-      { overwrite: true },
-    );
+    if (cleanStateSource.launcherScript) {
+      await jetpack.copyAsync(
+        cleanStateSource.launcherScript,
+        process.env.PORTABLE_EXECUTABLE_DIR + '/datapallas.bat',
+        { overwrite: true },
+      );
+    }
 
     if (shouldDeactivateLicense) {
       await this.deActivateLicenseKey();
@@ -586,16 +622,6 @@ export class Helpers {
     );
 
     //await this.killHangingJavaProcesses();
-    // empty and refresh config
-    const verifiedDbFolder = await jetpack.findAsync(
-      path.resolve(PATHS.E2E_ASSEMBLY_FOLDER_PATH),
-      {
-        matching: 'DataPallas*',
-        files: false,
-        directories: true,
-        recursive: false,
-      },
-    );
 
     //console.log(
     //  `restoreDocumentBursterCleanState config_path: ${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}`
@@ -618,7 +644,7 @@ export class Helpers {
         let configFiles: string[];
 
         await jetpack.copyAsync(
-          verifiedDbFolder[0] + '/config',
+          cleanStateSource.installFolder + '/config',
           `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}`,
           { overwrite: true },
         );
@@ -756,13 +782,15 @@ Started ServerApplication with PID 13404`,
         { empty: true },
       );
 
+      const { installFolder } = await Helpers.cleanStateSource();
+
       await jetpack.copyAsync(
-        `${PATHS.E2E_ASSEMBLY_FOLDER_PATH}/DataPallas/config/_defaults/settings.xml`,
+        `${installFolder}/config/_defaults/settings.xml`,
         `${process.env.PORTABLE_EXECUTABLE_DIR}/config/reports/${templateName.toLowerCase()}/settings.xml`,
       );
 
       await jetpack.copyAsync(
-        `${PATHS.E2E_ASSEMBLY_FOLDER_PATH}/DataPallas/config/_defaults/reporting.xml`,
+        `${installFolder}/config/_defaults/reporting.xml`,
         `${process.env.PORTABLE_EXECUTABLE_DIR}/config/reports/${templateName.toLowerCase()}/reporting.xml`,
       );
 
