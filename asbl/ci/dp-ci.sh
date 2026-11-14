@@ -83,6 +83,11 @@
 #                  datapallas-server-docker.zip ships: the bundle unpacked fresh into frend/reporting/testground/docker-server
 #                  and started with the image of the last successful `build`; it never builds or pulls, and aborts unless the
 #                  running container uses exactly that image (DOCKER_SERVER_IMAGE=<tag> <id> in the log).
+#       E2E_MODE   [dev] | production-packaged (frend/reporting/e2e/utils/paths.ts). dev: each test's clean state comes from
+#                  the build tree's verified-db-noexe package. production-packaged: the shipped zip, unzipped and started as a
+#                  user does; an untouched copy of the installation is kept right after the unzip (<folder>-pristine) and
+#                  each test's clean state comes from it, so no verified-db-noexe is needed. On docker-server here, and on win
+#                  docker-e2e and server-e2e; web and electron-linux test the dev tree and refuse it.
 #       E2E_DOCKER_FROM_URL=<zip url>  (a staged Docker release, by hand): that bundle downloaded instead, its image pulled,
 #                  the running digest = the one the rehearsal pushed (release record), then the self-host page's
 #                  one-command `docker run`. By hand only since the Docker release proves before it uploads (it uses
@@ -255,8 +260,8 @@
 #                               installation page installs it (startServer.bat): the pack's, kept (RELEASE_KEPT=<artifacts
 #                               folder>) or made again first (REBUILD_PACK=yes), never this host's (`build` makes none) -
 #                               see win_server_e2e.
-#                               Both server lanes run the light set (asbl/ci/light-set.txt) when E2E_SPEC and E2E_GREP are
-#                               empty, or with E2E_SPEC=light. Caps: WIN_RUN_TIMEOUT [the light set LIGHT_SET_CAP_SERVER_LANES,
+#                               Both server lanes take E2E_MODE as in `e2e`, and run the light set (asbl/ci/light-set.txt) when
+#                               E2E_SPEC and E2E_GREP are empty, or with E2E_SPEC=light. Caps: WIN_RUN_TIMEOUT [the light set LIGHT_SET_CAP_SERVER_LANES,
 #                               a targeted run 3 h], WIN_RUN_STALL [80 min].
 #       release                 the Windows release's files (MODE=rehearsal|public, UPLOAD=no|yes, DRY_RUN=no|yes): pack-datapallas.bat once
 #                               (RELEASE_PACK_TIMEOUT [28800 = 8 h]), the server light set on its datapallas-server.zip, the
@@ -1008,6 +1013,26 @@ e2e_count() {
   echo "${n:-0}"
 }
 
+# E2E_MODE, checked: prints dev (the default) or production-packaged, fails (rc 2) on anything else. Top level for the same
+# reason as e2e_count: the Linux and the Windows lanes both read it.
+e2e_mode_checked() {
+  case "${E2E_MODE:-dev}" in
+    dev|production-packaged) echo "${E2E_MODE:-dev}" ;;
+    *) echo "FAIL  E2E_MODE must be dev or production-packaged (got '$E2E_MODE')" >&2; return 2 ;;
+  esac
+}
+
+# pristine_install_copy <installation folder>: E2E_MODE=production-packaged's untouched copy of a freshly unzipped
+# installation, made before its first start, in <its parent>-pristine/; prints the copy's folder, the tests'
+# E2E_PRISTINE_INSTALL_DIR, which each test's clean state is restored from.
+pristine_install_copy() {
+  local copy_root
+  copy_root="$(dirname "$1")-pristine"
+  rm -rf "$copy_root" && mkdir -p "$copy_root" && cp -a "$1" "$copy_root/" ||
+    { echo "FAIL  could not copy $1 to $copy_root" >&2; return 1; }
+  echo "$copy_root/$(basename "$1")"
+}
+
 # W7. The Electron e2e, on the VM's own desktop.
 #
 # Same shape as the Linux lane's e2e_web(): clean the testground, then run the ONE gulp task that
@@ -1752,7 +1777,7 @@ win_e2e() {
     "E2E_JSON_REPORT=$WIN_RUNS\\e2e\\playwright.json")
   export WIN_RUN_ENV
 
-  echo "WIN_E2E_MODE=$mode  spec='$spec'  grep='$gexp'  retries=$retries"
+  echo "WIN_E2E_SET=$mode  spec='$spec'  grep='$gexp'  retries=$retries"
   echo "WIN_E2E_LOG=$out"
   # The product's own running log, written throughout every run. While Playwright is between files the
   # step's stdout can be quiet for minutes, and without a growing file to look at the stall timer
@@ -1869,6 +1894,20 @@ if (\$rc -ne 0 -or -not (Test-Path "\$root\\DataPallas\\$3")) { "FAIL  could not
 PS
 }
 
+# win_pristine_install_copy <VM folder a bundle was extracted into>: pristine_install_copy on the VM - <folder>\DataPallas
+# copied to <folder>-pristine\DataPallas right after the unzip, before the first start; prints the copy's folder.
+win_pristine_install_copy() {
+  win_ps 2>&1 <<PS | tr -d '\r' >&2 || return 1
+\$ErrorActionPreference = "Continue"
+\$copyRoot = '$1-pristine'
+if (Test-Path \$copyRoot) { Remove-Item -Recurse -Force \$copyRoot }
+& robocopy.exe '$1\\DataPallas' "\$copyRoot\\DataPallas" /E /R:0 /W:0 /NFL /NDL /NJH /NJS /NP | Out-Null
+if (\$LASTEXITCODE -ge 8) { "FAIL  could not copy $1\\DataPallas to \$copyRoot (robocopy exit \$LASTEXITCODE)"; exit 1 }
+exit 0
+PS
+  echo "$1-pristine\\DataPallas"
+}
+
 # win_bundle_download <url> <VM folder> <file DataPallas\ must hold>: the zip downloaded on the VM (curl.exe, as a user
 # gets it from the page), then extracted like a copied one (win_bundle_extract); the download stays in C:\dp-ci\tmp.
 win_bundle_download() {
@@ -1916,6 +1955,7 @@ PS
     "TEST_LICENSE_KEY=$key" \
     "E2E_BASE_URL=http://localhost:9090" \
     "PORTABLE_EXECUTABLE_DIR=$inst" \
+    "E2E_MODE=${E2E_MODE:-dev}" \
     "E2E_SPEC=$spec" \
     "E2E_GREP=$gexp" \
     "E2E_RETRIES=$retries" \
@@ -1934,7 +1974,8 @@ PS
     "$@")
   export WIN_RUN_ENV
 
-  echo "WIN_E2E_MODE=$mode  target=$target  spec='$spec'  grep='$gexp'  retries=$retries"
+  echo "WIN_E2E_SET=$mode  E2E_MODE=${E2E_MODE:-dev}  target=$target  spec='$spec'  grep='$gexp'  retries=$retries"
+  [ $# -eq 0 ] || echo "WIN_E2E_ENV $*"
   echo "WIN_E2E_LOG=$WIN_WEB_OUT"
   WIN_RUN_WATCH="${WIN_RUN_WATCH:-$inst\\logs\\info.log}"
   # the light set's cap (LIGHT_SET_CAP_SERVER_LANES, from its estimate), else 3 h
@@ -2090,10 +2131,11 @@ win_docker_config() {
 
 win_docker_e2e() {
   local target=windows-vm-docker mode=targeted retries spec gexp tag version image_id vm_id running_id tmp want="" vmc
-  local image_file="" file_id
+  local image_file="" file_id e2e_mode pristine=""
   local zip="$REPO/asbl/dist/datapallas-server-docker.zip" step=docker-e2e
   local root="$WIN_REPO\\frend\\reporting\\testground\\docker-server"
   local inst="$root\\DataPallas"
+  e2e_mode=$(e2e_mode_checked) || return 2
   # what the lane needs, in seconds, before the sync: the VM, its Docker Desktop and, unless a release's download is
   # tested, this host's Docker engine (the image is copied from it)
   prereq vm vm-docker $([ -z "${E2E_DOCKER_FROM_URL:-}" ] && echo docker) || return 2
@@ -2139,7 +2181,8 @@ win_docker_e2e() {
   # The tests' clean state copies config/ from the VM's package (asbl\\target\\package\\verified-db-noexe) over the
   # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
   # old classpath of config/_internal/documentburster.xml (fixed in the zip) and failed.
-  win_prepare_package || return $?
+  # production-packaged restores it from the installation's own untouched copy instead: no package.
+  if [ "$e2e_mode" = dev ]; then win_prepare_package || return $?; fi
 
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # no filter, or E2E_SPEC=light: the light set (asbl/ci/light-set.txt)
@@ -2194,6 +2237,7 @@ PS
   else
     win_bundle_extract "$zip" "$root" docker-compose.yml || return 1
   fi
+  if [ "$e2e_mode" = production-packaged ]; then pristine=$(win_pristine_install_copy "$root") || return 1; fi
   # "cd DataPallas" and "docker compose up -d", as the page says; from the download, with no local copy of the image
   win_docker_config || return 1
   win_ps 2>&1 <<PS | tr -d '\r' || { win_docker_down "$inst"; return 1; }
@@ -2227,7 +2271,8 @@ PS
   fi
   mark_next "$target STEP 3/3" "the tests ($mode set) in a browser on the VM, then the server's log"
 
-  win_web_e2e "$target" "$step" "$inst" "$mode" "$spec" "$gexp" "$retries" "E2E_DOCKER_SERVER=datapallas-server" ||
+  win_web_e2e "$target" "$step" "$inst" "$mode" "$spec" "$gexp" "$retries" "E2E_DOCKER_SERVER=datapallas-server" \
+    ${pristine:+"E2E_PRISTINE_INSTALL_DIR=$pristine"} ||
     { win_docker_down "$inst"; return 1; }
   # the server's whole log of the run: clean state empties the bundle's logs between tests
   win_ssh "docker logs datapallas-server" > "${WIN_WEB_OUT%.log}-datapallas-server.log" 2>&1 &&
@@ -2269,7 +2314,8 @@ win_server_e2e() {
   local mode=targeted retries spec gexp step=server-e2e zip
   local root="$WIN_REPO\\frend\\reporting\\testground\\server"
   local inst="$root\\DataPallas"
-  local kept="" sha="" from="" new_pack_dir="" rc
+  local kept="" sha="" from="" new_pack_dir="" rc e2e_mode pristine=""
+  e2e_mode=$(e2e_mode_checked) || return 2
   if [ "${REBUILD_PACK:-no}" != yes ] && [ -z "${RELEASE_KEPT:-}" ]; then
     echo "FAIL  server-e2e installs the Windows pack's datapallas-server.zip, the only one made: RELEASE_KEPT=<a kept folder" \
          "holding a pack (asbl/ci/release-keep.sh)> or REBUILD_PACK=yes (packs first, about 1 h 30)" >&2
@@ -2308,7 +2354,10 @@ win_server_e2e() {
   # The tests' clean state copies config/ from the VM's package (asbl\\target\\package\\verified-db-noexe) over the
   # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
   # old classpath of config/_internal/documentburster.xml (fixed in the zip) and failed.
-  win_prepare_package || { rc=$?; [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return "$rc"; }
+  # production-packaged restores it from the installation's own untouched copy instead: no package.
+  if [ "$e2e_mode" = dev ]; then
+    win_prepare_package || { rc=$?; [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return "$rc"; }
+  fi
   win_put_dist "$kept" "datapallas-server.zip:$sha" || { [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return 1; }
   [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"
   zip="$WIN_REPO\\asbl\\dist\\datapallas-server.zip"   # a path on the VM: win_bundle_extract extracts it where it is
@@ -2334,6 +2383,7 @@ if ($l) { "FAIL  port 9090 is taken by " + (Get-Process -Id $l.OwningProcess -Er
 exit 0
 PS
   win_bundle_extract "$zip" "$root" startServer.bat || return 1
+  if [ "$e2e_mode" = production-packaged ]; then pristine=$(win_pristine_install_copy "$root") || return 1; fi
 
   # "Start the server by running startServer.bat"
   WIN_RUN_ENV="" WIN_RUN_BARE=1 win_run_start dp-server "$inst" startServer.bat || return 1
@@ -2343,7 +2393,8 @@ PS
     win_server_down "$inst"; return 1; }
 
   mark_next "windows-vm-server STEP 2/2" "the tests ($mode set) in a browser on the VM, then the server's log"
-  win_web_e2e windows-vm-server "$step" "$inst" "$mode" "$spec" "$gexp" "$retries" ||
+  win_web_e2e windows-vm-server "$step" "$inst" "$mode" "$spec" "$gexp" "$retries" \
+    ${pristine:+"E2E_PRISTINE_INSTALL_DIR=$pristine"} ||
     { win_server_down "$inst"; return 1; }
   win_pull "$(printf '%s' "$inst\\logs\\rbsj-server.log" | tr '\\' '/')" "${WIN_WEB_OUT%.log}-rbsj-server.log" 2>/dev/null &&
     echo "WIN_SERVER_LOG=${WIN_WEB_OUT%.log}-rbsj-server.log"
@@ -3356,7 +3407,12 @@ if [ "${1:-}" = "--inside" ]; then
   }
 
   prepare_package() {
-    local built from copied=0 t0; built=$(cat "$PKG_STAMP" 2>/dev/null); from=$(head -n 1 <<<"$built")
+    local built from copied=0 t0 e2e_mode; built=$(cat "$PKG_STAMP" 2>/dev/null); from=$(head -n 1 <<<"$built")
+    e2e_mode=$(e2e_mode_checked) || return 2
+    if [ "$e2e_mode" = production-packaged ]; then
+      echo "package: none needed (E2E_MODE=production-packaged: each test's clean state comes from the installation's own copy)"
+      return 0
+    fi
     # E2E_PACKAGE (the loop job dp-ci-dev-e2e-one-spec, targeted runs only; empty = the stamp rule below, unchanged). Every e2e run compiles the
     # jars and serves the UI from the tree; the package only supplies the CONTENT (_apps, db-template, config, samples, scripts, sample
     # databases). So a fix that changes none of that need not rebuild it:
@@ -3588,11 +3644,16 @@ print(*(c["name"] + "-" + s for s, v in c["services"].items() if "build" in v an
   }
 
   e2e_web() {
-    local out=/tmp/e2e-web.out code mode=targeted target="${E2E_TARGET:-web}" one_command=""
+    local out=/tmp/e2e-web.out code mode=targeted target="${E2E_TARGET:-web}" one_command="" e2e_mode
     case "$target" in
       web|electron|docker-server) ;;
       *) echo "!!! E2E_TARGET must be web, electron or docker-server (got '$target')"; return 2 ;;
     esac
+    e2e_mode=$(e2e_mode_checked) || return 2
+    [ "$e2e_mode" = dev ] || [ "$target" = docker-server ] ||
+      { echo "!!! E2E_MODE=$e2e_mode needs E2E_TARGET=docker-server (the shipped zip and image); $target tests the dev tree"; return 2; }
+    # read by e2e/utils/paths.ts; docker_server_up adds E2E_PRISTINE_INSTALL_DIR in production-packaged mode
+    export E2E_MODE="$e2e_mode"
     if [ "${E2E_SPEC:-}" = light ] && [ -z "${E2E_GREP:-}" ]; then
       # E2E_SPEC=light: the light set (asbl/ci/light-set.txt), as the Docker release's Linux proof runs it on docker-server
       light_set_filters "$target" || return 2
@@ -3649,7 +3710,8 @@ print(*(c["name"] + "-" + s for s, v in c["services"].items() if "build" in v an
     export E2E_RETRIES="${E2E_RETRIES:-0}" E2E_TIMEOUT_SECS="${E2E_TIMEOUT_SECS:-72000}"
     # every result with its error, retries and trace paths, next to the run log; read by e2e/playwright.config.ts
     export E2E_JSON_REPORT="${LOG%.log}-playwright.json"
-    echo "E2E_MODE=$mode"
+    echo "E2E_SET=$mode"
+    echo "E2E_MODE=$E2E_MODE${E2E_PRISTINE_INSTALL_DIR:+ E2E_PRISTINE_INSTALL_DIR=$E2E_PRISTINE_INSTALL_DIR}"
     echo "E2E_RETRIES=$E2E_RETRIES E2E_TIMEOUT_SECS=$E2E_TIMEOUT_SECS E2E_JSON_REPORT=$E2E_JSON_REPORT"
     echo "E2E_CAPS max_wait_ms=$E2E_MAX_WAIT_MS max_test_ms=$E2E_MAX_TEST_MS action_timeout_ms=$E2E_ACTION_TIMEOUT_MS" \
       "clean_state_attempts=$E2E_CLEAN_STATE_ATTEMPTS failfast=$E2E_FAILFAST start_evidence_ms=$E2E_START_EVIDENCE_MS" \
@@ -3779,6 +3841,10 @@ HTML
     unzip -q "$zip" -d "$root" || { echo "!!! docker-server: cannot unpack $zip"; return 1; }
     DOCKER_SERVER_DIR="$root/DataPallas"
     [ -f "$DOCKER_SERVER_DIR/docker-compose.yml" ] || { echo "!!! docker-server: $DOCKER_SERVER_DIR/docker-compose.yml missing"; return 1; }
+    if [ "${E2E_MODE:-dev}" = production-packaged ]; then
+      E2E_PRISTINE_INSTALL_DIR=$(pristine_install_copy "$DOCKER_SERVER_DIR") || return 1
+      export E2E_PRISTINE_INSTALL_DIR
+    fi
     DOCKER_SERVER_IMAGE=$(cd "$DOCKER_SERVER_DIR" && docker compose config --images | grep "^$SERVER_IMAGE_REPO:" | head -1)
     # a user's machine has no copy of it: compose pulls the release's (--pull always below)
     [ "$pull" = always ] && { docker image rm "$DOCKER_SERVER_IMAGE" >/dev/null 2>&1 || true; }
@@ -4633,7 +4699,7 @@ docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --u
   -e LICENSE_CURL_TIMEOUT_SECS=15 -e LICENSE_CURL_ATTEMPTS=1 \
   -e JUNIT_MODULE="${JUNIT_MODULE:-}" -e JUNIT_TEST="${JUNIT_TEST:-}" \
   -e E2E_SPEC="${E2E_SPEC:-}" -e E2E_GREP="${E2E_GREP:-}" -e E2E_TIMEOUT_SECS="${E2E_TIMEOUT_SECS:-}" -e E2E_RETRIES="${E2E_RETRIES:-}" \
-  -e E2E_TARGET="${E2E_TARGET:-web}" \
+  -e E2E_TARGET="${E2E_TARGET:-web}" -e E2E_MODE="${E2E_MODE:-}" \
   -e E2E_MAX_WAIT_MS="${E2E_MAX_WAIT_MS:-}" -e E2E_MAX_TEST_MS="${E2E_MAX_TEST_MS:-}" -e E2E_ACTION_TIMEOUT_MS="${E2E_ACTION_TIMEOUT_MS:-}" \
   -e E2E_CLEAN_STATE_ATTEMPTS="${E2E_CLEAN_STATE_ATTEMPTS:-}" -e E2E_FAILFAST="${E2E_FAILFAST:-}" \
   -e E2E_START_EVIDENCE_MS="${E2E_START_EVIDENCE_MS:-}" -e E2E_STALL_MS="${E2E_STALL_MS:-}" -e E2E_REPEAT_EACH="${E2E_REPEAT_EACH:-}" \

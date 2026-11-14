@@ -110,7 +110,7 @@ elif cmd == "cut":      # cut <report> <real log> <out dir> <runner files>...: o
         part["stats"] = dict(report["stats"], duration=ms, **st)
         json.dump(part, open(log[:-4] + "-playwright.json", "w"))
         retries = re.sub(r"E2E_JSON_REPORT=\S+", "E2E_JSON_REPORT=" + log[:-4] + "-playwright.json", head["E2E_RETRIES="])
-        lines = [head["PIPELINE_START "], "E2E_MODE=full", retries, head.get("E2E_CAPS ", ""), head["E2E_TARGET="],
+        lines = [head["PIPELINE_START "], "E2E_SET=full", retries, head.get("E2E_CAPS ", ""), head["E2E_TARGET="],
                  "Running %d tests using 1 worker" % sum(st.values()), "--- Playwright result ---",
                  "  %d passed (1.0h)" % st["expected"], "Playwright exit code: 0",
                  "E2E_RESULT mode=full spec='x' grep='' passed=%d failed=%d flaky=%d skipped=%d didnotrun=0 exit=0 target=%s"

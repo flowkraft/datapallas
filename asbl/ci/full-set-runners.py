@@ -443,7 +443,7 @@ def cmd_merge(args):
         else:
             lines.append("E2E_RUNNER %d log=none result=NOT_RUN (%s) files=%d: %s"
                          % (r["n"], r["why"], len(r["files"]), " ".join(r["files"])))
-    lines.append("E2E_MODE=full")
+    lines.append("E2E_SET=full")
     lines.append("E2E_RETRIES=%s E2E_TIMEOUT_SECS=%s E2E_JSON_REPORT=%s"
                  % (first.get("retries") or "?", first.get("timeout") or "?", merged_report))
     if first.get("caps"):
