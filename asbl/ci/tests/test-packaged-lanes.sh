@@ -14,7 +14,10 @@
 #   5. win e2e (windows-vm-electron): production-packaged needs RELEASE_KEPT; it puts the kept datapallas.zip in the VM's
 #      asbl\dist, unzips it, copies it to <folder>-pristine, and runs the tests with TEST_ENV=electron (which wins over the
 #      web lanes' TEST_ENV=web) and E2E_PRISTINE_INSTALL_DIR, with no package and no gulp; the set and the caps are the dev
-#      lane's; dev prepares the package and runs gulp as before.
+#      lane's; dev prepares the package and runs gulp as before;
+#   6. the light sets of steps 2 and 3 run in production-packaged mode: each call site (release-docker.sh's two proofs,
+#      win_release's two light sets) asks for it, the Electron one with the kept pack; release-rerun.sh re-runs those parts
+#      in it (web dev, E2E_MODE=dev as step 1 ran them), taking the builds of that mode (no e2e package when packaged).
 # Each lane function is taken from dp-ci.sh as it is and runs against stubs (ssh, docker, the VM's PowerShell, the steps
 # around it) that record their calls: nothing is started, no VM or Docker engine is touched. Takes about two seconds.
 # Callers: a person or an agent, from the shell, after changing E2E_MODE or a server lane.
@@ -119,7 +122,7 @@ check "the launcher hands E2E_MODE to the CI container" grep -qF -- '-e E2E_MODE
 
 # ---- 3. the two Windows server lanes ----
 unset -f docker curl
-for f in kept_windows_zip_sha win_pristine_install_copy win_docker_e2e win_server_e2e; do eval "$(top_level_function $f)"; done
+for f in kept_windows_zip_sha win_lane_pack_given win_pristine_install_copy win_docker_e2e win_server_e2e; do eval "$(top_level_function $f)"; done
 WIN_REPO='C:\ci\repo'; WIN_RUNS='C:\dp-ci\runs'
 record() { echo "$*" >> "$CALLS"; }
 win_ps() { echo "win_ps: $(tr '\n' ' ')" >> "$CALLS"; }
@@ -221,6 +224,31 @@ check "win e2e production-packaged, E2E_SPEC=light: the light set" \
 desktop_lane dev 'one\.spec\.ts' > /dev/null
 check "win e2e dev: the package prepared and gulp run as before, nothing unzipped" same "1 1 0 0" \
   "$(grep -c '^win_prepare_package' "$CALLS") $(grep -c 'utils:start-server-and-e2e-electron' "$CALLS") $(grep -c 'win_bundle_extract\|robocopy' "$CALLS") $(grep -c '^win_web_e2e' "$CALLS")"
+
+# ---- 6. the light sets of steps 2 and 3, and their re-runs ----
+RD=asbl/ci/jenkins/release-docker.sh
+check "step 2's Linux proof: docker-server, the light set, production-packaged" \
+  grep -qF 'E2E_TARGET=docker-server E2E_MODE=production-packaged E2E_SPEC=light' "$RD"
+check "step 2's Windows proof: production-packaged" \
+  grep -qE '^  if E2E_MODE=production-packaged .*win-e2e\.sh docker-e2e|^  if E2E_MODE=production-packaged E2E_SPEC=""' "$RD"
+release_fn=$(top_level_function win_release)
+check "step 3's server light set: the kept pack, production-packaged" \
+  grep -qF 'export RELEASE_KEPT="$folder" REBUILD_PACK=no E2E_MODE=production-packaged E2E_SPEC=light' <(printf '%s\n' "$release_fn")
+check "step 3's electron light set: the kept pack, production-packaged, then win_e2e" bash -c \
+  'grep -A2 -F "elif ( export RELEASE_KEPT=\"\$folder\" REBUILD_PACK=no E2E_MODE=production-packaged E2E_SPEC=light" | grep -q "mark_run win_e2e"' \
+  < <(printf '%s\n' "$release_fn" | sed -n '/RELEASE STEP 3\/5/,/RELEASE STEP 4\/5/p')
+check "step 3's electron light set: not run without a kept pack" bash -c \
+  'grep -q "res_electron_light=\"NOT_RUN(no kept pack)\""' < <(printf '%s\n' "$release_fn")
+eval "$(sed -n '/^part_mode() /p; /^part_builds() {/,/^}/p' asbl/ci/release-rerun.sh)"
+rerun_builds() { for part in web docker-server windows-vm-docker windows-vm-server windows-vm-electron robot; do
+  printf '%s=%s=%s ' "$part" "$(part_mode "$part")" "$(part_builds "$part" | tr ' ' '+')"; done; }
+check "release-rerun.sh: steps 2 and 3's parts production-packaged, their builds without the e2e package" same \
+  "web=dev=e2e-package docker-server=production-packaged=image-and-zips windows-vm-docker=production-packaged=image-and-zips windows-vm-server=production-packaged=windows-pack windows-vm-electron=production-packaged=windows-pack robot=production-packaged=windows-pack " \
+  "$(unset E2E_MODE; rerun_builds)"
+check "release-rerun.sh E2E_MODE=dev: the builds as before (the e2e package)" same \
+  "web=dev=e2e-package docker-server=dev=e2e-package+image-and-zips windows-vm-docker=dev=e2e-package+image-and-zips windows-vm-server=dev=e2e-package+windows-pack windows-vm-electron=dev=e2e-package robot=dev=windows-pack " \
+  "$(E2E_MODE=dev rerun_builds)"
+check "release-rerun.sh hands the mode to the lanes" same 2 "$(grep -c 'env_lane=(.*E2E_MODE="$mode"' asbl/ci/release-rerun.sh)"
 
 echo
 if [ "$FAILED_CASES" -eq 0 ]; then echo "ALL PASS"; exit 0; else echo "$FAILED_CASES FAILED"; exit 1; fi

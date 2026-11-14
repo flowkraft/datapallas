@@ -174,7 +174,7 @@ for red in "lane1-$FULL-full" lane2-docker-server-auth; do
 done
 dry_run red-pack DRY_RUN_RED=pack
 check "a red pack: result=red, step 1 green, what needs the pack NOT_RUN, the rest green" same \
-  "1 red green lane2-docker-server-auth:PASS lane1-$FULL-full:PASS build:PASS linux-proof:PASS pack:FAIL windows-docker-proof:PASS server-light:NOT_RUN electron-light:PASS robot:NOT_RUN docker-verdict:PASS windows-verdict:FAIL" \
+  "1 red green lane2-docker-server-auth:PASS lane1-$FULL-full:PASS build:PASS linux-proof:PASS pack:FAIL windows-docker-proof:PASS server-light:NOT_RUN electron-light:NOT_RUN robot:NOT_RUN docker-verdict:PASS windows-verdict:FAIL" \
   "$RC $(key result) $(key step1) $(parts)"
 dry_run red-build DRY_RUN_RED=build
 if [ "$FULL" = docker-server ]; then lane1_without_build=NOT_RUN; else lane1_without_build=PASS; fi

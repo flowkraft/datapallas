@@ -464,7 +464,8 @@ def what_each_part_runs(rows, counts, target, groups=None, lanes=None):
             lines += wrapped("  ... on server zip", "the pack's datapallas-server.zip on the VM's Java 17, installed as "
                              "the installation page says (startServer.bat).")
         if PART_NAMES["electron-light"] in light:
-            lines += wrapped("  ... on Electron", "the desktop app on the VM, from its e2e package.")
+            lines += wrapped("  ... on Electron", "the pack's datapallas.zip on the VM, DataPallas.exe started as "
+                             "a user starts it.")
     if PART_NAMES["auth"] in names:
         lines += wrapped(PART_NAMES["auth"], "auth-authorization-server.spec.ts alone%s: it creates accounts and changes "
                          "roles, so it gets a server of its own." % tests_text(counts, "auth").replace(":", ","))

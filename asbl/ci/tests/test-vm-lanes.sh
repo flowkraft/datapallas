@@ -214,11 +214,11 @@ check "  VM b's parts not started, each says why" bash -c \
 echo "shut off" > "$STUB/vms/win10-dev"
 dry_run red-vm-a USE_N_NUMBER_OF_WINDOWS_VMS=4 DRY_RUN_RED=vm-a
 : > "$STUB/vms/win10-dev"
-check "DRY_RUN_RED=vm-a, 4 VMs (the pack's VM): its lanes and the verdict red, the server light set not run, VM c and d's lanes run" same \
-  "1 red lane2-docker-server-auth:PASS lane1-$FULL-full:PASS build:PASS linux-proof:PASS pack:FAIL windows-docker-proof:PASS server-light:NOT_RUN electron-light:PASS robot:FAIL docker-verdict:PASS windows-verdict:FAIL" \
+check "DRY_RUN_RED=vm-a, 4 VMs (the pack's VM): its lanes and the verdict red, the light sets not run, VM d's lane runs" same \
+  "1 red lane2-docker-server-auth:PASS lane1-$FULL-full:PASS build:PASS linux-proof:PASS pack:FAIL windows-docker-proof:PASS server-light:NOT_RUN electron-light:NOT_RUN robot:FAIL docker-verdict:PASS windows-verdict:FAIL" \
   "$RC $(key result) $(parts)"
-check "  the server light set on VM b not run: no kept pack" bash -c \
-  'grep -q "^not run: there is no kept pack" "$1/windows-server-light.log" || { sed "s/^/        /" "$1/windows-server-light.log"; exit 1; }' _ "$RUN"
+check "  the light sets on VMs b and c not run: no kept pack" bash -c \
+  'for l in server-light electron-light; do grep -q "^not run: there is no kept pack" "$1/windows-$l.log" || { sed "s/^/        /" "$1/windows-$l.log"; exit 1; }; done' _ "$RUN"
 check "  the pack's VM down: no copy made (the pack never started), VMs c and d prepare their own" bash -c \
   'grep -q "^not run: the pack never started" "$1/windows-package-from-pack.log" &&
    for v in c d; do grep -q "^WIN_E2E_PACKAGE=not copied from the pack (the pack never started .*VM $v prepares its own" "$1/windows-package-$v.log" || exit 1; done' _ "$RUN"

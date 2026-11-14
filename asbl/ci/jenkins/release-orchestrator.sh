@@ -25,8 +25,8 @@
 #     VM    as in 4. below: the pack, the Windows Docker proof once the build ended, the server light set, Electron, Robot
 #     VMs   with USE_N_NUMBER_OF_WINDOWS_VMS=M above 1, one track per VM instead: each VM runs its lanes of the layout for M
 #           VMs (VM_LANES_<M>_<name>, asbl/ci/release-machines.sh), in order, each when its inputs exist: the Windows Docker
-#           proof once the build ended, the server light set once the pack ended (it installs its datapallas-server.zip),
-#           Robot after the pack on the pack's VM. Each VM whose lanes test on its e2e package has it once per pin: the
+#           proof once the build ended, the two light sets once the pack ended (they install its datapallas-server.zip
+#           and datapallas.zip, E2E_MODE=production-packaged), Robot after the pack on the pack's VM. Each VM whose lanes test on its e2e package has it once per pin: the
 #           pack's VM right after the pack (win-e2e.sh prepare: seconds, a green pack stamps its own package); every other
 #           VM a copy of the pack's (windows-package-<vm>, win-e2e.sh package), which the pack's VM makes once, while it
 #           packs, when this pack's NoExeAssembler finished (windows-package-from-pack, dp-ci.sh win package-pull: one
@@ -63,7 +63,7 @@
 #              build is there (DOCKER_RELEASE_PART=windows); then step 3's server light set on the pack's own
 #              datapallas-server.zip, its Electron light set, Robot and its verdict (WIN_RELEASE_HALF=after-pack)
 #      A red part never stops one that can still run: a red build leaves the Windows Docker proof and the Docker keep NOT
-#      RUN, a red pack leaves the server light set and Robot NOT RUN (step 3 says so); the rest runs;
+#      RUN, a red pack leaves the light sets and Robot NOT RUN (step 3 says so); the rest runs;
 #   5. the summary: each part PASS, FAIL or NOT RUN with its reason and its log; the flaky tests; after execution 1, the
 #      failures to fix (release-keep.sh failures); the history line (marks.sh run_record_end). Exit 0 only when every part
 #      passed.
@@ -189,11 +189,11 @@ replay() {
     reuse_or_rebuild "$from" "$to"
     echo "REPLAY ${from:0:8} -> ${to:0:8} ($RR_CHANGED files changed)"
     printf '  %-22s %-8s %s\n' build "$RR_IMAGE_AND_ZIPS" "(image-and-zips)" \
-      linux-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
-      windows-docker-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
+      linux-proof "$RR_IMAGE_AND_ZIPS" "(image-and-zips)" \
+      windows-docker-proof "$RR_IMAGE_AND_ZIPS" "(image-and-zips)" \
       pack "$RR_WINDOWS_PACK" "(windows-pack)" \
-      server-light "$(either "$RR_E2E_PACKAGE" "$RR_WINDOWS_PACK")" "(e2e-package, windows-pack)" \
-      electron-light "$RR_E2E_PACKAGE" "(e2e-package)" \
+      server-light "$RR_WINDOWS_PACK" "(windows-pack)" \
+      electron-light "$RR_WINDOWS_PACK" "(windows-pack)" \
       robot "$RR_WINDOWS_PACK" "(windows-pack)" \
       "step 1" "$RR_STEP1" "(${RR_STEP1_WHY:-})"
     from="$to"
@@ -504,6 +504,7 @@ vm_order() {
       pack) out="${out}pack (WIN_RELEASE_HALF=pack), "; ! vm_needs_package "$1" || out="${out}prepare (right after the pack: seconds, the pack stamps its package), " ;;
       docker-proof) out="${out}windows-docker-proof once the build ended (DOCKER_RELEASE_PART=windows), " ;;
       server-light) out="${out}server-light once the pack ended (on its datapallas-server.zip, kept), " ;;
+      electron-light) out="${out}electron-light once the pack ended (on its datapallas.zip, kept), " ;;
       *) out="${out}$l, " ;;
     esac
   done
@@ -553,7 +554,7 @@ not_run() {
 }
 # simulate <id>: the marks a part leaves, as its script prints them, for a dry run (the step scripts' own dry runs say more)
 simulate() {
-  local r=0 any=0 p v
+  local r=0 any=0 e=0 p v
   case "$1" in
     step0)  simulated_mark "STEP 0" step0 ;;
     step1-build) simulated_mark "BUILD IF NEEDED" step1-build ;;
@@ -575,14 +576,19 @@ simulate() {
       simulated_mark "RELEASE STEP 1/5" pack ;;
     docker-windows) simulated_mark "DOCKER RELEASE STEP 4/6" windows-docker-proof ;;
     windows-after-pack)
-      # the parts that install the pack's files need it kept: the server light set its datapallas-server.zip, Robot all three
+      # the parts that install the pack's files need it kept: the light sets datapallas-server.zip and datapallas.zip, Robot all three
       echo "######## RELEASE STEP 2/5 START  (dry run)"
       v=${VERSION:-$(git show "$PIN:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+')}
       echo "dry run: server-light installs datapallas-server.zip of pack, kept in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${PIN:0:8}/ (RELEASE_KEPT)"
       if red_in_dry_run pack; then echo "not run: there is no kept pack (FAIL) whose datapallas-server.zip it would install"; any=1
       elif red_in_dry_run server-light; then echo "FAILED: server-light red (DRY_RUN_RED)"; any=1; fi
       echo "######## RELEASE STEP 2/5 END rc=$any  (dry run)"
-      simulated_mark "RELEASE STEP 3/5" electron-light || any=1
+      echo "######## RELEASE STEP 3/5 START  (dry run)"
+      echo "dry run: electron-light installs datapallas.zip of pack, kept in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${PIN:0:8}/ (RELEASE_KEPT)"
+      if red_in_dry_run pack; then echo "not run: there is no kept pack (FAIL) whose datapallas.zip it would install"; e=1
+      elif red_in_dry_run electron-light; then echo "FAILED: electron-light red (DRY_RUN_RED)"; e=1; fi
+      echo "######## RELEASE STEP 3/5 END rc=$e  (dry run)"
+      [ "$e" = 0 ] || any=1
       echo "######## RELEASE STEP 4/5 START  (dry run)"
       if red_in_dry_run pack; then echo "not run: there is no pack (FAIL) to test"; r=1
       elif red_in_dry_run robot; then echo "FAILED: robot red (DRY_RUN_RED)"; r=1; fi
@@ -626,7 +632,12 @@ simulate() {
       elif red_in_dry_run server-light; then echo "FAILED: server-light red (DRY_RUN_RED)"; r=1; fi
       echo "######## RELEASE STEP 2/5 END rc=$r  (dry run)"
       return "$r" ;;
-    windows-electron-light) simulated_mark "RELEASE STEP 3/5" electron-light ;;
+    windows-electron-light)
+      echo "######## RELEASE STEP 3/5 START  (dry run)"
+      if [ "$(cat "$PARTS/windows-pack.rc" 2>/dev/null)" != 0 ]; then echo "not run: there is no kept pack (FAIL) whose datapallas.zip it would install"; r=1
+      elif red_in_dry_run electron-light; then echo "FAILED: electron-light red (DRY_RUN_RED)"; r=1; fi
+      echo "######## RELEASE STEP 3/5 END rc=$r  (dry run)"
+      return "$r" ;;
     windows-robot)
       echo "######## RELEASE STEP 4/5 START  (dry run)"
       if [ "$(cat "$PARTS/windows-pack.rc" 2>/dev/null)" != 0 ]; then echo "not run: there is no pack (FAIL) to test"; r=1
@@ -1212,9 +1223,9 @@ vm_lanes_track() {
         else not_run docker-windows "no build of ${PIN:0:8} to prove (the build is not green)"; fi
         touch "$PARTS/.docker-windows-done" ;;
       server-light|electron-light|robot)
-        # the server light set installs the pack's datapallas-server.zip: once the pack ended (Robot follows it on its VM);
-        # every lane records its part in the folder the pack's half begins (its step list emptied then): once it began
-        if [ "$lane" = server-light ]; then until [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done
+        # the light sets install the pack's datapallas-server.zip and datapallas.zip: once the pack ended (Robot follows it
+        # on its VM); every lane records its part in the folder the pack's half begins (its step list emptied then): once it began
+        if [ "$lane" != robot ]; then until [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done
         else until grep -aq '^RELEASE_ARTIFACTS=' "$PARTS/windows-pack.log" 2>/dev/null || [ -f "$PARTS/windows-pack.rc" ]; do sleep "$POLL"; done; fi
         run_part "windows-$lane" "step 3's $lane on VM $v (WIN_RELEASE_HALF=$lane)" env $STEP1_SWITCH WIN_VM="$v" WIN_RELEASE_HALF="$lane" FOLLOW_PIDFILE="$pidf" $WINDOWS ;;
     esac

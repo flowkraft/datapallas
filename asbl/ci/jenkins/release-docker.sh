@@ -34,7 +34,8 @@
 #   DOCKER RELEASE STEP 4/6  Windows proof, no registry: the windows-vm-docker lane (dp-ci.sh win docker-e2e) carries the
 #                            same image to the VM (docker save, copy, docker load, tagged as the compose names it), installs
 #                            the same zip in Docker Desktop, the light set
-#   Parts 3 and 4 both run, so one run shows every problem.
+#   Parts 3 and 4 both run, so one run shows every problem. Both run in E2E_MODE=production-packaged: each test's clean
+#   state comes from the installed zip itself, no e2e package (asbl/ci/dp-ci.sh, E2E_MODE).
 #   DOCKER RELEASE STEP 5/6  keep, red or green: the zip and the image (asbl/ci/release-keep.sh keep docker): the zip copied to
 #                            <artifacts>/<version>-<commit>/ (the same sha256 already there = reused; another = the earlier
 #                            set moved to replaced/, never deleted), the image tagged <repo>:<version>, the manifest lines
@@ -198,11 +199,11 @@ rehearse() {
   if [ "$dry" = 1 ]; then
     if [ -z "$PART" ] || [ "$PART" = linux ] || [ "$PART" = linux-proof ]; then
       mark_next "DOCKER RELEASE STEP 3/6" "Linux proof (dry run)"
-      echo "dry run: would install asbl/dist/datapallas-server-docker.zip of the build on this host against the build's image (no registry), the light set ($light), the one-command run"
+      echo "dry run: would install asbl/dist/datapallas-server-docker.zip of the build on this host against the build's image (no registry), the light set ($light) in E2E_MODE=production-packaged, the one-command run"
     fi
     if [ -z "$PART" ] || [ "$PART" = windows ]; then
       mark_next "DOCKER RELEASE STEP 4/6" "Windows proof (dry run)"
-      echo "dry run: would load the build's image on the VM (docker save, copy, docker load) and install the same zip in its Docker Desktop, the light set"
+      echo "dry run: would load the build's image on the VM (docker save, copy, docker load) and install the same zip in its Docker Desktop, the light set in E2E_MODE=production-packaged"
     fi
     if [ -n "$PART" ] && [ "$PART" != keep ]; then
       echo "dry run: DOCKER_RELEASE_PART=$PART ends here; the keeping, the guard and the upload are the keep part's"
@@ -267,7 +268,7 @@ rehearse() {
     proof=(bash asbl/ci/e2e-runners.sh host-lane); proof_logs=$(bash asbl/ci/e2e-runners.sh host-lane-log-dir); proof_image=""
   fi
   t0=$(date +%s)
-  if E2E_TARGET=docker-server E2E_SPEC=light E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
+  if E2E_TARGET=docker-server E2E_MODE=production-packaged E2E_SPEC=light E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
      E2E_BUILD_IMAGE_FILE="$proof_image" FOLLOW_PIDFILE="" "${proof[@]}"; then res_linux=PASS; else res_linux=FAIL; fi
   log=$(newest_log "$proof_logs/latest.log" "$t0"); json="${log:+${log%.log}-playwright.json}"
   echo "DOCKER_RELEASE_LINUX_PROOF=$res_linux log=${log:-none} report=${json:-none}"
@@ -287,7 +288,7 @@ rehearse() {
   mark_start "DOCKER RELEASE STEP 4/6" "Windows proof, no registry: the same image loaded on the VM, the same zip installed in its Docker Desktop, the light set"
   # empty filters = the lane's light set ($light, retries 1); E2E_DOCKER_FROM_URL empty = the build's image copied over, the build's zip
   t0=$(date +%s)
-  if E2E_SPEC="" E2E_GREP="" E2E_RETRIES="" E2E_DOCKER_FROM_URL="" E2E_BUILD_IMAGE_FILE="$image_tar" FOLLOW_PIDFILE="$(win_vm_pidfile)" \
+  if E2E_MODE=production-packaged E2E_SPEC="" E2E_GREP="" E2E_RETRIES="" E2E_DOCKER_FROM_URL="" E2E_BUILD_IMAGE_FILE="$image_tar" FOLLOW_PIDFILE="$(win_vm_pidfile)" \
      bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh docker-e2e; then res_windows=PASS; else res_windows=FAIL; fi
   log=$(newest_log "$(win_vm_latest_log)" "$t0")
   json=$([ -n "$log" ] && grep -aoP '^WIN_E2E_REPORT=\K\S+' "$log" | tail -1)

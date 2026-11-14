@@ -1851,27 +1851,32 @@ win_electron_caps() {
 }
 
 # windows-vm-electron with E2E_MODE=production-packaged (win_e2e chose the set): datapallas.zip of the pack kept in RELEASE_KEPT
-# (asbl/ci/release-keep.sh) unzipped as a user unzips it, with an untouched copy beside it for each test's clean state. The
+# (asbl/ci/release-keep.sh), or of a new pack (REBUILD_PACK=yes), unzipped as a user unzips it, with an untouched copy beside it for each test's clean state. The
 # tests start its DataPallas.exe as a user starts it (e2e/utils/packaged-desktop-app.ts): the splash, then the app's own
 # Java server. No package, no gulp, no Maven: Playwright straight away on the VM's desktop, as the server lanes run it.
 win_desktop_packaged_e2e() {
-  local mode="$1" spec="$2" gexp="$3" retries="$4" step=desktop-e2e kept sha rc pristine
+  local mode="$1" spec="$2" gexp="$3" retries="$4" step=desktop-e2e kept="" sha="" from="" rc pristine
   local root="$WIN_REPO\\frend\\reporting\\testground\\desktop"
-  [ -n "${RELEASE_KEPT:-}" ] || {
-    echo "FAIL  E2E_MODE=production-packaged on windows-vm-electron installs the pack's datapallas.zip: RELEASE_KEPT=<a kept" \
-         "folder holding a pack (asbl/ci/release-keep.sh)>" >&2
-    return 2; }
-  kept="${RELEASE_KEPT%/}"
-  sha=$(kept_windows_zip_sha "$kept" datapallas.zip) || return 2
+  win_lane_pack_given "windows-vm-electron (E2E_MODE=production-packaged)" datapallas.zip || return 2
+  if [ "${REBUILD_PACK:-no}" != yes ]; then
+    kept="${RELEASE_KEPT%/}"
+    sha=$(kept_windows_zip_sha "$kept" datapallas.zip) || return 2
+    from="the pack kept in $kept (built from $(sed -n 's/^commit=//p' "$kept/MANIFEST.txt" | cut -c1-8))"
+  fi
   # the VM, its Docker Desktop (apps start through it, as they do for a user) and the machine's Java 17 (the app's server)
   prereq vm vm-docker vm-java || return 2
-  mark_start "windows-vm-electron STEP 1/2" "install: datapallas.zip of the pack kept in $kept extracted, an untouched copy beside it"
+  mark_start "windows-vm-electron STEP 1/2" "install: datapallas.zip extracted, an untouched copy beside it"
   win_sync_repo || return $?
-  win_put_dist "$kept" "datapallas.zip:$sha" || return 1
-  echo "WIN_DESKTOP_PACKAGE=datapallas.zip of the pack kept in $kept (built from $(sed -n 's/^commit=//p' "$kept/MANIFEST.txt" | cut -c1-8)), sha256 $sha"
   win_desktop_down   # an app left by a killed run, before its folder is replaced
   win_stacks_down
   win_temp_clean
+  if [ "${REBUILD_PACK:-no}" = yes ]; then
+    win_pack_anew datapallas.zip || return 1
+    kept="$WIN_PACK_DIR" sha="$WIN_PACK_SHA" from="$WIN_PACK_FROM"
+  fi
+  win_put_dist "$kept" "datapallas.zip:$sha" || { [ "${REBUILD_PACK:-no}" != yes ] || rm -rf "$kept"; return 1; }
+  [ "${REBUILD_PACK:-no}" != yes ] || rm -rf "$kept"
+  echo "WIN_DESKTOP_PACKAGE=datapallas.zip of $from, sha256 $sha"
   win_app_images_drop
   win_bundle_extract "$WIN_REPO\\asbl\\dist\\datapallas.zip" "$root" DataPallas.exe || return 1
   pristine=$(win_pristine_install_copy "$root") || return 1
@@ -1932,6 +1937,33 @@ win_vm_build_tag() {
   [ "${vm#"$tagsha"}" != "$vm" ] || [ "${tagsha#"$vm"}" != "$tagsha" ] || reuse_build_ok image-and-zips "$tagsha" "$vm" ||
     { echo "FAIL  the build is of '$tagsha', the VM tests '$vm' - run dp-ci.sh build-if-needed first" >&2; return 2; }
   echo "$tag"
+}
+
+# win_lane_pack_given <lane> <zip name>: a lane that installs the Windows pack's <zip name> is told which pack: RELEASE_KEPT=<a
+# kept folder holding one> or REBUILD_PACK=yes; a FAIL line and exit 2 otherwise
+win_lane_pack_given() {
+  [ "${REBUILD_PACK:-no}" = yes ] || [ -n "${RELEASE_KEPT:-}" ] && return 0
+  echo "FAIL  $1 installs the Windows pack's $2, the only one made: RELEASE_KEPT=<a kept folder" \
+       "holding a pack (asbl/ci/release-keep.sh)> or REBUILD_PACK=yes (packs first, about 1 h 30)" >&2
+  return 2
+}
+
+# win_pack_anew <zip name>: REBUILD_PACK=yes - pack-datapallas.bat on the VM's checkout, then its <zip name> brought down into
+# a new folder here, sha256 checked. Sets WIN_PACK_DIR (the folder: the caller removes it once win_put_dist used it),
+# WIN_PACK_SHA and WIN_PACK_FROM.
+win_pack_anew() {
+  WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
+    win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat ||
+    { echo "FAIL  the pack failed: asbl\\pack-datapallas.log on the VM (dp-ci.sh win poll release-pack)"; return 1; }
+  # a green pack keeps the VM's e2e package, as win_release does: its clean removed the stamp win_prepare_package reads,
+  # and a re-run that reuses that package (E2E_REUSE_BUILD) may not build it again
+  win_stamp_package_after_pack "$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)"
+  WIN_PACK_SHA=$(win_dist_sha "$1")
+  WIN_PACK_DIR=$(mktemp -d "${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/.win-pack.XXXXXX") || return 1
+  win_pull "$(printf '%s' "$WIN_REPO\\asbl\\dist\\$1" | tr '\\' '/')" "$WIN_PACK_DIR/$1" &&
+    [ "$(sha256sum "$WIN_PACK_DIR/$1" 2>/dev/null | cut -d' ' -f1)" = "$WIN_PACK_SHA" ] ||
+    { echo "FAIL  the new pack's $1 could not be brought down, or is not the pack's (sha256)"; rm -rf "$WIN_PACK_DIR"; return 1; }
+  WIN_PACK_FROM="a new pack of $(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1) (REBUILD_PACK=yes)"
 }
 
 # kept_windows_zip_sha <kept folder> <zip name>: the sha256 its MANIFEST.txt gives the Windows pack's <zip name>
@@ -2392,11 +2424,7 @@ win_server_e2e() {
   local inst="$root\\DataPallas"
   local kept="" sha="" from="" new_pack_dir="" rc e2e_mode pristine=""
   e2e_mode=$(e2e_mode_checked) || return 2
-  if [ "${REBUILD_PACK:-no}" != yes ] && [ -z "${RELEASE_KEPT:-}" ]; then
-    echo "FAIL  server-e2e installs the Windows pack's datapallas-server.zip, the only one made: RELEASE_KEPT=<a kept folder" \
-         "holding a pack (asbl/ci/release-keep.sh)> or REBUILD_PACK=yes (packs first, about 1 h 30)" >&2
-    return 2
-  fi
+  win_lane_pack_given server-e2e datapallas-server.zip || return 2
   if [ "${REBUILD_PACK:-no}" != yes ]; then
     kept="${RELEASE_KEPT%/}"
     sha=$(kept_windows_zip_sha "$kept" datapallas-server.zip) || return 2
@@ -2412,19 +2440,8 @@ win_server_e2e() {
     win_server_down "$inst" >/dev/null
     win_stacks_down server
     win_temp_clean
-    WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
-      win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat ||
-      { echo "FAIL  the pack failed: asbl\\pack-datapallas.log on the VM (dp-ci.sh win poll release-pack)"; return 1; }
-    # a green pack keeps the VM's e2e package, as win_release does: its clean removed the stamp win_prepare_package reads
-    # below, and a re-run that reuses that package (E2E_REUSE_BUILD) may not build it again
-    win_stamp_package_after_pack "$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)"
-    sha=$(win_dist_sha datapallas-server.zip)
-    new_pack_dir=$(mktemp -d "${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/.win-server-pack.XXXXXX") || return 2
-    kept="$new_pack_dir"
-    win_pull "$(printf '%s' "$WIN_REPO\\asbl\\dist\\datapallas-server.zip" | tr '\\' '/')" "$kept/datapallas-server.zip" &&
-      [ "$(sha256sum "$kept/datapallas-server.zip" 2>/dev/null | cut -d' ' -f1)" = "$sha" ] ||
-      { echo "FAIL  the new pack's datapallas-server.zip could not be brought down, or is not the pack's (sha256)"; rm -rf "$new_pack_dir"; return 1; }
-    from="a new pack of $(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1) (REBUILD_PACK=yes)"
+    win_pack_anew datapallas-server.zip || return 1
+    new_pack_dir="$WIN_PACK_DIR" kept="$WIN_PACK_DIR" sha="$WIN_PACK_SHA" from="$WIN_PACK_FROM"
   fi
   # The tests' clean state copies config/ from the VM's package (asbl\\target\\package\\verified-db-noexe) over the
   # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
@@ -2729,15 +2746,16 @@ win_robot_rerun() {
 # the same time as the Docker job's Windows part (one VM). One rehearsal makes one pack, so every check below is of the very
 # files that are kept and staged; their sha256 are printed and kept in <log>-step-release-files.txt (owner, 2026-10-22).
 # The day before a release (plan-pre-release-artifacts-ready): MODE=rehearsal UPLOAD=no: about 9-16 h on the VM
-# (the pack 2-4 h, the server light set 1-2 h with the prepare, the electron light set 1-2 h, the Robot UAT 2-5 h; caps
+# (the pack 2-4 h, the server light set 1-2 h, the electron light set 1-2 h, the Robot UAT 2-5 h; caps
 # RELEASE_PACK_TIMEOUT 8 h, LIGHT_SET_CAP_SERVER_LANES 4.5 h, RELEASE_LIGHT_TIMEOUT 3 h = LIGHT_SET_CAP_ELECTRON,
 # RELEASE_ROBOT_TIMEOUT 6 h). It leaves datapallas.zip, datapallas-server.zip and datapallas-src.zip
 # in <artifacts>/<version>-<commit>/ (release-keep.sh), the windows lines of MANIFEST.txt and failure-report-windows.md, and
 # step3.windows-vm-server-light and step3.windows-vm-electron-light recorded on the commit. Release day: MODE=upload
 # UPLOAD=yes, then MODE=public.
 # Step 3 is the Windows channel alone, its parts one at a time on the VM in this order (owner, 2026-11-02 and 2026-11-03):
-# the pack, kept; the server light set on the pack's kept datapallas-server.zip, before the electron light set, whose
-# prepare empties asbl\dist; the electron light set; Robot last, since it removes the machine's Java the server runs on.
+# the pack, kept; the server light set on the pack's kept datapallas-server.zip; the electron light set on its kept
+# datapallas.zip; Robot last, since it removes the machine's Java the server runs on. Both light sets run in
+# E2E_MODE=production-packaged: the zips that ship, unzipped and started as a user starts them, no e2e package.
 # MODE=rehearsal: a real release into places users do not get; nothing users get changes. Every part runs whatever the one
 # before it said (a red light set does not skip the UAT); only the upload refuses a red run.
 #   first              the version gate (release-state.sh version-check windows: settings.xml against the released
@@ -2753,15 +2771,16 @@ win_robot_rerun() {
 #                      release is built once, on Linux, by step 2. Then the three zips brought down to this host and kept
 #                      (asbl/ci/release-keep.sh keep windows: <artifacts>/<version>-<commit>/, each checked against the pack's
 #                      sha256; an earlier set of the same commit moves to replaced/, never deleted).
-#   2/5 server light   the pack's own datapallas-server.zip, the kept copy put back in asbl\dist after the lane's prepare
+#   2/5 server light   the pack's own datapallas-server.zip, the kept copy put back in asbl\dist when needed
 #                      (win_put_dist, sha256 checked), installed as the installation page says and its light set run:
-#                      dp-ci.sh win server-e2e with RELEASE_KEPT=<the kept folder> and E2E_SPEC=light (asbl/ci/light-set.txt,
+#                      dp-ci.sh win server-e2e with RELEASE_KEPT=<the kept folder>, E2E_MODE=production-packaged and
+#                      E2E_SPEC=light (asbl/ci/light-set.txt,
 #                      the entries for windows-vm-server, retries 1, cap LIGHT_SET_CAP_SERVER_LANES), recorded as
 #                      step3.windows-vm-server-light on the commit. No kept pack = not run (a failure of the run).
-#   3/5 electron light the desktop app built from the repository, its light set: dp-ci.sh win e2e with E2E_SPEC=light
-#                      (asbl/ci/light-set.txt, the entries for windows-vm-electron, auth-authorization-desktop whole,
-#                      retries 1) on the release commit, its own prepare (pack-prepare-for-e2e.bat, which empties
-#                      asbl\dist), recorded as step3.windows-vm-electron-light on the commit.
+#   3/5 electron light the pack's own datapallas.zip, unzipped, its DataPallas.exe started as a user starts it, and its light
+#                      set run: dp-ci.sh win e2e with RELEASE_KEPT=<the kept folder>, E2E_MODE=production-packaged and
+#                      E2E_SPEC=light (asbl/ci/light-set.txt, the entries for windows-vm-electron, auth-authorization-desktop
+#                      whole, retries 1), recorded as step3.windows-vm-electron-light on the commit. No kept pack = not run.
 #   4/5 Robot UAT      the pack's zips put back in asbl\dist from the kept copy when the prepare emptied it (win_put_dist,
 #                      sha256 checked), then asbl\src\uat\run-tests.bat, unchanged: extracts datapallas.zip and
 #                      datapallas-server.zip and runs every .robot file as a user meets the product - Java and Chocolatey
@@ -2801,7 +2820,7 @@ win_robot_rerun() {
 # and what each part would do (DRY_RUN=1 counts as yes).
 # TWO HALVES (WIN_RELEASE_HALF, MODE=rehearsal only; asbl/ci/jenkins/release-orchestrator.sh): `pack` = the checks above and
 # part 1/5, the pack kept, its files' list beside the zips (release-files-windows.txt); `after-pack` = the checks again, that
-# kept pack (each file against the manifest; none = the server light set and Robot not run, nothing uploaded), parts 2/5 to
+# kept pack (each file against the manifest; none = the light sets and Robot not run, nothing uploaded), parts 2/5 to
 # 5/5, the verdict. The step list is begun only by the half that packs, so the verdict and the failure report cover all five
 # parts. In between, the VM runs step 2's Windows Docker proof. RELEASE_PIN puts both checkouts on the pinned commit (sync_host_repo).
 # THE LANES ALONE (more VMs, each lane on the VM the layout names; asbl/ci/release-machines.sh): `server-light`,
@@ -2898,12 +2917,12 @@ win_release() {
     if win_release_runs server-light; then
     mark_next "RELEASE STEP 2/5" "the server light set on the pack's datapallas-server.zip (dry run)"
     light_set_filters windows-vm-server || return 2
-    echo "dry run: would run dp-ci.sh win server-e2e with RELEASE_KEPT=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8} and E2E_SPEC=light (asbl/ci/light-set.txt: $LIGHT_SET_COUNT entries): the pack's kept datapallas-server.zip put back in asbl\\dist after its prepare (sha256 checked) and installed; and record step3.windows-vm-server-light"
+    echo "dry run: would run dp-ci.sh win server-e2e with RELEASE_KEPT=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}, E2E_MODE=production-packaged and E2E_SPEC=light (asbl/ci/light-set.txt: $LIGHT_SET_COUNT entries): the pack's kept datapallas-server.zip put back in asbl\\dist when needed (sha256 checked) and installed; and record step3.windows-vm-server-light"
     fi
     if win_release_runs electron-light; then
     mark_next "RELEASE STEP 3/5" "the electron light set (dry run)"
     light_set_filters windows-vm-electron || return 2
-    echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (asbl/ci/light-set.txt: $LIGHT_SET_COUNT entries) on ${hostc:0:8}, its own prepare first, and record step3.windows-vm-electron-light"
+    echo "dry run: would run dp-ci.sh win e2e with RELEASE_KEPT=${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}, E2E_MODE=production-packaged and E2E_SPEC=light (asbl/ci/light-set.txt: $LIGHT_SET_COUNT entries): the pack's kept datapallas.zip put back in asbl\\dist when needed (sha256 checked), unzipped and started as a user starts it; and record step3.windows-vm-electron-light"
     fi
     if win_release_runs robot; then
     mark_next "RELEASE STEP 4/5" "Robot Framework UAT (dry run)"
@@ -2940,9 +2959,7 @@ win_release() {
   if [ -n "$after" ]; then
     # the pack the first half made and kept: its files' list beside the zips (written there only once the zips were kept),
     # and each kept file checked against the manifest
-    if [ "$half" = electron-light ]; then
-      echo "the electron light set alone: it tests the app built from the repository, not the pack (its own VM keeps it)"
-    elif [ -s "$folder/release-files-windows.txt" ]; then
+    if [ -s "$folder/release-files-windows.txt" ]; then
       res_pack=PASS
       cp "$folder/release-files-windows.txt" "$base-release-files.txt"
       if $keep check "$folder" windows; then res_keep=PASS; else res_keep=FAIL; fi
@@ -3030,15 +3047,15 @@ PS
   fi
   if win_release_runs server-light; then
   mark_start "RELEASE STEP 2/5" "the server light set on ${vmc:0:8}: the pack's datapallas-server.zip from $folder, installed as the installation page says, then dp-ci.sh win server-e2e with E2E_SPEC=light (asbl/ci/light-set.txt, its windows-vm-server entries); recorded as step3.windows-vm-server-light"
-  # Before the electron light set, whose prepare empties asbl\dist, and before Robot, which removes the machine's Java the
-  # server runs on (owner, 2026-11-03). The lane installs the zip that ships, not a build of its own: RELEASE_KEPT hands it
-  # the pack kept above, put back in asbl\dist after the lane's prepare and checked by its sha256. In a subshell so its
-  # settings stay its own; the light set's cap (LIGHT_SET_CAP_SERVER_LANES).
+  # Before Robot, which removes the machine's Java the server runs on (owner, 2026-11-03). The lane installs the zip that
+  # ships, not a build of its own: RELEASE_KEPT hands it the pack kept above, put back in asbl\dist when needed and checked
+  # by its sha256; E2E_MODE=production-packaged, so each test's clean state comes from that installation, not from an e2e
+  # package. In a subshell so its settings stay its own; the light set's cap (LIGHT_SET_CAP_SERVER_LANES).
   server_log="$base-server-light.log"
   if [ "$res_pack" != PASS ] || [ "$res_keep" != PASS ]; then
     echo "not run: there is no kept pack (pack=$res_pack keep=$res_keep) whose datapallas-server.zip it would install"
     res_server_light="NOT_RUN(no kept pack)"
-  elif ( export RELEASE_KEPT="$folder" REBUILD_PACK=no E2E_SPEC=light E2E_GREP="" E2E_RETRIES="" WIN_E2E_LOG="$server_log" \
+  elif ( export RELEASE_KEPT="$folder" REBUILD_PACK=no E2E_MODE=production-packaged E2E_SPEC=light E2E_GREP="" E2E_RETRIES="" WIN_E2E_LOG="$server_log" \
            WIN_RUN_WATCH="" WIN_RUN_STALL="" WIN_RUN_TIMEOUT="$LIGHT_SET_CAP_SERVER_LANES"; mark_run win_server_e2e ); then
     res_server_light=PASS
   else res_server_light=FAIL; fi
@@ -3052,20 +3069,25 @@ PS
   fi
 
   if win_release_runs electron-light; then
-  mark_start "RELEASE STEP 3/5" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (asbl/ci/light-set.txt, its windows-vm-electron entries), the app built from the repository; recorded as step3.windows-vm-electron-light"
-  # the lane as step 1 ran it until 16.6.2 (its own prepare, its reports), in a subshell so its settings stay its own; the
-  # light set's cap (LIGHT_SET_CAP_ELECTRON)
+  mark_start "RELEASE STEP 3/5" "the electron light set on ${vmc:0:8}: the pack's datapallas.zip from $folder, unzipped and started as a user starts it, then dp-ci.sh win e2e with E2E_MODE=production-packaged and E2E_SPEC=light (asbl/ci/light-set.txt, its windows-vm-electron entries); recorded as step3.windows-vm-electron-light"
+  # the zip that ships, as the server light set above: RELEASE_KEPT, E2E_MODE=production-packaged; in a subshell so its
+  # settings stay its own; the light set's cap (LIGHT_SET_CAP_ELECTRON)
   light_log="$base-electron-light.log"
-  if ( export E2E_SPEC=light E2E_GREP="" E2E_RETRIES="" WIN_E2E_LOG="$light_log" WIN_RUN_WATCH="" WIN_RUN_STALL="" \
-         WIN_RUN_TIMEOUT="${RELEASE_LIGHT_TIMEOUT:-$LIGHT_SET_CAP_ELECTRON}"; mark_run win_e2e ); then res_electron_light=PASS; else res_electron_light=FAIL; fi
-  RELEASE_COMMIT="$vmc" RELEASE_LOG="$light_log" bash "$REPO/asbl/ci/release-state.sh" record step3.windows-vm-electron-light "$res_electron_light" \
-    "version=$RELEASE_VERSION" "by=step 3, dp-ci.sh win release RELEASE STEP 3/5"
+  if [ "$res_pack" != PASS ] || [ "$res_keep" != PASS ]; then
+    echo "not run: there is no kept pack (pack=$res_pack keep=$res_keep) whose datapallas.zip it would install"
+    res_electron_light="NOT_RUN(no kept pack)"
+  elif ( export RELEASE_KEPT="$folder" REBUILD_PACK=no E2E_MODE=production-packaged E2E_SPEC=light E2E_GREP="" E2E_RETRIES="" \
+         WIN_E2E_LOG="$light_log" WIN_RUN_WATCH="" WIN_RUN_STALL="" WIN_RUN_TIMEOUT="${RELEASE_LIGHT_TIMEOUT:-$LIGHT_SET_CAP_ELECTRON}"
+         mark_run win_e2e ); then res_electron_light=PASS; else res_electron_light=FAIL; fi
+  RELEASE_COMMIT="$vmc" RELEASE_LOG="$light_log" bash "$REPO/asbl/ci/release-state.sh" record step3.windows-vm-electron-light \
+    "$([ "$res_electron_light" = PASS ] && echo PASS || echo FAIL)" "version=$RELEASE_VERSION" "lane=$res_electron_light" \
+    "zip=$folder/datapallas.zip" "by=step 3, dp-ci.sh win release RELEASE STEP 3/5"
   # The lane can die before it writes its own log (the pack leaves the checkout dirty, the driver never starts):
   # then this run's log is the only evidence there is, and the failure report must cite it instead of a file
   # nobody will ever find (2026-10-25, group E: the report pointed at a log that did not exist).
   light_evidence="$light_log"
   [ -f "$light_log" ] || light_evidence="$log"
-  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 3/5" "$res_electron_light" "the electron light set (E2E_SPEC=light, asbl/ci/light-set.txt) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
+  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 3/5" "${res_electron_light%%(*}" "the electron light set (E2E_SPEC=light, asbl/ci/light-set.txt) on the pack's datapallas.zip ($res_electron_light)" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
   mark_end "$([ "$res_electron_light" = PASS ] && echo 0 || echo 1)"
   fi
 

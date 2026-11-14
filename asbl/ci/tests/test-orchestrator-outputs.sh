@@ -141,8 +141,8 @@ RED=$(dry_run red "build pack")
 FULL=$(full_lane "$RED")
 check "red dry run (DRY_RUN_RED=\"build pack\"): exit 1" same 1 "$(cat "$SCRATCH/red/rc")"
 check "red dry run: result=red, step 1 still green" same "red green" "$(key "$RED" result) $(key "$RED" step1)"
-check "red dry run: build and pack FAIL, what needs them NOT_RUN (the server light set installs the pack's zip), the Electron light set still PASS" same \
-  "step1-build:host:PASS lane2-docker-server-auth:host:PASS lane1-$FULL:host:PASS build:host:FAIL linux-proof:host:NOT_RUN pack:windows-vm:FAIL windows-docker-proof:windows-vm:NOT_RUN server-light:windows-vm:NOT_RUN electron-light:windows-vm:PASS robot:windows-vm:NOT_RUN docker-verdict:host:NOT_RUN windows-verdict:windows-vm:FAIL" \
+check "red dry run: build and pack FAIL, what needs them NOT_RUN (the light sets install the pack's zips)" same \
+  "step1-build:host:PASS lane2-docker-server-auth:host:PASS lane1-$FULL:host:PASS build:host:FAIL linux-proof:host:NOT_RUN pack:windows-vm:FAIL windows-docker-proof:windows-vm:NOT_RUN server-light:windows-vm:NOT_RUN electron-light:windows-vm:NOT_RUN robot:windows-vm:NOT_RUN docker-verdict:host:NOT_RUN windows-verdict:windows-vm:FAIL" \
   "$(parts "$RED")"
 check "red dry run: a part that did not pass says why" eval 'part_why "$RED" build | grep -q "build red (DRY_RUN_RED)"'
 check "red dry run: started.txt has no line for a part that never started (docker-windows)" \

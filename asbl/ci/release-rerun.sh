@@ -7,17 +7,21 @@
 # rebuilds that part alone; REBUILD=yes runs that rebuild first. Each re-run leaves one line per test in the re-run record,
 # and `show` lists an execution's failures, each with its last re-run or "not verified yet".
 #
-# THE PARTS: where the tests run, and the builds each one takes (the parts of asbl/ci/reuse-or-rebuild.sh):
-#   web                  step 1's web lane on this host (dp-ci.sh e2e, E2E_TARGET=web)          e2e-package (this host's)
-#   docker-server        step 2's Linux proof and step 1's docker-server lanes (dp-ci.sh e2e,   e2e-package (this host's),
-#                        E2E_TARGET=docker-server)                                              image-and-zips
-#   windows-vm-docker    step 2's Windows Docker proof (win-e2e.sh docker-e2e)                  e2e-package (the VM's: the
-#                                                                                               clean state's config),
-#                                                                                               image-and-zips
-#   windows-vm-server    step 3's server light set (win-e2e.sh server-e2e)                      e2e-package (the VM's),
-#                                                                                               windows-pack (a kept one: its
-#                                                                                               datapallas-server.zip)
-#   windows-vm-electron  step 3's Electron light set (win-e2e.sh e2e)                           e2e-package (the VM's)
+# THE PARTS: where the tests run, and the builds each one takes (the parts of asbl/ci/reuse-or-rebuild.sh). Steps 2 and 3
+# run in E2E_MODE=production-packaged (the zips that ship; each test's clean state from the installation itself), and so
+# do their re-runs; E2E_MODE=dev re-runs a part as the build tree, with the e2e package it then takes (a docker-server
+# failure of step 1's lanes, as step 1 ran it):
+#   web                  step 1's web lane on this host (dp-ci.sh e2e, E2E_TARGET=web), dev    e2e-package (this host's)
+#   docker-server        step 2's Linux proof and step 1's docker-server lanes (dp-ci.sh e2e,   image-and-zips; dev also
+#                        E2E_TARGET=docker-server)                                              e2e-package (this host's)
+#   windows-vm-docker    step 2's Windows Docker proof (win-e2e.sh docker-e2e)                  image-and-zips; dev also
+#                                                                                               e2e-package (the VM's)
+#   windows-vm-server    step 3's server light set (win-e2e.sh server-e2e)                      windows-pack (a kept one: its
+#                                                                                               datapallas-server.zip); dev
+#                                                                                               also e2e-package (the VM's)
+#   windows-vm-electron  step 3's Electron light set (win-e2e.sh e2e)                           windows-pack (a kept one: its
+#                                                                                               datapallas.zip); dev:
+#                                                                                               e2e-package (the VM's) only
 #   robot                step 3's Robot UAT (win-e2e.sh robot, dp-ci.sh win robot)              windows-pack (a kept one)
 #   Where a build comes from: --kept <folder> = that execution's kept image and docker zip (docker-server,
 #   windows-vm-docker) or its kept pack (robot and windows-vm-server, which need one); otherwise the newest successful
@@ -35,8 +39,8 @@
 #      files and the command that rebuilds that part alone (exit 3); REBUILD=yes runs that command first;
 #   4. the lane, through asbl/ci/jenkins/follow-ci.sh, E2E_RETRIES=0, E2E_REUSE_BUILD naming the parts it may take from an
 #      earlier commit (dp-ci.sh reuse_build_ok checks them again where the lane wants its exact commit), E2E_KEPT_BUILD for
-#      a kept image; robot: RELEASE_KEPT, ROBOT_TEST (one run per test, in turn), REBUILD_PACK; windows-vm-server:
-#      RELEASE_KEPT, REBUILD_PACK;
+#      a kept image, E2E_MODE (part_mode); robot: RELEASE_KEPT, ROBOT_TEST (one run per test, in turn), REBUILD_PACK;
+#      windows-vm-server, and windows-vm-electron in production-packaged: RELEASE_KEPT, REBUILD_PACK;
 #   5. one line per test into the re-run record, the re-run's failure report beside its log (release-keep.sh
 #      report-steps), and the RERUN_RESULT line. A test that passed counts PASS when the run ended green, or when it
 #      ended red on its failed tests alone (complete_run below); in any other red run every test counts FAIL.
@@ -55,6 +59,8 @@
 #   bash asbl/ci/release-rerun.sh score <log>   a re-run that ended red before a passed test could count in one (its
 #        record lines name <log>): when complete_run says it ended red on its failed tests alone, one PASS line per test
 #        that passed in its report, as that re-run would write it now; its own lines stay as they are
+#   E2E_MODE [production-packaged; web: dev]   run and show: the mode the part is re-run in, and so the builds it takes
+#                      (THE PARTS); dev = as the build tree, as step 1 runs its lanes
 #   DRY_RUN=yes [no]   run: the commit, the build each part would take, the rule's answer, the tests and the command it
 #                      would start; it fetches, runs and writes nothing; score: the lines it would add
 #   REBUILD=yes [no]   run: a build the rule says rebuild is rebuilt first, as the STOP line says: image-and-zips =
@@ -94,13 +100,16 @@ usage() { sed -n '2,73p' "$0"; exit 2; }
 abs() { case "$1" in /*|"") echo "$1" ;; *) echo "$CALLER_PWD/$1" ;; esac; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
-# part_builds <part>: the builds that part takes (THE PARTS above); rc 1 for a name that is no part
+# part_mode <part>: the E2E_MODE that part is re-run in (THE PARTS above): web dev, the others E2E_MODE [production-packaged]
+part_mode() { case "$1" in web) echo dev ;; *) echo "${E2E_MODE:-production-packaged}" ;; esac; }
+# part_builds <part>: the builds that part takes in its mode (THE PARTS above); rc 1 for a name that is no part
 part_builds() {
-  case "$1" in
-    web|windows-vm-electron)             echo e2e-package ;;
-    docker-server|windows-vm-docker)     echo "e2e-package image-and-zips" ;;
-    windows-vm-server)                   echo "e2e-package windows-pack" ;;
-    robot)                               echo windows-pack ;;
+  case "$1/$(part_mode "$1")" in
+    web/*|windows-vm-electron/dev)       echo e2e-package ;;
+    docker-server/dev|windows-vm-docker/dev) echo "e2e-package image-and-zips" ;;
+    windows-vm-server/dev)               echo "e2e-package windows-pack" ;;
+    docker-server/*|windows-vm-docker/*) echo image-and-zips ;;
+    windows-vm-server/*|windows-vm-electron/*|robot/*) echo windows-pack ;;
     *) return 1 ;;
   esac
 }
@@ -376,7 +385,7 @@ newest_log() { local l; l=$(readlink -f "$1" 2>/dev/null) || return 0; [ -f "$l"
 run_part() {
   local part="${1:-}" kept="" kept_set=0 failed="" ids=() bpart under rr_word rr_why reuse="" builds="" stop=0 rebuild_parts=""
   local light env_lane launcher pidfile log_link log report t0 rc id v line res pass=0 fail=0 steps md for kept_build="" one_command=""
-  local all_failed=no step_of need verified=0 left=0 rtime rcommit passes_count passes_why
+  local all_failed=no step_of need verified=0 left=0 rtime rcommit passes_count passes_why takes_kept mode
   part_builds "$part" >/dev/null || { echo "FAIL  no part '$part': web, docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron or robot"; exit 2; }
   shift
   while [ "$#" -gt 0 ]; do
@@ -389,10 +398,10 @@ run_part() {
   done
   failed="${failed%/}" kept="${kept%/}"
   [ -z "$failed" ] || [ -e "$failed" ] || { echo "FAIL  --failed $failed: no such folder or report"; exit 2; }
-  # the parts that take kept files take the --failed execution's, unless told otherwise
-  if [ "$kept_set" = 0 ] && [ -d "$failed" ]; then case "$part" in docker-server|windows-vm-docker|windows-vm-server|robot) kept="$failed" ;; esac; fi
-  [ -z "$kept" ] || [ "$part" = docker-server ] || [ "$part" = windows-vm-docker ] || [ "$part" = windows-vm-server ] || [ "$part" = robot ] ||
-    { echo "FAIL  --kept: $part takes no kept files (THE PARTS)"; exit 2; }
+  # the parts that take kept files (a kept image and zip, or a kept pack) take the --failed execution's, unless told otherwise
+  case " $(part_builds "$part") " in *" image-and-zips "*|*" windows-pack "*) takes_kept=yes ;; *) takes_kept=no ;; esac
+  if [ "$kept_set" = 0 ] && [ -d "$failed" ] && [ "$takes_kept" = yes ]; then kept="$failed"; fi
+  [ -z "$kept" ] || [ "$takes_kept" = yes ] || { echo "FAIL  --kept: $part takes no kept files in E2E_MODE=$(part_mode "$part") (THE PARTS)"; exit 2; }
   for="${failed:+$(basename "$failed")}"; for="${for:--}"
 
   # 1. the commit under test
@@ -403,7 +412,8 @@ run_part() {
     git fetch -q origin || { echo "FAIL  could not fetch origin"; exit 2; }
     if git merge-base --is-ancestor HEAD origin/main; then under=$(git rev-parse origin/main); else under=$(git rev-parse HEAD); fi
   fi
-  echo "RERUN $part on ${under:0:8}$([ "$DRY" = yes ] && echo " (dry run: ${RERUN_COMMIT:+RERUN_COMMIT, }nothing fetched)")"
+  mode=$(part_mode "$part")
+  echo "RERUN $part on ${under:0:8}, E2E_MODE=$mode$([ "$DRY" = yes ] && echo " (dry run: ${RERUN_COMMIT:+RERUN_COMMIT, }nothing fetched)")"
 
   # 2. the tests
   if [ -n "$failed" ]; then
@@ -481,15 +491,15 @@ run_part() {
         # one-command run
         SEL_SPEC=light one_command=yes
       fi
-      env_lane=(E2E_TARGET="$part" E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_PACKAGE="" E2E_DOCKER_FROM_URL=""
+      env_lane=(E2E_TARGET="$part" E2E_MODE="$mode" E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_PACKAGE="" E2E_DOCKER_FROM_URL=""
                 E2E_DOCKER_ONE_COMMAND="$one_command" E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD="$kept_build")
       launcher=(bash asbl/ci/dp-ci.sh e2e) pidfile="" log_link="$LOG_DIR/latest.log" ;;
     windows-vm-docker|windows-vm-server|windows-vm-electron)
       selection "$part" "${ids[@]}"
       [ "$part" != windows-vm-electron ] || [ "${#ids[@]}" -gt 0 ] || SEL_SPEC=light
-      env_lane=(E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_DOCKER_FROM_URL="" E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD="$kept_build")
-      # the server light set installs the pack's datapallas-server.zip: the kept one, or a new pack first
-      [ "$part" != windows-vm-server ] ||
+      env_lane=(E2E_MODE="$mode" E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_DOCKER_FROM_URL="" E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD="$kept_build")
+      # the light sets install the pack's datapallas-server.zip and datapallas.zip: the kept one, or a new pack first
+      [[ " $(part_builds "$part") " != *" windows-pack "* ]] ||
         env_lane+=(RELEASE_KEPT="$kept" REBUILD_PACK="$(case " $rebuild_parts " in *" windows-pack "*) echo yes ;; *) echo no ;; esac)")
       launcher=(bash asbl/ci/jenkins/win-e2e.sh "$(case "$part" in windows-vm-docker) echo docker-e2e ;; windows-vm-server) echo server-e2e ;; *) echo e2e ;; esac)")
       pidfile="$LOG_DIR/win-e2e.pid" log_link="$LOG_DIR/win-e2e-latest.log" ;;
