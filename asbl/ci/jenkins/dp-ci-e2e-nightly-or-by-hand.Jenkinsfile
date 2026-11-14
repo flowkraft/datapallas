@@ -8,8 +8,9 @@
 //     The night runs detached on the host; this build follows its console in polls of under a minute, holding no
 //     executor between them, so a Jenkins restart only resumes the polling. Abort stops the night (post { aborted }).
 //   - a run by hand, asbl/ci/jenkins/e2e-by-hand.sh: one spec file or some of its tests, or a quarter of the full set, on
-//     the chosen E2E_TARGET in the chosen E2E_MODE. The run is a detached container (or the Windows driver) owned by the
-//     host, so closing the browser or restarting Jenkins never stops it.
+//     the chosen E2E_MODE: dev on web (this tree), or production-packaged on the package users download (E2E_TARGET),
+//     tested as shipped. The run is a detached container (or the Windows driver) owned by the host, so closing the
+//     browser or restarting Jenkins never stops it. The form shows only the chosen mode's rows (ROWS_SHOWN_BY_E2E_MODE).
 // NIGHTLY_ON (a tick box, Configure -> Save, no build): unticked, a timed build only says "nightly off" and runs nothing;
 // a press by hand always runs. seed.groovy keeps the tick as it finds it.
 // Before either script runs, the host's checkout is fast-forwarded to origin/main, so the build runs the scripts as
@@ -291,11 +292,21 @@ pipeline {
             echo 'The nightly is off: NIGHTLY_ON is unticked in Configure. Nothing ran. Tick it and Save to run every night again.'
             return
           }
-          env.RUN_KIND = (timed || params.WHAT_TO_RUN == 'next-nightly-pair') ? 'nightly' : 'by-hand'
+          // E2E_MODE first: the form hides the rows the other mode uses, but a hidden row still sends its last value, so
+          // only the chosen mode's values are taken: dev = web, spec and grep, E2E_PACKAGE; production-packaged =
+          // WHAT_TO_RUN, the package (E2E_TARGET), spec and grep, no e2e package
+          boolean packaged = params.E2E_MODE == 'production-packaged'
+          env.RUN_MODE = packaged ? 'production-packaged' : 'dev'
+          env.RUN_WHAT = packaged ? (params.WHAT_TO_RUN ?: 'spec-and-grep') : 'spec-and-grep'
+          env.RUN_TARGET = packaged ? (params.E2E_TARGET ?: '') : 'web'
+          env.RUN_PACKAGE = packaged ? 'package-reuse-as-is' : (params.E2E_PACKAGE ?: 'package-reuse-as-is')
+          env.RUN_KIND = (timed || env.RUN_WHAT == 'next-nightly-pair') ? 'nightly' : 'by-hand'
           if (env.RUN_KIND == 'nightly') {
-            echo "The nightly${timed ? ' (the timer)' : ''}: the next pair of the rotation, production-packaged (WHAT_TO_RUN, E2E_TARGET, E2E_MODE, E2E_SPEC, E2E_GREP and E2E_PACKAGE do not apply).\nON_FAILURES=${env.RUN_ON_FAILURES}\nDRY_RUN=${env.RUN_DRY_RUN}\nstarted by: ${env.STARTED_BY}"
+            echo "The nightly${timed ? ' (the timer)' : ''}: the next pair of the rotation, production-packaged (WHAT_TO_RUN, E2E_TARGET, E2E_SPEC, E2E_GREP and E2E_PACKAGE do not apply).\nON_FAILURES=${env.RUN_ON_FAILURES}\nDRY_RUN=${env.RUN_DRY_RUN}\nstarted by: ${env.STARTED_BY}"
           } else {
-            echo "A run by hand:\nWHAT_TO_RUN=${params.WHAT_TO_RUN}\nE2E_TARGET=${params.E2E_TARGET}\nE2E_MODE=${params.E2E_MODE}\nE2E_SPEC=${params.E2E_SPEC}\nE2E_GREP=${params.E2E_GREP}\nE2E_PACKAGE=${params.E2E_PACKAGE}\nON_FAILURES=${env.RUN_ON_FAILURES}\nDRY_RUN=${env.RUN_DRY_RUN}\nstarted by: ${env.STARTED_BY}"
+            echo "A run by hand:\nE2E_MODE=${env.RUN_MODE}\nE2E_SPEC=${params.E2E_SPEC}\nE2E_GREP=${params.E2E_GREP}\n" +
+              (packaged ? "WHAT_TO_RUN=${env.RUN_WHAT}\nE2E_TARGET=${env.RUN_TARGET}\n" : "E2E_PACKAGE=${env.RUN_PACKAGE}\n") +
+              "ON_FAILURES=${env.RUN_ON_FAILURES}\nDRY_RUN=${env.RUN_DRY_RUN}\nstarted by: ${env.STARTED_BY}"
           }
         }
       }
@@ -389,7 +400,7 @@ pipeline {
 set -o pipefail
 q() { printf '%q' "\$1"; }
 rm -f by-hand.out
-ssh -o BatchMode=yes "\$DP_HOST" "cd \$(q "\$DP_REPO") && ${checkoutToMain}; WHAT_TO_RUN=\$(q "\$WHAT_TO_RUN") E2E_TARGET=\$(q "\$E2E_TARGET") E2E_MODE=\$(q "\$E2E_MODE") E2E_SPEC=\$(q "\$E2E_SPEC") E2E_GREP=\$(q "\$E2E_GREP") E2E_PACKAGE=\$(q "\$E2E_PACKAGE") ON_FAILURES=\$(q "\$RUN_ON_FAILURES") DRY_RUN=\$(q "\$RUN_DRY_RUN") bash asbl/ci/jenkins/e2e-by-hand.sh" | tee by-hand.out
+ssh -o BatchMode=yes "\$DP_HOST" "cd \$(q "\$DP_REPO") && ${checkoutToMain}; E2E_MODE=\$(q "\$RUN_MODE") WHAT_TO_RUN=\$(q "\$RUN_WHAT") E2E_TARGET=\$(q "\$RUN_TARGET") E2E_SPEC=\$(q "\$E2E_SPEC") E2E_GREP=\$(q "\$E2E_GREP") E2E_PACKAGE=\$(q "\$RUN_PACKAGE") ON_FAILURES=\$(q "\$RUN_ON_FAILURES") DRY_RUN=\$(q "\$RUN_DRY_RUN") bash asbl/ci/jenkins/e2e-by-hand.sh" | tee by-hand.out
 """
             }
             script {

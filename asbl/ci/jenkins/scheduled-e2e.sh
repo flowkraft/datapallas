@@ -201,7 +201,7 @@ set_spec_files() {
 # shellcheck source=run-result.sh
 . asbl/ci/jenkins/run-result.sh
 # the lanes: their builds and their launchers, shared with e2e-by-hand.sh
-LANE_DP_CI="$SCHEDULED_DP_CI" LANE_FOLLOW_CI="$SCHEDULED_FOLLOW_CI" LANE_COMMIT="${SCHEDULED_COMMIT:-}" LANE_E2E_MODE=production-packaged   # a night: always the shipped files
+LANE_DP_CI="$SCHEDULED_DP_CI" LANE_FOLLOW_CI="$SCHEDULED_FOLLOW_CI" LANE_COMMIT="${SCHEDULED_COMMIT:-}"
 # shellcheck source=packaged-lane.sh
 . asbl/ci/jenkins/packaged-lane.sh
 

@@ -1,13 +1,12 @@
 #!/bin/bash
 # The by-hand half of the job dp-ci-e2e-nightly-or-by-hand (asbl/ci/jenkins/e2e-by-hand.sh) with a stub follow-ci (no
 # e2e runs: it exits with the codes the case gives) and a stub fixer. The cases:
-#   - the wrong inputs (ON_FAILURES, E2E_TARGET, no spec nor grep, production-packaged on web, E2E_PACKAGE on a lane
-#     that takes none, E2E_SPEC with a quarter, next-nightly-pair): refused, nothing run; green: exit 0, no run folder,
-#     the loop given the spec and grep in dev mode;
-#   - the quarters: on web (the loop, the quarter's regex, retries 1), on windows-vm-electron (with the desktop's own
-#     spec, the 16 h cap); a dry run: the command printed, nothing run;
-#   - dev mode on the lanes: docker-server (dp-ci.sh e2e, E2E_MODE=dev), windows-vm-electron (built from the VM's tree:
-#     no pack);
+#   - the wrong inputs (ON_FAILURES, E2E_MODE, a package in dev mode, no package in production-packaged, no spec nor
+#     grep, E2E_PACKAGE on a package, E2E_SPEC with a quarter, next-nightly-pair): refused, nothing run; green: exit 0,
+#     no run folder, the loop given the spec and grep in dev mode;
+#   - the quarters: on web (the loop, the quarter's regex, retries 1), on datapallas.zip (windows) (with the desktop's
+#     own spec, the 16 h cap); a dry run: the command printed, nothing run;
+#   - the four package names, each run on its lane, production-packaged;
 #   - the packaged lanes (E2E_MODE=production-packaged): docker-server (dp-ci.sh e2e, the image built when there is none to reuse), windows-vm-docker
 #     (a regex already written with [\\/] kept), windows-vm-server (a kept pack of the commit under test reused),
 #     windows-vm-electron (each / of E2E_SPEC matching either separator; no pack: the lane packs first), red: its run
@@ -74,7 +73,9 @@ the_run_folder() { ls -d "$RUN_RECORD_DIR"/*-e2e-by-hand 2>/dev/null; }
 
 echo "---- the wrong input; green ----"
 check "a wrong ON_FAILURES: refused (exit 2), nothing run" bash -c 'rm -f "$STUB/follow-calls"; ON_FAILURES=fix bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1; [ $? = 2 ] && [ ! -f "$STUB/follow-calls" ]'
-check "a wrong E2E_TARGET: refused (exit 2), nothing run" bash -c 'E2E_SPEC=x E2E_TARGET=windows bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1; [ $? = 2 ] && [ ! -f "$STUB/follow-calls" ]'
+check "a wrong E2E_TARGET: refused (exit 2), nothing run" bash -c 'E2E_SPEC=x E2E_MODE=production-packaged E2E_TARGET=windows bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1; [ $? = 2 ] && [ ! -f "$STUB/follow-calls" ]'
+check "a package in dev mode: refused (exit 2), nothing run, says production-packaged" bash -c 'out=$(E2E_SPEC=x E2E_TARGET="datapallas.zip (windows)" bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); [ $? = 2 ] &&
+  grep -q "E2E_MODE=production-packaged" <<< "$out" && [ ! -f "$STUB/follow-calls" ]'
 check "no E2E_SPEC nor E2E_GREP: refused (exit 2), nothing run, no fix round" bash -c 'bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1; [ $? = 2 ] &&
   [ ! -f "$STUB/follow-calls" ] && [ ! -f "$STUB/fixer-calls" ]'
 case_run green 0 DONE
@@ -82,8 +83,9 @@ out=$(by_hand); rc=$?
 check "green: exit 0, BY_HAND_RESULT=green, no run folder" bash -c '[ "$0" = 0 ] && [ "$(tail -1 <<< "$1")" = BY_HAND_RESULT=green ] && [ ! -d "$2" ]' "$rc" "$out" "$RUN_RECORD_DIR"
 check "  the loop given the spec and the grep, dev mode, the package as it is" bash -c 'grep -qx "run bash asbl/ci/dp-ci.sh e2e-loop E2E_SPEC=reporting E2E_GREP=the burst" "$0" &&
   grep -qxF "run bash asbl/ci/dp-ci.sh e2e-loop | MODE=dev TARGET=web SPEC=reporting GREP=the burst RETRIES= PACKAGE=package-reuse-as-is KEPT= PACK= REUSE=" "$1"' "$STUB/follow-calls" "$STUB/follow-env"
-for wrong in "E2E_SPEC=x E2E_MODE=production-packaged" "E2E_SPEC=x E2E_TARGET=electron-linux E2E_MODE=production-packaged" \
-             "E2E_SPEC=x E2E_TARGET=docker-server E2E_PACKAGE=package-repackage" "E2E_SPEC=x WHAT_TO_RUN=full-set-quarter-1" \
+for wrong in "E2E_SPEC=x E2E_MODE=production-packaged" "E2E_SPEC=x E2E_TARGET=web E2E_MODE=production-packaged" \
+             "E2E_SPEC=x E2E_TARGET=electron-linux E2E_MODE=production-packaged" "E2E_SPEC=x E2E_TARGET=docker-server" \
+             "E2E_SPEC=x E2E_MODE=production-packaged E2E_TARGET=docker-server E2E_PACKAGE=package-repackage" "E2E_SPEC=x WHAT_TO_RUN=full-set-quarter-1" \
              "WHAT_TO_RUN=next-nightly-pair" "WHAT_TO_RUN=full-set-quarter-5" "E2E_SPEC=x E2E_MODE=packaged" "E2E_SPEC=x DRY_RUN=maybe"; do
   check "refused (exit 2), nothing run: $wrong" bash -c 'rm -f "$STUB/follow-calls"; env $0 bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1; [ $? = 2 ] && [ ! -f "$STUB/follow-calls" ]' "$wrong"
 done
@@ -94,22 +96,24 @@ want="run bash asbl/ci/dp-ci.sh e2e-loop | MODE=dev TARGET=web SPEC=$(python3 as
 out=$(WHAT_TO_RUN=full-set-quarter-2 bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); rc=$?
 check "quarter 2 on web: green, the loop on the quarter's files (full-set-runners.py), retries 1" bash -c '[ "$0" = 0 ] && grep -qxF "$1" "$2"' "$rc" "$want" "$STUB/follow-env"
 case_run quarter-win 0 DONE
-WHAT_TO_RUN=full-set-quarter-3 E2E_TARGET=windows-vm-electron E2E_MODE=production-packaged bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1
-check "quarter 3 on windows-vm-electron: with the desktop's own spec, retries 1, the 16 h cap" bash -c 'grep -q "let-me-update-migrate-configuration" "$0" &&
+WHAT_TO_RUN=full-set-quarter-3 E2E_TARGET='datapallas.zip (windows)' E2E_MODE=production-packaged bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1
+check "quarter 3 on datapallas.zip (windows): with the desktop's own spec, retries 1, the 16 h cap" bash -c 'grep -q "let-me-update-migrate-configuration" "$0" &&
   grep -q " RETRIES=1 " "$0" && grep -qx 57600 "$1"' "$STUB/follow-env" "$STUB/follow-timeout"
 case_run dry 0 DONE
 out=$(E2E_SPEC=reporting DRY_RUN=yes bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); rc=$?
 check "a dry run: exit 0, the command printed, nothing run" bash -c '[ "$0" = 0 ] && grep -q "^WOULD   .*E2E_MODE=dev .*e2e-loop$" <<< "$1" &&
   [ "$(tail -1 <<< "$1")" = "BY_HAND_RESULT=dry-run (nothing ran)" ] && [ ! -f "$STUB/follow-calls" ]' "$rc" "$out"
 
-echo "---- dev mode on the lanes ----"
-case_run dev-docker 0 DONE
-E2E_SPEC='/features/samples\.spec\.ts$' E2E_TARGET=docker-server bash asbl/ci/jenkins/e2e-by-hand.sh >/dev/null 2>&1
-check "docker-server, dev: dp-ci.sh e2e with E2E_MODE=dev" grep -qxF "run bash asbl/ci/dp-ci.sh e2e | MODE=dev TARGET=docker-server SPEC=/features/samples\.spec\.ts\$ GREP= RETRIES= PACKAGE= KEPT= PACK= REUSE=" "$STUB/follow-env"
-case_run dev-electron 0 DONE
-out=$(E2E_SPEC='/features/samples\.spec\.ts$' E2E_TARGET=windows-vm-electron bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1)
-want='run bash asbl/ci/jenkins/win-e2e.sh e2e | MODE=dev TARGET= SPEC=[\\/]features[\\/]samples\.spec\.ts$ GREP= RETRIES= PACKAGE= KEPT= PACK= REUSE='
-check "windows-vm-electron, dev: win-e2e.sh e2e from the VM's tree, no pack asked, no build answer" bash -c 'grep -qxF "$0" "$1" && ! grep -q "^BUILD " <<< "$2"' "$want" "$STUB/follow-env" "$out"
+echo "---- the four package names: each on its lane, production-packaged ----"
+for pair in "datapallas.zip (windows)|windows-vm-electron|win-e2e.sh e2e" "datapallas-server.zip (windows)|windows-vm-server|win-e2e.sh server-e2e" \
+            "datapallas-server-docker.zip (windows)|windows-vm-docker|win-e2e.sh docker-e2e" "datapallas-server-docker.zip (linux)|docker-server|dp-ci.sh e2e"; do
+  IFS='|' read -r name lane runs <<< "$pair"
+  case_run "map-$lane" 0 DONE
+  out=$(E2E_SPEC='/x\.spec\.ts$' E2E_MODE=production-packaged E2E_TARGET="$name" bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); rc=$?
+  check "$name: lane $lane ($runs), production-packaged, green" bash -c '[ "$0" = 0 ] && grep -qF "BY_HAND what=spec-and-grep target='"'"'$1'"'"' lane=$2 mode=production-packaged " <<< "$3" &&
+    grep -q "^run bash asbl/ci/.*$4 | MODE=production-packaged " "$5"' "$rc" "$name" "$lane" "$out" "$runs" "$STUB/follow-env"
+  rm -rf "${RELEASE_ARTIFACTS_DIR:?}"/*
+done
 
 echo "---- the packaged lanes ----"
 case_run docker 0 DONE
@@ -129,11 +133,11 @@ check "windows-vm-server: win-e2e.sh server-e2e on the kept pack of the commit u
   grep -qxF "$1" "$2"' "$out" "$want" "$STUB/follow-env"
 rm -rf "${RELEASE_ARTIFACTS_DIR:?}"/*
 case_run vm-electron 2 DONE
-out=$(E2E_SPEC='/features/samples\.spec\.ts$' E2E_MODE=production-packaged E2E_TARGET=windows-vm-electron ON_FAILURES=report-only bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); rc=$?; dir=$(the_run_folder)
+out=$(E2E_SPEC='/features/samples\.spec\.ts$' E2E_MODE=production-packaged E2E_TARGET='datapallas.zip (windows)' ON_FAILURES=report-only bash asbl/ci/jenkins/e2e-by-hand.sh 2>&1); rc=$?; dir=$(the_run_folder)
 want='run bash asbl/ci/jenkins/win-e2e.sh e2e | MODE=production-packaged TARGET= SPEC=[\\/]features[\\/]samples\.spec\.ts$ GREP= RETRIES= PACKAGE= KEPT= PACK=yes REUSE='
 check "windows-vm-electron: win-e2e.sh e2e, each / matching either separator; no pack: the lane packs first" grep -qxF "$want" "$STUB/follow-env"
-check "  red: exit 1, its run folder names the lane, the VM, its log and the commit under test" bash -c '[ "$0" = 1 ] &&
-  grep -qx target=windows-vm-electron "$1/result.txt" && grep -qP "^part\twindows-vm-electron\twindows-vm\tFAIL\t$2/loop-1.log\t\trc=2$" "$1/result.txt" &&
+check "  red: exit 1, its run folder names the package, the lane, the VM, its log and the commit under test" bash -c '[ "$0" = 1 ] &&
+  grep -qxF "target=datapallas.zip (windows)" "$1/result.txt" && grep -qx lane=windows-vm-electron "$1/result.txt" && grep -qP "^part\twindows-vm-electron\twindows-vm\tFAIL\t$2/loop-1.log\t\trc=2$" "$1/result.txt" &&
   grep -qx "pin=$(git rev-parse HEAD)" "$1/result.txt"' "$rc" "$dir" "$LOG_DIR"
 
 echo "---- red, report-only; no fixer ----"
