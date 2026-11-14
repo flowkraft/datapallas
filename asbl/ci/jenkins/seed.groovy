@@ -142,6 +142,16 @@ def roundVersionText = 'Always. The new version x.y.z: step 0 sets it, then step
 
 // name -> [what it is, parameters]; the Jenkinsfile is asbl/ci/jenkins/<name>.Jenkinsfile. Add an entry to add a job.
 // A parameter's text: the first line says what it is and its default, then when to change it, then examples.
+// ON_FAILURES: the same three values, the same meaning, in the release round, the nightly and one-spec; each job says what
+// its red run is and what each fix value leads to there (more: a line of its own before the last one)
+def fixValues = ['fix-prove-then-wait-for-review', 'fix-prove-then-rerun-automatically', 'report-only']
+def onFailures = { String red, String review, String rerun, String more ->
+  [choices: fixValues, text: "Sometimes. If ${red} is red: every failure is collected, its root cause found in the code and the git history, a plan with real fixes written, and each fix proven by re-running only the tests that failed. Then:\nfix-prove-then-wait-for-review (default) = ${review}\nfix-prove-then-rerun-automatically = ${rerun}\nreport-only = it ends red with the failure report. No agent.\n${more}Leave the default to review each fix round."]
+}
+def fixerNeed = 'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER), as for the release round; without it, both fix values act as report-only and say so.'
+// a fix waiting for review in the nightly and one-spec: what Proceed and Abort do
+def reviewedFix = 'the fixes are made and proven in a scratch clone and nothing reaches main: the build pauses with Proceed, showing the fix report and its diff (also on the build page, reports/). Proceed = that diff committed and pushed to main as one commit; Abort = the fix dropped.'
+
 def jobs = [
   'dp-ci-release-steps-0-3-rehearsal': [
     about: 'Set RELEASE_VERSION.\nChange ON_FAILURES only when you want something other than a review of each fix round.\nLeave the other three as they are.\n\n' + describe(
@@ -177,7 +187,10 @@ def jobs = [
       SEPARATOR_ALWAYS: [separator: 'Always'],
       RELEASE_VERSION: [default: '', text: roundVersionText],
       SEPARATOR_SOMETIMES: [separator: 'Sometimes'],
-      ON_FAILURES: [choices: ['fix-prove-then-wait-for-review', 'fix-prove-then-rerun-automatically', 'report-only'], text: 'Sometimes. If the run is red: every failure is collected, its root cause found in the code and the git history, a plan with real fixes written, and each fix proven by re-running only the tests that failed. Then:\nfix-prove-then-wait-for-review (default) = the build pauses with Proceed, showing the fix plan, its report and the commits. Proceed = run again from scratch, step 1 included.\nfix-prove-then-rerun-automatically = the same fixes and proofs, then it runs again from scratch by itself, step 1 included. After 2 such re-runs it waits for Proceed.\nreport-only = it ends red with the failure report. No agent.\nA fix round that ends BLOCKED always waits for a review.\nLeave the default to review each fix round.'],
+      ON_FAILURES: onFailures('the run',
+        'the build pauses with Proceed, showing the fix plan, its report and the commits. Proceed = run again from scratch, step 1 included.',
+        'the same fixes and proofs, then it runs again from scratch by itself, step 1 included. After 2 such re-runs it waits for Proceed.',
+        'A fix round that ends BLOCKED always waits for a review.\n'),
       SEPARATOR_RARELY: [separator: 'Rarely: leave them as they are'],
       RELEASE_PIN: [default: '', text: 'Rarely: leave it empty. A commit (its hash) to rehearse that commit in run 1 instead of step 0\'s (or origin/main\'s). A run after fixes is always on origin/main, which holds the fixes.'],
       DRY_RUN: [choices: ['no', 'yes'], text: 'Rarely: leave no. yes = shows what the round would run, and runs nothing: each run is the orchestrator\'s dry run, and the fixer and the preflights get DRY_RUN=yes (nothing builds, records, starts an agent or uploads).\nUse it to check the job after a CI change.'],
@@ -191,24 +204,27 @@ def jobs = [
   ],
   'dp-ci-dev-e2e-one-spec': [
     about: describe(
-      WHAT: 'The fix-and-retry loop (dp-ci.sh e2e-loop): one spec file, or some of its tests, on the web or electron-linux target, with no retries. The jars and the Angular UI are built from the tree on every run; the package (the content the tests start from: sample apps, db-template, config, samples, scripts) is never rebuilt: E2E_PACKAGE says what happens to it (built first only when there is none). It never counts for a release.',
+      WHAT: 'The fix-and-retry loop (asbl/ci/jenkins/one-spec.sh, which runs dp-ci.sh e2e-loop): one spec file, or some of its tests, on the web or electron-linux target, with no retries. A red run: ON_FAILURES, as in the release round and the nightly. The jars and the Angular UI are built from the tree on every run; the package (the content the tests start from: sample apps, db-template, config, samples, scripts) is never rebuilt: E2E_PACKAGE says what happens to it (built first only when there is none). It never counts for a release.',
       WHEN: 'after a fix: the failed tests (E2E_GREP), then the whole file. To confirm a file on a package built from this exact commit, or to test on Windows or Docker: dp-ci-release-step1-e2e-prerelease (with E2E_SPEC, or E2E_GREP). Commit the fix first: the run puts this checkout on origin/main (a fast-forward) and stops on local changes to tracked files; commits not pushed yet are tested as they are.',
-      ORDER: 'any time.',
-      NEEDS: needsDocker,
+      ORDER: 'any time. One build at a time: while one pauses for a review, the next waits in the queue.',
+      NEEDS: [needsDocker, fixerNeed],
       TIME: 'about 4 min of setup, then the tests: one test about 5 min in all; over the last 40 runs a median of 16 min, from seconds up to 4.8 h for several big files at once (measured). package-repackage: about 3.5 min more; no package yet: about 30 min more.',
       EXAMPLES: [
         'one failed test after a fix: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_GREP=02_dashboard_demos',
         'a whole file: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$',
         'after a fix to a db-template sample: E2E_SPEC=/features/samples\\.spec\\.ts$  E2E_PACKAGE=package-rsync-simple-file-changes',
         'a desktop-only spec: E2E_SPEC=/features/let-me-update-migrate-configuration\\.spec\\.ts$  E2E_TARGET=electron-linux',
+        'the failures only, no agent: E2E_SPEC=/areas/cube-stories\\.spec\\.ts$  ON_FAILURES=report-only',
       ],
-      LOG: playwrightLog + '\n  Which package it ran on: E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.',
-      MORE: guide('dp-ci-dev-e2e-one-spec', 'asbl/ci/dp-ci.sh e2e-loop')
+      LOG: playwrightLog + '\n  Which package it ran on: E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.\n  The verdict: ONE_SPEC_RESULT=green|red ...; a red run\'s folder: ONE_SPEC_RUN_FOLDER=<folder> (its result.txt); a fix round\'s state: FIX_ROUND state=...',
+      MORE: guide('dp-ci-dev-e2e-one-spec', 'asbl/ci/jenkins/one-spec.sh')
     ),
     params: [
       E2E_SPEC  : [text: 'WHICH FILE to run: a regex on the spec file\'s path; end it with $ to match one file only. No default: needed unless E2E_GREP is set (then every file is searched for those titles, slower).\nUse it: every run, a different file each time. Leave E2E_GREP empty to run the whole file (the normal case).\nExamples:\n  /areas/cube-stories\\.spec\\.ts$\n  /features/samples\\.spec\\.ts$\n  /areas/connections\\.spec\\.ts$\n  /features/explore-data-   -> every explore-data-*.spec.ts (several files: slower, the exception)\nThe files are under frend/reporting/e2e/specs/.'],
       E2E_GREP  : [text: 'WHICH TESTS inside that file: a regex on the test titles. Empty (the default) = every test of the file (the normal case).\nUse it: to re-run only the test or tests that failed after a fix. Run the whole file again (empty) before you call the file green.\nExamples:\n  Show Me   -> the tests whose title contains Show Me\n  refus|SQL vendor   -> the tests whose title contains either text (| means or)\n  \\[duckdb\\] Database Schema   -> + ( ) [ ] . ? * and | have a meaning in a regex: put a backslash before them to match them as written. Same for palette \\+ default config\nTip: copy a piece of the title from the failure line of the run log or from the Playwright report.\nCareful: in a serial file (cube-stories, dashboard-demos, auth-authorization-server) a test depends on the ones before it, so a filtered run can fail for that reason alone.'],
       E2E_TARGET: [choices: ['web', 'electron-linux'], text: 'WHAT the tests run against. web (default, the everyday one): the server and the Angular UI built from this tree, in a browser.\nelectron-linux: the desktop application on Linux, for the specs that only run there (for example let-me-update-migrate-configuration).\nThe Docker and Windows targets are release checks: dp-ci-release-step1-e2e-prerelease.'],
+      ON_FAILURES: onFailures('the run', reviewedFix + ' While it waits, the next one-spec build waits in the queue.',
+        'the fixer pushes each proven fix to main itself, then the same spec and grep run again once: that run is the verdict.', ''),
       E2E_PACKAGE: [choices: ['package-reuse-as-is', 'package-rsync-simple-file-changes', 'package-repackage'], text: 'WHAT HAPPENS TO THE PACKAGE before the run. package-reuse-as-is (default): run on the package exactly as it stands. The package holds the content the tests start from (sample apps, db-template, config, samples, scripts, sample databases); the jars and the Angular UI are always built from the tree, so a fix to Java, the UI, specs or helpers needs nothing more.\npackage-reuse-as-is: instant. Use it for almost every run.\npackage-rsync-simple-file-changes: copy the plain db-template files changed since the package was built (commits, and new untracked files) into the package and the testground. A few seconds. Use it after a small fix under db-template (for example a sample or the AI Hub app). If a changed file is not a plain copy in the package (generated, transformed or checked by the assembler), the run stops with: use package-repackage. With nothing changed it copies 0 files.\npackage-repackage: package the content again on the jars already built (AssemblerTest#refreshContentForE2E), about 3.5 min. Use it after a fix to config, samples or scripts that the rsync mode refuses. It is not a full rebuild: that is dp-ci.sh build (about 40 min).\nIf you forget the package after a content fix, the run tests the OLD content and its result is wrong. The log says which package ran: the line E2E_PACKAGE mode=... built_from=... commit_under_test=... files_copied=<n>.\nIf there is no package yet, one is built first (about 30 min).'],
     ],
   ],
@@ -247,7 +263,7 @@ def jobs = [
     params: [:],
   ],
   'dp-ci-dev-scheduled-e2e': [
-    about: 'It runs by itself every night (18:00 UTC): nothing to press. Pressed by hand, it runs the next night\'s pair now.\n\n' + describe(
+    about: 'It runs by itself every night (18:00 UTC): nothing to press. Pressed by hand, it runs the next night\'s pair now.\nA red night\'s fix waits for your Proceed on its build.\n\n' + describe(
       WHAT: [
         'The nightly e2e of main (asbl/ci/jenkins/scheduled-e2e.sh): each night the next pair of a 16-night rotation: one part of the full set (its 4-job layout, asbl/ci/full-set-runners.txt) on one production-packaged lane, the shipped files started as a user starts them: docker-server (Linux), windows-vm-docker, windows-vm-server (the pack\'s server zip) or windows-vm-electron (the pack\'s datapallas.zip, DataPallas.exe). Every pair runs once in 16 nights; four nights in a row take the four lanes and the four parts. A server lane\'s night then runs auth-authorization-server alone; a desktop night runs let-me-update-migrate-configuration with its part. Retries 1, as the release.',
         'The rotation moves by nights run: a skipped, dry or stopped night leaves its pair next. bash asbl/ci/jenkins/scheduled-e2e.sh plan lists the next 16 pairs.',
@@ -255,24 +271,27 @@ def jobs = [
         'It never counts for a release: nothing in the release record. A red night: ON_FAILURES. Each night, run or skipped, the Playwright HTML reports older than 14 days go (the top of the log folder only).',
       ],
       WHEN: 'by itself, every night. By hand: to run the next pair now; DRY_RUN=yes after a change to the scheduled job.',
-      ORDER: 'any time. It skips, green ("SKIPPED: <why>"), while the CI is busy: a dp-ci run, a Windows run, a release run, a release round open until its version is public, or the night before still going (its fix round included). A release press stops a night going: a release goes before it.',
+      ORDER: 'any time. It skips, green ("SKIPPED: <why>"), while the CI is busy: a dp-ci run, a Windows run, a release run, a release round open until its version is public, or the night before still going (its fix round included, with ON_FAILURES=fix-prove-then-rerun-automatically). A release press stops a night going: a release goes before it.',
       NEEDS: [
         'nothing to provide; the lanes check their own needs (this host\'s Docker engine, the Windows VM on a Windows lane\'s night) and a set that cannot run ends red;',
-        'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER), as for the release round; without it, fix acts as report-only and says so.',
+        fixerNeed,
       ],
       TIME: 'from the 16.6.1 full set on docker-server (10 h 20 min) cut by the 4-job layout: a part about 2 h 10 min to 2 h 40 min on Linux, about twice that on the Windows VM (a Windows part\'s cap: 16 h); the auth file about 20 min. A build when needed: about 40 min; a pack: about 1 h 30. A fix round: hours, at most 48 h (its own cap).',
       EXAMPLES: [
         'the next pair, now: nothing to set',
         'the failures only, no agent: ON_FAILURES=report-only',
+        'its fixes pushed by the fixer with no review, the red pair first the next night: ON_FAILURES=fix-prove-then-rerun-automatically',
         'check the job after a change, nothing run: DRY_RUN=yes',
       ],
-      LOG: '^NIGHT (the night\'s own lines: the sets, SET n/N START and END, NIGHT END with the verdict, FIX ROUND 1 END), ^BUILD (each build\'s answer: reuse or rebuild, and why), then each lane\'s console. The build list labels each build (2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going; SKIPPED: <why>). The reports on the build page: the artifacts reports/ (the night\'s result.txt, run.log, flaky tests, the Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: bash asbl/ci/jenkins/scheduled-e2e.sh status (or plan, follow, stop).',
+      LOG: '^NIGHT (the night\'s own lines: the sets, SET n/N START and END, NIGHT END with the verdict, FIX ROUND 1 END), ^FIX_ROUND (a fix round\'s state: fixing, waiting, done, ended, no-fix, proceeded, aborted), ^BUILD (each build\'s answer: reuse or rebuild, and why), then each lane\'s console. The build list labels each build (2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going; SKIPPED: <why>). The reports on the build page: the artifacts reports/ (the night\'s result.txt, run.log, flaky tests, the Playwright JSON) and Test Result; the HTML folders stay on the host. From a shell: bash asbl/ci/jenkins/scheduled-e2e.sh status (or plan, follow, stop; fix status|proceed|abort <the night\'s folder> <who> decides a waiting fix as the pause does).',
       MORE: guide('dp-ci-dev-scheduled-e2e', 'asbl/ci/jenkins/scheduled-e2e.sh')
     ),
     // the night starts at 18:00 UTC; a Windows part may take up to 16 h, so it ends before the next night
     cron: 'TZ=UTC\n0 18 * * *',
     params: [
-      ON_FAILURES: [choices: ['fix', 'report-only'], text: 'Sometimes. If the night is red:\nfix (default) = a fix round: every failure\'s root cause found in the code and the git history, fixed, and each fix proven by re-running only what failed. Nothing runs again by itself: the next night checks main again. The night waits for the fix round, and the next night skips while it goes.\nreport-only = it ends red with the failures in its result. No agent.'],
+      ON_FAILURES: onFailures('the night',
+        reviewedFix + ' After a Proceed the red pair runs first the next night. The night ends at once: the next nights run meanwhile (a timed one takes this default); while a fix waits, a red night only reports.',
+        'the fixer pushes each proven fix to main itself; the night waits for it (the next night skips meanwhile), then the red pair runs first the next night.', ''),
       DRY_RUN: [choices: ['no', 'yes'], text: 'Rarely: leave no. yes = shows each set\'s builds (reuse or rebuild) and the command it would run, and runs, builds and starts nothing; the clean-up only lists.\nUse it to check the job after a change.'],
     ],
   ],

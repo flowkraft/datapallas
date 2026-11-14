@@ -18,8 +18,10 @@
 #   windows-vm-server) runs auth-authorization-server after its part, alone: its last test changes burst's password,
 #   which other specs sign in with. A desktop night runs let-me-update-migrate-configuration with its part.
 #   The rotation moves by nights run: a night takes the next pair when it starts and moves the rotation on once its sets
-#   ran, green or red. A skipped night, a dry run and a stopped night leave their pair next. The rotation's place:
-#   <LOG_DIR>/scheduled-e2e-rotation (next=<1-16>).
+#   ran, green or red. A skipped night, a dry run and a stopped night leave their pair next. A red pair whose fixes
+#   reached main (a Proceed, or a fix round of fix-prove-then-rerun-automatically ended DONE) runs first the next night,
+#   then the rotation goes on where it was. The rotation's place: <LOG_DIR>/scheduled-e2e-rotation (next=<1-16>, and
+#   first=<the red pair> while one waits to run again).
 #   The sets run one after the other, each whatever the verdict of the one before. Retries 1, as the release's lanes. A
 #   Windows part may take 16 h (WIN_RUN_TIMEOUT: a quarter of the full Electron set's 64 h; a targeted run's 3 h would
 #   cut it).
@@ -38,21 +40,26 @@
 # SUBCOMMANDS
 #   start      first the clean-up (see clean), then the checks; then the night starts detached and this returns.
 #              Exit 5 started (a "log:" line), 0 skipped (SKIPPED: <why>), 2 a wrong input (nothing started). It skips:
-#              - while a night is still going, its fix round included (the pid file below);
+#              - while a night is still going, its fix round included when the night waits for it
+#                (fix-prove-then-rerun-automatically; the pid file below);
 #              - while the CI is busy: a dp-ci run, a Windows run, a release run, or a release round open until the
 #                version is public (asbl/ci/jenkins/release-rehearsal.sh busy).
 #   follow [--from <byte>] [--for <seconds>]   the newest night's console from that byte; without --for, until the night's
 #              tests end (its NIGHT END line); with it, at most that long (the job's polls). The last line is
 #              FOLLOW next=<byte to go on from> state=<state> ended=<yes: the NIGHT END line is out, no>
 #   status     one line:  NIGHT state=<state> night=<date>-<day> pair=<k>/16 sets=<sets> commit=<commit> result=<its result.txt>
-#   label      the build's label for the job's build list:
+#              [fix=<its fix round's state>]
+#   label [<night folder>]   the build's label for the job's build list, of that night (the newest by default):
 #              "2026-11-15 Sunday, pair 2/16: windows-vm-docker-part-2 PASS, windows-vm-docker-auth-authorization-server going"
-#   reports    the report files of the newest night, as its result.txt lists them:  REPORT <set> <path>  a line (the
-#              result itself, the summary, the flaky tests: set "night"; each set's Playwright JSON and its JUnit XML;
-#              never the HTML folders, which stay on the host)
+#   reports [<night folder>]   the report files of that night (the newest by default), as its result.txt lists them:
+#              REPORT <set> <path>  a line (the result itself, the summary, the flaky tests, a fix's diff and report:
+#              set "night"; each set's Playwright JSON and its JUnit XML; never the HTML folders, which stay on the host)
 #   stop       the night going stops: its own processes, then what its set started (the dp-ci containers, the
 #              docker-server bundle, the Windows driver and the VM's steps, each only when made since the set began),
 #              then its fix run. A release press calls it (release-rehearsal.sh start): a release goes before a night
+#   fix status|wait|proceed|abort <night folder> [--for <seconds> | <who>]   the night's fix round (asbl/ci/jenkins/fix-round.sh,
+#              its header: the record and its states). proceed (only when its fix waits for review): that diff committed
+#              and pushed, then the night's pair runs first the next night. abort: nothing reaches main
 #   plan       the next 16 nights' pairs, in the order they run, then the next night's sets and each build's answer,
 #              reuse or rebuild. Runs nothing
 #   clean      the Playwright HTML reports older than 14 days go: the *-playwright-html folders at the top of LOG_DIR,
@@ -60,10 +67,18 @@
 #   help       this header
 #
 # INPUTS (environment; the job's parameters, the same names and defaults):
-#   ON_FAILURES [fix]   what a red night leads to: fix = a fix round, the fixer (RELEASE_FIXER in the settings file, as for
-#                       the release round): every failure's root cause found, fixed and proven alone; it runs nothing again
-#                       (the next night checks again). report-only = the night ends red with its result, no agent. With no
-#                       fixer set, fix acts as report-only and says so
+#   ON_FAILURES [fix-prove-then-wait-for-review]   what a red night leads to. A fix round is the fixer (RELEASE_FIXER in the
+#                       settings file, as for the release round, asbl/ci/jenkins/fix-round.sh): every failure's root cause
+#                       found, fixed and proven alone; flaky tests (passed on a retry) are only listed.
+#                       fix-prove-then-wait-for-review: the fix round works in a scratch clone and commits nothing; its diff
+#                         and report wait in the night's folder for a person's proceed or abort (fix ...). The night ends at
+#                         once: the next nights run meanwhile. One such fix is open at a time: while one is, a red night
+#                         only reports. A timed night always takes this one (the job's default)
+#                       fix-prove-then-rerun-automatically: the fixer pushes each proven fix itself; the night waits for it
+#                         (the next night skips meanwhile); after a DONE round the red pair runs first the next night
+#                       fix (the old job's value) is taken as fix-prove-then-wait-for-review
+#                       report-only: the night ends red with its result, no agent
+#                       With no fixer set, both fix values act as report-only and say so
 #   DRY_RUN [no]        yes: the night prints each set's builds and the command it would run, and runs, builds and starts
 #                       nothing (the fixer gets DRY_RUN=yes); clean only lists
 #   SCHEDULED_STARTED_BY   REQUIRED by start: who starts it (the job passes its build's cause, "Started by timer" at night)
@@ -73,13 +88,15 @@
 #   For the tests (asbl/ci/tests/test-scheduled-e2e.sh): SCHEDULED_DATE (the night's date in its label), SCHEDULED_COMMIT
 #   (the commit under test, nothing fetched), SCHEDULED_BUSY (replaces release-rehearsal.sh busy), SCHEDULED_FOLLOW_CI [bash asbl/ci/jenkins/follow-ci.sh] (what runs a lane),
 #   SCHEDULED_DP_CI [bash asbl/ci/dp-ci.sh] (the build and the VM's stop),
-#   SCHEDULED_POLL [60] (seconds between two looks at a fix round)
+#   SCHEDULED_FIX_ROUND [bash asbl/ci/jenkins/fix-round.sh] (a night's fix round: start, status, wait, proceed, abort),
+#   SCHEDULED_POLL [60] (seconds between two looks at a fix round that the night waits for)
 #
 # THE NIGHT'S FOLDER  <RUN_RECORD_DIR>/<UTC>-scheduled-e2e/, in the release orchestrator's format, so the fixer and the job
 #   read it as they read a release run's:
 #   run.log      the console: the NIGHT lines, each set's builds and its lane's console
 #   night.state  key=value: state (running|fixing|green|red|stopped), why, night, pair, sets, commit, on_failures, dry_run,
 #                started_by, started, updated, driver_pid, set (the set going), fix_run, fix_plan
+#   fix-round.state   the fix round's own record (asbl/ci/jenkins/fix-round.sh), with fix.diff and fix-report.md in review
 #   started.txt  what each set starts, written before it starts (the kinds of release-orchestrator.sh's started.txt)
 #   <set>.rc     each set's exit code
 #   result.txt   result, dry_run, run_kind=scheduled, night, pair, sets, version, pin, kept (empty), step1=not-run, summary,
@@ -112,15 +129,14 @@ SCHEDULED_BUSY="${SCHEDULED_BUSY:-bash asbl/ci/jenkins/release-rehearsal.sh busy
 SCHEDULED_FOLLOW_CI="${SCHEDULED_FOLLOW_CI:-bash asbl/ci/jenkins/follow-ci.sh}"
 SCHEDULED_DP_CI="${SCHEDULED_DP_CI:-bash asbl/ci/dp-ci.sh}"
 SCHEDULED_POLL="${SCHEDULED_POLL:-60}"
-ON_FAILURES="${ON_FAILURES:-fix}"
+ON_FAILURES="${ON_FAILURES:-fix-prove-then-wait-for-review}"
 DRY_RUN="${DRY_RUN:-no}"
 NIGHT_PID="$LOG_DIR/scheduled-e2e.pid"   # release-rehearsal.sh reads it: a night going is stopped before a release
 ROTATION_FILE="$LOG_DIR/scheduled-e2e-rotation"   # next=<1-16>: the pair the next night runs
 WIN_PID="$LOG_DIR/win-e2e.pid"           # win-e2e.sh's one pid file for every Windows lane
 DOCKER_SERVER_BUNDLE="$REPO/frend/reporting/testground/docker-server/DataPallas"   # dp-ci.sh docker_server_up's folder
 HTML_REPORTS_KEPT_DAYS=14                # the plan's design: old HTML reports go, so the disk stays free
-UNREADABLE_FIX_STATUS_LIMIT=20           # that many looks in a row with no FIX_STATUS line: the night stops waiting
-SETTINGS_XML=bkend/reporting/src/main/external-resources/template/config/burst/settings.xml   # the version, as release-state.sh reads it
+FIX_ROUND="${SCHEDULED_FIX_ROUND:-bash asbl/ci/jenkins/fix-round.sh}"
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 say() { echo "NIGHT   $(now) $*"; }
@@ -143,17 +159,26 @@ pair_sets() {
   echo "$lane-part-$(pair_part "$1")"
   [ "$lane" = windows-vm-electron ] || echo "$lane-auth-authorization-server"
 }
-rotation_next() {   # the pair the next night runs: the rotation's next=, pair 1 when there is none yet
-  local next; next=$(sed -n 's/^next=//p' "$ROTATION_FILE" 2>/dev/null | tail -1)
-  if [[ "$next" =~ ^[1-9][0-9]?$ ]] && [ "$next" -le "$ROTATION_PAIRS" ]; then echo "$next"; else echo 1; fi
+rotation_value() {   # rotation_value next|first: that pair (1-16) in the rotation file, or nothing
+  local pair; pair=$(sed -n "s/^$1=//p" "$ROTATION_FILE" 2>/dev/null | tail -1)
+  [[ "$pair" =~ ^[1-9][0-9]?$ ]] && [ "$pair" -le "$ROTATION_PAIRS" ] && echo "$pair"
 }
-# rotation_move_past <pair>: the next night runs the pair after it, while the rotation still points at that pair
+rotation_write() {  # rotation_write <next> <first or empty>, in one move
+  local tmp; tmp=$(mktemp "$ROTATION_FILE.XXXXXX") || return 1
+  { echo "next=$1"; [ -z "$2" ] || echo "first=$2"; echo "updated=$(now)"; } > "$tmp" && mv -f "$tmp" "$ROTATION_FILE"
+}
+rotation_place() { rotation_value next || echo 1; }   # where the rotation is: pair 1 when there is none yet
+# the pair the next night runs: a red pair whose fixes reached main first, else the rotation's place
+rotation_next() { rotation_value first || rotation_place; }
+# rotation_move_past <pair>: the night ran it; a red pair run again is no longer first, the rotation's own pair moves on
 rotation_move_past() {
-  local tmp
-  [ "$(rotation_next)" = "$1" ] || return 0
-  tmp=$(mktemp "$ROTATION_FILE.XXXXXX") || return 1
-  printf 'next=%s\nupdated=%s\n' "$(($1 % ROTATION_PAIRS + 1))" "$(now)" > "$tmp" && mv -f "$tmp" "$ROTATION_FILE"
+  local next first
+  next=$(rotation_place) first=$(rotation_value first)
+  [ "$first" != "$1" ] || first=""
+  [ "$next" != "$1" ] || next=$(($1 % ROTATION_PAIRS + 1))
+  rotation_write "$next" "$first"
 }
+rotation_red_pair_first() { rotation_write "$(rotation_place)" "$1"; }   # its fixes reached main: it runs next
 
 set_lane() { case "$1" in *-part-[1-4]) echo "${1%-part-*}" ;; *) echo "${1%-auth-authorization-server}" ;; esac; }
 # set_spec_files <set>: the spec files it runs, paths under frend/reporting/e2e/
@@ -230,6 +255,8 @@ build_answer() {
 }
 # shellcheck source=../reuse-or-rebuild.sh
 . asbl/ci/reuse-or-rebuild.sh
+# shellcheck source=run-result.sh
+. asbl/ci/jenkins/run-result.sh
 
 # commit_under_test: origin/main fetched, as the lanes' own sync takes it (HEAD when this checkout is ahead); a dry run
 # fetches nothing; SCHEDULED_COMMIT replaces it
@@ -263,21 +290,7 @@ exit_code_of_state() { case "$1" in green) echo 0 ;; red|fixing) echo 1 ;; stopp
 status_line() {
   local dir="$1"
   [ -n "$dir" ] || { echo "NIGHT state=none: no night yet"; return; }
-  echo "NIGHT state=$(night_state "$dir") night=$(state_get "$dir" night | tr ' ' '-') pair=$(state_get "$dir" pair)/$ROTATION_PAIRS sets=$(state_get "$dir" sets | tr ' ' ',') commit=$(state_get "$dir" commit | cut -c1-8) result=$dir/result.txt"
-}
-
-# ---- the fixer, as the release round reads it ----
-RELEASE_FIXER=""
-read_fixer() {  # RELEASE_FIXER from the settings file, when only its owner may read it (it names commands this host runs)
-  [ -e "$RELEASE_REHEARSAL_CONF" ] || return 0
-  [ "$(stat -c %u "$RELEASE_REHEARSAL_CONF")" = "$(id -u)" ] && case "$(stat -c %a "$RELEASE_REHEARSAL_CONF")" in 600|400) true ;; *) false ;; esac ||
-    { echo "WARN    $RELEASE_REHEARSAL_CONF may be read by others: no fixer taken from it (chmod 600)"; return 0; }
-  RELEASE_FIXER=$(. "$RELEASE_REHEARSAL_CONF" >/dev/null 2>&1; printf '%s' "${RELEASE_FIXER:-}")
-}
-fixer_status() {  # fixer_status <fix run>: RUNNING|DONE|BLOCKED|STOPPED and the plan's status line, or UNKNOWN <what it said>
-  local out
-  out=$(DRY_RUN="$DRY_RUN" $RELEASE_FIXER status "$1" 2>&1)
-  printf '%s\n' "$out" | sed -n 's/^FIX_STATUS=//p' | tail -1 | grep . || echo "UNKNOWN $(printf '%s' "$out" | tail -1)"
+  echo "NIGHT state=$(night_state "$dir") night=$(state_get "$dir" night | tr ' ' '-') pair=$(state_get "$dir" pair)/$ROTATION_PAIRS sets=$(state_get "$dir" sets | tr ' ' ',') commit=$(state_get "$dir" commit | cut -c1-8) result=$dir/result.txt$([ ! -f "$dir/fix-round.state" ] || echo " fix=$(sed -n 's/^state=//p' "$dir/fix-round.state" | tail -1)")"
 }
 
 # ---- one set ----
@@ -290,13 +303,11 @@ what_set_starts() {
     *)             printf 'pidfile\t%s\tthe Windows driver of win-e2e.sh\nvm\t%s\tthe VM steps: %s\n' "$WIN_PID" "$lane" "$(lane_vm_steps "$lane")" ;;
   esac
 }
-# newest_log_since <link> <epoch>: the log the link points at, when written since then (the lane's own)
-newest_log_since() { local l; l=$(readlink -f "$1" 2>/dev/null) || return 0; [ -f "$l" ] && [ "$(stat -c %Y "$l")" -ge "$2" ] && echo "$l"; }
 # run_set <night folder> <n> <of> <set> <commit>: the set's builds, then its lane through follow-ci.sh; its .rc and its
 # part line (SET_LINE). Returns the lane's exit code
 run_set() {
   local dir="$1" n="$2" of="$3" set="$4" under="$5" build reuse="" kept="" rebuild_pack=no lane_env launcher pidfile link
-  local lane files spec="" t0 rc log json reports kind name what why=""
+  local lane files spec="" t0 rc log json kind name what why=""
   say "SET $n/$of START $set"
   state_set "$dir" set="$set"
   while IFS=$'\t' read -r kind name what; do
@@ -344,65 +355,68 @@ run_set() {
                [ -n "$json" ] || json="${log:+${log%.log}-step-playwright.json}" ;;
     *)         json="${log:+${log%.log}-playwright.json}" ;;
   esac
-  reports="${json:+$json ${json%.json}-html}"
-  SET_LINE=$(printf 'part\t%s\t%s\t%s\t%s\t%s\t%s' "$set" "$(set_machine "$set")" "$([ "$rc" = 0 ] && echo PASS || echo FAIL)" "${log:-$dir/run.log}" "$reports" "$why")
+  SET_LINE=$(part_line "$set" "$(set_machine "$set")" "$rc" "${log:-$dir/run.log}" "$json" "$why")
   say "SET $n/$of END $set rc=$rc${log:+ log $log}"
   return "$rc"
 }
 
 # write_result <night folder> <green|red> <part lines>: result.txt and flaky.txt, as the release orchestrator writes them
 write_result() {
-  local dir="$1" result="$2" parts="$3" under version flaky_args=() set report
-  under=$(state_get "$dir" commit)
-  version=$(git show "$under:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+')
-  while IFS=$'\t' read -r set report; do
-    case "$report" in *.json) [ -f "$report" ] && flaky_args+=("$set" "$report") ;; esac
-  done < <(printf '%s\n' "$parts" | awk -F'\t' '$1 == "part" { split($6, r, " "); print $2 "\t" r[1] }')
-  if [ "${#flaky_args[@]}" = 0 ]; then : > "$dir/flaky.txt"
-  else bash asbl/ci/jenkins/release-orchestrator.sh flaky "${flaky_args[@]}" > "$dir/flaky.txt"; fi
-  {
-    echo "# the result of a scheduled night (asbl/ci/jenkins/scheduled-e2e.sh), in the release orchestrator's format"
-    echo "result=$result"
-    echo "dry_run=$DRY_RUN"
-    echo "run_kind=scheduled"
-    echo "night=$(state_get "$dir" night)"
-    echo "pair=$(state_get "$dir" pair)/$ROTATION_PAIRS"
-    echo "sets=$(state_get "$dir" sets)"
-    echo "version=$version"
-    echo "pin=$under"
-    echo "kept="
-    echo "step1=not-run"
-    echo "summary=$dir/run.log"
-    echo "flaky=$dir/flaky.txt"
-    printf '%s\n' "$parts"
-  } > "$dir/result.txt"
+  local dir="$1" under; under=$(state_get "$dir" commit)
+  write_run_result "$dir" "$2" "a scheduled night (asbl/ci/jenkins/scheduled-e2e.sh)" "$3" dry_run="$DRY_RUN" run_kind=scheduled \
+    night="$(state_get "$dir" night)" pair="$(state_get "$dir" pair)/$ROTATION_PAIRS" sets="$(state_get "$dir" sets)" \
+    version="$(version_at "$under")" pin="$under" kept= step1=not-run summary="$dir/run.log" flaky="$dir/flaky.txt"
 }
 
-# fix_round <night folder>: the fixer's round on the red night, waited for, holding the pid file (the next night skips,
-# a release press stops it); it runs nothing again
-fix_round() {
-  local dir="$1" out name plan status unreadable=0
-  out=$(DRY_RUN="$DRY_RUN" $RELEASE_FIXER start "$dir" 1 2>&1); printf '%s\n' "$out"
-  name=$(printf '%s\n' "$out" | sed -n 's/^FIX_RUN=//p' | tail -1)
-  plan=$(printf '%s\n' "$out" | sed -n 's/^FIX_PLAN=//p' | tail -1)
-  if [ -z "$name" ]; then
+# open_review_fix: the night folder whose fix round for review is still open (fixing or waiting), newest first, or nothing
+open_review_fix() {
+  local dir
+  for dir in $(ls -1d "$RUN_RECORD_DIR"/*-scheduled-e2e/ 2>/dev/null | sort -r); do
+    dir="${dir%/}"
+    grep -qx kind=review "$dir/fix-round.state" 2>/dev/null || continue
+    case "$($FIX_ROUND status "$dir" 2>/dev/null)" in "FIX_ROUND state=fixing "*|"FIX_ROUND state=waiting "*) echo "$dir"; return ;; esac
+  done
+}
+fix_round_started() {  # fix_round_started <night folder> <review|push>: the round started (its output printed), else why
+  local out
+  out=$($FIX_ROUND start "$1" "$2" 2>&1); printf '%s\n' "$out"
+  grep -q '^FIX_RUN=' <<< "$out"
+}
+# fix_round_for_review <night folder>: the fix round in a scratch clone; the night ends, its fix waits in its own record
+fix_round_for_review() {
+  local dir="$1" open
+  open=$(open_review_fix)
+  if [ -n "$open" ]; then
+    state_set "$dir" state=red why="red; the fix of the night of $(state_get "$open" night) is still open ($open): this night only reports"
+    say "NIGHT END result=red: the fix of the night of $(state_get "$open" night) is still open (fix status $open): this night only reports"
+  elif ! fix_round_started "$dir" review; then
+    state_set "$dir" state=red why="red; the fix round could not start (the fixer's output above)"
+    say "NIGHT END result=red: the fix round could not start (above)"
+  else
+    state_set "$dir" state=red fix_run="$(sed -n 's/^fix_run=//p' "$dir/fix-round.state")" fix_plan="$(sed -n 's/^fix_plan=//p' "$dir/fix-round.state")" \
+      why="red; its fix round works in a scratch clone: nothing reaches main before a proceed (fix status $dir)"
+    say "NIGHT END result=red: fix round 1 started for review: $(state_get "$dir" fix_plan). Nothing reaches main before a proceed; the night ends, the next nights run meanwhile (fix status $dir)"
+  fi
+}
+# fix_round_then_rerun <night folder>: the fixer pushes its fixes; waited for, holding the pid file (the next night skips,
+# a release press stops it); a DONE round makes the night's pair run first the next night
+fix_round_then_rerun() {
+  local dir="$1" last
+  if ! fix_round_started "$dir" push; then
     state_set "$dir" state=red why="red; the fix round could not start (the fixer's output above)"
     say "NIGHT END result=red: the fix round could not start (above)"; return
   fi
-  state_set "$dir" state=fixing fix_run="$name" fix_plan="$plan" why="red; fix round $name going: $plan"
-  say "NIGHT END result=red: fix round 1 started: $plan (run $name). This night's process waits for it; the next night skips while it goes"
-  while :; do
-    status=$(fixer_status "$name")
-    case "${status%% *}" in
-      DONE|BLOCKED|STOPPED) break ;;
-      UNKNOWN) unreadable=$((unreadable + 1))
-               [ "$unreadable" -lt "$UNREADABLE_FIX_STATUS_LIMIT" ] || { status="BLOCKED the fixer's status could not be read $unreadable times in a row: ${status#* }"; break; } ;;
-      *) unreadable=0 ;;
-    esac
-    sleep "$SCHEDULED_POLL"
-  done
-  state_set "$dir" state=red why="red; fix round 1 ${status%% *}: ${status#* }"
-  say "FIX ROUND 1 END: $status"
+  state_set "$dir" state=fixing fix_run="$(sed -n 's/^fix_run=//p' "$dir/fix-round.state")" fix_plan="$(sed -n 's/^fix_plan=//p' "$dir/fix-round.state")" \
+    why="red; fix round $(sed -n 's/^fix_run=//p' "$dir/fix-round.state") going: it pushes its fixes"
+  say "NIGHT END result=red: fix round 1 started: $(state_get "$dir" fix_plan) (run $(state_get "$dir" fix_run)). This night's process waits for it; the next night skips while it goes"
+  last=$(FIX_ROUND_POLL="$SCHEDULED_POLL" $FIX_ROUND wait "$dir")
+  state_set "$dir" state=red why="red; fix round 1: ${last#FIX_ROUND }"
+  if grep -q '^FIX_ROUND state=done ' <<< "$last"; then
+    rotation_red_pair_first "$(state_get "$dir" pair)"
+    say "FIX ROUND 1 END: its fixes are on main; pair $(state_get "$dir" pair) runs first the next night ($last)"
+  else
+    say "FIX ROUND 1 END: $last"
+  fi
 }
 
 # the night itself, in the folder start made (started detached by start)
@@ -437,15 +451,16 @@ night() {
   fi
   write_result "$dir" red "$parts"; state_set "$dir" set=
   run_record_end FAILURE "$under"
-  read_fixer
   if [ "$ON_FAILURES" = report-only ]; then
     state_set "$dir" state=red why="red: $failed set(s) failed; report-only"
     say "NIGHT END result=red: $failed set(s) failed (ON_FAILURES=report-only: no fix round; the result: $dir/result.txt)"
-  elif [ -z "$RELEASE_FIXER" ]; then
+  elif ! $FIX_ROUND fixer-set >/dev/null; then
     state_set "$dir" state=red why="red: $failed set(s) failed; no fixer set ($RELEASE_REHEARSAL_CONF), so report-only"
     say "NIGHT END result=red: $failed set(s) failed; no fixer set (RELEASE_FIXER in $RELEASE_REHEARSAL_CONF): report-only"
+  elif [ "$ON_FAILURES" = fix-prove-then-wait-for-review ]; then
+    fix_round_for_review "$dir"
   else
-    fix_round "$dir"
+    fix_round_then_rerun "$dir"
   fi
   exit 1
 }
@@ -463,7 +478,10 @@ clean_html_reports() {
 
 start_night() {
   local who night date pair sets dir out
-  case "$ON_FAILURES" in fix|report-only) ;; *) echo "FAIL  ON_FAILURES must be fix or report-only (got '$ON_FAILURES')"; exit 2 ;; esac
+  [ "$ON_FAILURES" != fix ] || ON_FAILURES=fix-prove-then-wait-for-review   # the old job's value: a fix pushed only after a proceed
+  case "$ON_FAILURES" in fix-prove-then-wait-for-review|fix-prove-then-rerun-automatically|report-only) ;;
+    *) echo "FAIL  ON_FAILURES must be fix-prove-then-wait-for-review, fix-prove-then-rerun-automatically or report-only (got '$ON_FAILURES')"; exit 2 ;;
+  esac
   case "$DRY_RUN" in yes|no) ;; *) echo "FAIL  DRY_RUN must be yes or no (got '$DRY_RUN')"; exit 2 ;; esac
   who="${SCHEDULED_STARTED_BY:-}"
   [ -n "$who" ] || { echo "MISSING SCHEDULED_STARTED_BY: who starts this night (the job passes its build's cause)"; exit 2; }
@@ -532,8 +550,9 @@ follow_night() {
 }
 
 night_label() {
-  local dir set rc word line=""
-  dir=$(newest_night)
+  local dir="${1:-}" set rc word line=""
+  [ -z "$dir" ] || [ -f "$dir/night.state" ] || { echo "FAIL  not a night's folder: '$dir'"; exit 2; }
+  dir="${dir:-$(newest_night)}"
   [ -n "$dir" ] || { echo "no night yet"; return; }
   for set in $(state_get "$dir" sets); do
     if [ -f "$dir/$set.rc" ]; then [ "$(cat "$dir/$set.rc")" = 0 ] && word=PASS || word=FAIL
@@ -541,23 +560,31 @@ night_label() {
     else word="not run"; fi
     line="${line:+$line, }$set $word"
   done
-  case "$(night_state "$dir")" in
-    fixing)  line="$line; fix round going" ;;
-    stopped) line="$line; stopped" ;;
-    red)     [ -z "$(state_get "$dir" fix_run)" ] || line="$line; fix round ended" ;;
-  esac
+  [ "$(night_state "$dir")" != stopped ] || line="$line; stopped"
+  if [ -f "$dir/fix-round.state" ]; then
+    case "$($FIX_ROUND status "$dir" 2>/dev/null | sed -n 's/^FIX_ROUND state=\([a-z-]*\) .*/\1/p')" in
+      fixing)    line="$line; fix round going" ;;
+      waiting)   line="$line; its fix waits for review" ;;
+      no-fix)    line="$line; fix round ended, no fix" ;;
+      proceeded) line="$line; its fix is on main" ;;
+      aborted)   line="$line; its fix aborted" ;;
+      *)         line="$line; fix round ended" ;;
+    esac
+  fi
   echo "$(state_get "$dir" night), pair $(state_get "$dir" pair)/$ROTATION_PAIRS: $line$([ "$(state_get "$dir" dry_run)" = yes ] && echo " (dry run)")"
 }
 
 night_reports() {
-  local dir file set report
-  dir=$(newest_night)
+  local dir="${1:-}" file set report
+  [ -z "$dir" ] || [ -f "$dir/night.state" ] || { echo "FAIL  not a night's folder: '$dir'"; exit 2; }
+  dir="${dir:-$(newest_night)}"
   [ -n "$dir" ] && [ -f "$dir/result.txt" ] || return 0
   echo "REPORT night $dir/result.txt"
   for file in summary flaky; do
     report=$(sed -n "s/^$file=//p" "$dir/result.txt" | head -1)
     [ -n "$report" ] && [ -e "$report" ] && echo "REPORT night $report"
   done
+  for file in fix-report.md fix.diff; do [ ! -f "$dir/$file" ] || echo "REPORT night $dir/$file"; done
   awk -F'\t' '$1 == "part" { print $2 "\t" $6 }' "$dir/result.txt" | while IFS=$'\t' read -r set reports; do
     for report in $reports; do
       case "$report" in
@@ -608,10 +635,7 @@ stop_night() {
         done ;;
     esac
   done < "$dir/started.txt" 2>/dev/null
-  if [ "$state" = fixing ] && [ -n "$(state_get "$dir" fix_run)" ]; then
-    read_fixer
-    [ -z "$RELEASE_FIXER" ] || { echo "stopping the fix run $(state_get "$dir" fix_run)"; DRY_RUN="$DRY_RUN" $RELEASE_FIXER stop "$(state_get "$dir" fix_run)"; }
-  fi
+  [ "$state" != fixing ] || [ ! -f "$dir/fix-round.state" ] || $FIX_ROUND abort "$dir" "${STOP_BY:-someone}"
   state_set "$dir" state=stopped why="stopped by ${STOP_BY:-someone} at $(now) (it was $state)"
   say "STOPPED by ${STOP_BY:-someone} (it was $state)" >> "$dir/run.log"
   status_line "$dir"
@@ -619,19 +643,38 @@ stop_night() {
 }
 
 plan_night() {
-  local next under n pair set build
+  local place red_first pairs under n pair set build
   [ "$#" = 0 ] || usage
-  next=$(rotation_next)
+  place=$(rotation_place) red_first=$(rotation_value first)
   under=$(DRY_RUN=yes commit_under_test) || { echo "FAIL  no commit under test"; exit 2; }
   echo "PLAN    the next $ROTATION_PAIRS nights, in the order they run (a skipped night leaves its pair next), on ${under:0:8}"
-  for n in $(seq 1 "$ROTATION_PAIRS"); do
-    pair=$(((next + n - 2) % ROTATION_PAIRS + 1))
-    printf 'NIGHT   %2d  %s: %s\n' "$n" "$(pair_name "$pair")" "$(pair_sets "$pair" | paste -sd' ')"
+  pairs=$(for n in $(seq 0 $((ROTATION_PAIRS - 1))); do echo $(((place + n - 1) % ROTATION_PAIRS + 1)); done)
+  [ -z "$red_first" ] || pairs=$(printf '%s\n%s\n' "$red_first" "$pairs" | head -n "$ROTATION_PAIRS")
+  n=0
+  for pair in $pairs; do
+    n=$((n + 1))
+    printf 'NIGHT   %2d  %s: %s%s\n' "$n" "$(pair_name "$pair")" "$(pair_sets "$pair" | paste -sd' ')" \
+      "$([ "$n" = 1 ] && [ -n "$red_first" ] && echo " (again: its fix is on main)")"
   done
-  for set in $(pair_sets "$next"); do
+  for set in $(pair_sets "$(rotation_next)"); do
     echo "SET     the next night's $set ($(set_machine "$set")): $(set_spec_files "$set" | grep -c .) spec file(s)"
     for build in $(set_builds "$set"); do build_answer "$build" "$set" "$under"; done
   done
+}
+
+# night_fix status|wait|proceed|abort <night folder> [...]: fix-round.sh on that night's fix; a proceed that put the fix
+# on main makes the night's pair run first the next night
+night_fix() {
+  local action="${1:-}" dir="${2:-}" out rc
+  case "$action" in status|wait|proceed|abort) ;; *) usage ;; esac
+  [ -f "$dir/night.state" ] || { echo "FAIL  not a night's folder: '$dir' (status prints its result.txt's folder)"; exit 2; }
+  shift 2
+  out=$($FIX_ROUND "$action" "$dir" "$@" 2>&1); rc=$?; printf '%s\n' "$out"
+  if [ "$action" = proceed ] && [ "$rc" = 0 ] && grep -q '^FIX_COMMIT=' <<< "$out" && [ "$DRY_RUN" != yes ]; then
+    rotation_red_pair_first "$(state_get "$dir" pair)"
+    echo "the night's pair $(state_get "$dir" pair) runs first the next night"
+  fi
+  exit "$rc"
 }
 
 cmd="${1:-help}"; shift || true
@@ -640,10 +683,11 @@ case "$cmd" in
   night)   [ -d "${1:-}" ] || usage; night "$1" ;;
   follow)  follow_night "$@" ;;
   status)  dir=$(newest_night); status_line "$dir"; exit "$(exit_code_of_state "$([ -n "$dir" ] && night_state "$dir")")" ;;
-  label)   night_label ;;
-  reports) night_reports ;;
+  label)   night_label "$@" ;;
+  reports) night_reports "$@" ;;
   stop)    stop_night ;;
   plan)    plan_night "$@" ;;
+  fix)     night_fix "$@" ;;
   clean)   case "$DRY_RUN" in yes|no) ;; *) echo "FAIL  DRY_RUN must be yes or no"; exit 2 ;; esac; clean_html_reports ;;
   help|-h|--help) print_header ;;
   *) usage ;;

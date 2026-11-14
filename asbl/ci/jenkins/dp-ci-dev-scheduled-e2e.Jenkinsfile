@@ -9,8 +9,14 @@
 //     polling from the byte the build had reached; it never stops the night;
 //   - an Abort pressed by a person stops the night: post { aborted }. No timeout on purpose: a Windows night may last up to
 //     about 16 h, and every lane has its own cap.
-// The build ends when the night's tests end (its NIGHT END line). After a red night its fix round goes on, on the host
-// (ON_FAILURES=fix); the next night skips while it goes.
+// A red night, by ON_FAILURES (scheduled-e2e.sh's header):
+//   - fix-prove-then-wait-for-review (the default, a timed build's): the night ends at once and its fix round works in a
+//     scratch clone. This build follows the round (fix wait, in polls of under a minute), then pauses outside any node with
+//     the fix's report and diff: Proceed = fix proceed (that diff committed and pushed, the red pair first the next night);
+//     Abort (the pause's or the build's) = fix abort. A fix decided from a shell meanwhile ends the pause's wait.
+//   - fix-prove-then-rerun-automatically: the build ends at the NIGHT END line; the round goes on on the host and pushes.
+// No disableConcurrentBuilds: a build paused for a review must not hold the next timed night. One night at a time is
+// scheduled-e2e.sh's own rule (its pid file: a night still going skips the next), and one fix waits for review at a time.
 
 // nightCall(<command run in the repo on the host>, keepAll, quiet): one short SSH call, its output shown in the console as
 // it comes (quiet: kept only). Returns [rc: its exit code (-1 or 255: the call itself failed), text: its whole output when
@@ -84,9 +90,10 @@ String whoStartedThisBuild() {
   }
 }
 
-// showLabel(): the build list says where the night is, without opening the log (scheduled-e2e.sh label)
+// showLabel(): the build list says where the night is, without opening the log (scheduled-e2e.sh label): this build's
+// night once it is known, as a later night may start while this build pauses for a review
 void showLabel() {
-  Map label = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh label', false, true)
+  Map label = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh label $(q "${NIGHT_DIR:-}")', false, true)
   if (label.rc == 0 && label.text) {
     currentBuild.description = label.text
   }
@@ -98,7 +105,7 @@ void showLabel() {
 // reports are shown, not enforced
 void publishReports() {
   try {
-    Map listing = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh reports', true, true)
+    Map listing = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh reports $(q "$NIGHT_DIR")', true, true)
     List paths = []
     for (String line : listing.text.readLines()) {
       List f = line.tokenize(' ')
@@ -125,6 +132,59 @@ exit 0
   } catch (err) {
     rethrowAbort(err)
     echo "The reports were not all shown (they are on the host, see scheduled-e2e.sh reports): ${err}"
+  }
+}
+
+// followFix(): the night's fix round for review, in polls of under a minute, until it no longer fixes. Returns its state
+// then: waiting (its fix waits for review), no-fix, ended (BLOCKED, stopped), or proceeded, aborted (decided from a shell)
+String followFix() {
+  int failedCalls = 0
+  String lastState = ''
+  while (true) {
+    Map call = nightCall('FIX_ROUND_POLL=15 bash asbl/ci/jenkins/scheduled-e2e.sh fix wait $(q "$NIGHT_DIR") --for 45', false, true)
+    Map fix = call.text.startsWith('FIX_ROUND ') ? fieldsOf(call.text) : [:]
+    if (!fix.state) {
+      // the host did not answer: the round goes on there; ask again
+      failedCalls++
+      if (failedCalls % 10 == 1) {
+        echo "The host did not answer (exit ${call.rc}, ${failedCalls} time(s) in a row): asking again every 30 s. The fix round goes on there."
+      }
+      sleep(time: 30, unit: 'SECONDS')
+      continue
+    }
+    failedCalls = 0
+    if (fix.state != lastState) {
+      lastState = fix.state
+      echo call.text
+      showLabel()
+    }
+    if (fix.state != 'fixing') {
+      return fix.state
+    }
+  }
+}
+
+// reviewPause(): the night's fix waits for review: its report and diff shown (the console, and reports/ on the build page),
+// then a pause outside any node until a person presses Proceed (fix proceed) or Abort (post { aborted }: fix abort).
+// Returns the proceed's answer (FIX_COMMIT=<commit>), or why nothing was pushed
+String reviewPause() {
+  publishReports()
+  nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh fix status $(q "$NIGHT_DIR") && cat $(q "$NIGHT_DIR")/fix-report.md $(q "$NIGHT_DIR")/fix.diff', true, false)
+  while (true) {
+    env.NIGHT_AT_REVIEW_PAUSE = 'yes'
+    def answer = input(message: "The night's fix waits for review: its report and its diff are above, and on this build's page (reports/fix-report.md, reports/fix.diff).\nProceed = that diff committed and pushed to main as one commit; the red pair runs first the next night. Abort = the fix dropped, nothing reaches main.",
+                       ok: 'Proceed: commit and push the fix', submitterParameter: 'PROCEED_BY')
+    env.NIGHT_AT_REVIEW_PAUSE = ''
+    env.NIGHT_PROCEED_BY = (answer instanceof Map) ? "${answer['PROCEED_BY']}" : "${answer}"
+    Map proceed = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh fix proceed $(q "$NIGHT_DIR") $(q "$NIGHT_PROCEED_BY")', true, false)
+    if (proceed.rc == 0) {
+      return firstLineStartingWith(proceed.text, 'FIX_COMMIT=') ?: 'proceeded (see above)'
+    }
+    Map status = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh fix status $(q "$NIGHT_DIR")', false, false)
+    if (!status.text.startsWith('FIX_ROUND state=waiting ')) {
+      return "nothing pushed by this build: ${status.text}"
+    }
+    echo 'The proceed failed (its FAIL line above): nothing was pushed and the fix still waits. Proceed again, or Abort.'
   }
 }
 
@@ -163,7 +223,6 @@ pipeline {
 
   options {
     timestamps()
-    disableConcurrentBuilds()
   }
 
   environment {
@@ -176,7 +235,7 @@ pipeline {
       steps {
         script {
           // a timer's build has every parameter at its default; the defaults here are the job's own, for a first build
-          env.NIGHT_ON_FAILURES = params.ON_FAILURES ?: 'fix'
+          env.NIGHT_ON_FAILURES = params.ON_FAILURES ?: 'fix-prove-then-wait-for-review'
           env.NIGHT_DRY_RUN = params.DRY_RUN ?: 'no'
           env.NIGHT_STARTED_BY = whoStartedThisBuild()
           echo "The settings of this night:\nON_FAILURES=${env.NIGHT_ON_FAILURES}\nDRY_RUN=${env.NIGHT_DRY_RUN}\nstarted by: ${env.NIGHT_STARTED_BY}"
@@ -191,13 +250,13 @@ pipeline {
             currentBuild.description = refused
             error(refused)
           }
-          if (start.rc != 5) {
-            // the call itself failed (a restart during the start): the night may have started; follow it only if so
-            Map status = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh status', false, false)
-            if (!status.text.startsWith('NIGHT state=running ')) {
-              error("The start could not be confirmed (exit ${start.rc}): ${status.text}")
-            }
+          // the night started (or, when the call itself failed in a restart, may have: followed only if so). Its folder
+          // (status: result=<folder>/result.txt) names it from now on: a later night may start while this build pauses
+          Map status = nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh status', false, false)
+          if (start.rc != 5 && !status.text.startsWith('NIGHT state=running ')) {
+            error("The start could not be confirmed (exit ${start.rc}): ${status.text}")
           }
+          env.NIGHT_DIR = (fieldsOf(status.text).result ?: '').replaceAll('/result\\.txt$', '')
           env.NIGHT_STARTED = 'yes'
         }
       }
@@ -215,8 +274,15 @@ pipeline {
             echo 'The night is green: every set passed.'
           } else if (state == 'fixing') {
             error('The night is red: its fix round goes on on the host (bash asbl/ci/jenkins/scheduled-e2e.sh status); the next night skips while it goes. The failures are in the night\'s result.txt (reports/).')
+          } else if (state == 'red' && nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh fix status $(q "$NIGHT_DIR")', false, true).text.startsWith('FIX_ROUND state=fixing ')) {
+            env.NIGHT_FIX_FOLLOWED = 'yes'
+            String fixState = followFix()
+            String decided = fixState == 'waiting' ? reviewPause() : "its fix round ended ${fixState}: nothing to review"
+            env.NIGHT_FIX_FOLLOWED = ''
+            showLabel()
+            error("The night is red; ${decided}. The failures are in the night's result.txt (reports/).")
           } else if (state == 'red') {
-            error('The night is red (ON_FAILURES=report-only, or no fixer set, or its fix round could not start: above). The failures are in the night\'s result.txt (reports/).')
+            error('The night is red (ON_FAILURES=report-only, or no fixer set, or its fix round could not start, or another night\'s fix still waits for review: above). The failures are in the night\'s result.txt (reports/).')
           } else if (state == 'stopped') {
             // stopped from the host (a release press goes before a night): not a failure of the code
             env.NIGHT_STOPPED_ON_THE_HOST = 'yes'
@@ -233,9 +299,13 @@ pipeline {
   post {
     aborted {
       script {
-        // a person's Abort: the night stops. Only a night this build started, and not one already stopped on the host
-        if (env.NIGHT_STARTED == 'yes' && env.NIGHT_STOPPED_ON_THE_HOST != 'yes') {
-          env.NIGHT_STOP_BY = "an Abort of the Jenkins build ${env.BUILD_TAG}"
+        // a person's Abort. While this build follows its night's fix round or pauses for its review: that fix aborted
+        // (fix-round.sh refuses one decided meanwhile), the night having ended. Else the night stops: only a night this
+        // build started, and not one already stopped on the host
+        env.NIGHT_STOP_BY = "an Abort of the Jenkins build ${env.BUILD_TAG}"
+        if (env.NIGHT_FIX_FOLLOWED == 'yes' || env.NIGHT_AT_REVIEW_PAUSE == 'yes') {
+          nightCall('bash asbl/ci/jenkins/scheduled-e2e.sh fix abort $(q "$NIGHT_DIR") $(q "$NIGHT_STOP_BY")', true, false)
+        } else if (env.NIGHT_STARTED == 'yes' && env.NIGHT_STOPPED_ON_THE_HOST != 'yes') {
           nightCall('STOP_BY=$(q "$NIGHT_STOP_BY") bash asbl/ci/jenkins/scheduled-e2e.sh stop', true, false)
         }
       }

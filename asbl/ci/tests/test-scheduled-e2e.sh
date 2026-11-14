@@ -12,8 +12,11 @@
 #     pack, so a Windows server night packs again; bc6ee866 to d3ffd94b (product code) builds the image; none here builds;
 #   - the clean-up on a scratch LOG_DIR with dated folders: only the HTML reports older than 14 days go, nothing in evidence/
 #     or runs/, no file; a dry run lists them;
-#   - nights with the stub lane: green; red with report-only; red with a fix round (the fixer's start, the night waiting for
-#     it); stop while a set runs (on Linux and on the VM) and while a fix round goes; status, label, follow and reports.
+#   - nights with the stub lane: green; red with report-only; red with fix-prove-then-wait-for-review (the night ends at once,
+#     the next night runs and only reports while that fix is open, abort, a proceed puts the red pair first) and with
+#     fix-prove-then-rerun-automatically (the night waiting for the round, the red pair first after a DONE one); stop while
+#     a set runs (on Linux and on the VM) and while a fix round goes; status, label, follow and reports. A proceed goes to
+#     a stub fix-round.sh (test-fix-round.sh proves the real one): nothing is ever committed or pushed.
 # Every folder is a scratch one: no live folder is touched, nothing real is started or built. Takes about 40 seconds.
 # Callers: a person or an agent, from the shell, after changing the scheduled job.
 #   bash asbl/ci/tests/test-scheduled-e2e.sh
@@ -81,12 +84,17 @@ EOF
 cat > "$STUB/fixer" <<'EOF'
 #!/bin/bash
 # stub fixer: start prints its run and plan; status prints $STUB/fix-status; each call is recorded
-echo "$* DRY_RUN=${DRY_RUN:-}" >> "$STUB/fixer-calls"
+echo "$* FIX_MODE=${FIX_MODE:-} DRY_RUN=${DRY_RUN:-}" >> "$STUB/fixer-calls"
 case "$1" in
   start)  echo "FIX_RUN=fix-night"; echo "FIX_PLAN=$STUB/scheduled-e2e-fix-round-1.md" ;;
   status) echo "FIX_STATUS=$(cat "$STUB/fix-status" 2>/dev/null || echo RUNNING) > **KRAFT-KEEP-WORKING STATUS** (stub)" ;;
   stop)   echo "stopped $2" ;;
 esac
+EOF
+cat > "$STUB/fix-round" <<'EOF'
+#!/bin/bash
+# stub fix-round.sh, for proceed only: records its call, prints the commit a real proceed prints
+echo "$*" >> "$STUB/fix-round-calls"; [ "$1" != proceed ] || echo "FIX_COMMIT=0123abcd"
 EOF
 chmod +x "$STUB/bin/docker"
 export PATH="$STUB/bin:$PATH"
@@ -199,7 +207,7 @@ check "a night still going: skipped" has "SKIPPED: the night of 2026-11-15 Sunda
 rm -f "$LOG_DIR/scheduled-e2e.pid"
 check "  no night folder made by a skipped start" same "$before" "$(ls "$RUN_RECORD_DIR" | wc -l)"
 check "  and still pair 7 next" same 7 "$(next_pair)"
-check "ON_FAILURES must be fix or report-only (exit 2)" bash -c 'ON_FAILURES=retry bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
+check "ON_FAILURES must be one of its three values (exit 2)" bash -c 'ON_FAILURES=retry bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
 check "DRY_RUN must be yes or no (exit 2)" bash -c 'DRY_RUN=maybe bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
 check "who starts it is required (exit 2)" bash -c 'SCHEDULED_STARTED_BY= bash "$0" start >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT"
 rm -f "$LOG_DIR/scheduled-e2e-rotation"
@@ -257,26 +265,66 @@ check "  status: red, exit 1" bash -c 'bash "$0" status >/dev/null; [ $? = 1 ]' 
 check "  label" same "2026-11-16 Monday, pair 2/16: windows-vm-docker-part-2 FAIL, windows-vm-docker-auth-authorization-server FAIL" "$(night label)"
 check "  a red night ran its pair too: the next night runs pair 3" same 3 "$(next_pair)"
 
-echo RUNNING > "$STUB/fix-status"; rm -f "$STUB/lane-calls"; sleep 1
-SCHEDULED_DATE=2026-11-17 night start >/dev/null
-wait_for 30 bash -c 'grep -q "^state=fixing" "$0"/night.state' "$(newest_night)"; NIGHT=$(newest_night)
-check "a red Windows server night with fix: both sets ran, each whatever the other's verdict" same 2 "$(grep -c '^part' "$NIGHT/result.txt")"
+echo "---- red nights, fix-prove-then-wait-for-review (the default) ----"
+echo RUNNING > "$STUB/fix-status"; rm -f "$STUB/lane-calls" "$STUB/fixer-calls"
+a_night 2026-11-17; REVIEWED=$NIGHT
+check "a red Windows server night: both sets ran, each whatever the other's verdict" same 2 "$(grep -c '^part' "$NIGHT/result.txt")"
 check "  the auth file alone, through win-e2e.sh server-e2e, on the kept pack" \
   bash -c 'grep "^run bash asbl/ci/jenkins/win-e2e.sh server-e2e | E2E_MODE=production-packaged " "$0" | sed -n 2p | grep "auth-authorization-server" | grep -q "RELEASE_KEPT=$1 REBUILD_PACK=no"' \
   "$STUB/lane-calls" "$RELEASE_ARTIFACTS_DIR/16.6.1-f9624daf"
-check "  the fixer started on the night's folder, round 1" has "start $NIGHT 1 DRY_RUN=no" "$STUB/fixer-calls"
+check "  the fixer started on the night's folder, round 1, for review" has "start $NIGHT 1 FIX_MODE=review DRY_RUN=no" "$STUB/fixer-calls"
+out=$(night follow --for 5); rc=$?
+check "  the night ended red at once (the pid file gone): nothing reaches main before a proceed" \
+  bash -c '[ "$0" = 1 ] && grep -q "NIGHT END result=red: fix round 1 started for review: .*Nothing reaches main before a proceed" <<< "$1" &&
+    [ ! -e "$2/scheduled-e2e.pid" ]' "$rc" "$out" "$LOG_DIR"
+check "  label" same "2026-11-17 Tuesday, pair 3/16: windows-vm-server-part-3 FAIL, windows-vm-server-auth-authorization-server FAIL; fix round going" "$(night label)"
+check "  status: the fix round's state" has " fix=fixing" "$(night status)"
+check "  the night ran its pair: pair 4 next" same 4 "$(next_pair)"
+a_night 2026-11-18
+check "the next night runs while that fix is open; red, it only reports (no second fix round)" \
+  bash -c 'grep -q "^state=red" "$0/night.state" && [ ! -f "$0/fix-round.state" ] && [ "$(grep -c "^start " "$1/fixer-calls")" = 1 ] &&
+    grep -q "the fix of the night of 2026-11-17 Tuesday is still open" "$0/night.state"' "$NIGHT" "$STUB"
+echo "a diff" > "$REVIEWED/fix.diff"; echo "# the fix" > "$REVIEWED/fix-report.md"; echo DONE > "$STUB/fix-status"
+check "the fixer DONE with a diff: its fix waits for review" has "FIX_ROUND state=waiting kind=review" "$(night fix status "$REVIEWED")"
+check "  label of that night (not the newest)" same "2026-11-17 Tuesday, pair 3/16: windows-vm-server-part-3 FAIL, windows-vm-server-auth-authorization-server FAIL; its fix waits for review" "$(night label "$REVIEWED")"
+check "  reports of that night (not the newest): its fix's report and diff too" bash -c 'out=$(bash "$0" reports "$1")
+  grep -qx "REPORT night $1/fix-report.md" <<< "$out" && grep -qx "REPORT night $1/fix.diff" <<< "$out" && grep -qx "REPORT night $1/result.txt" <<< "$out"' "$NIGHT_SCRIPT" "$REVIEWED"
+check "  fix on a folder that is no night's: refused (exit 2)" bash -c 'bash "$0" fix status "$1" >/dev/null 2>&1; [ $? = 2 ]' "$NIGHT_SCRIPT" "$SCRATCH"
+out=$(night fix abort "$REVIEWED" "the reviewer"); rc=$?
+check "fix abort: aborted, the rotation as it was (pair 5 next)" bash -c '[ "$0" = 0 ] && grep -q "state=aborted" <<< "$1" && [ "$2" = 5 ]' "$rc" "$out" "$(next_pair)"
+echo RUNNING > "$STUB/fix-status"
+a_night 2026-11-19; REVIEWED=$NIGHT
+check "with no fix open, a red night starts its own" bash -c 'grep -qx kind=review "$0/fix-round.state" && [ "$(grep -c "^start " "$1/fixer-calls")" = 2 ]' "$NIGHT" "$STUB"
+out=$(DRY_RUN=yes SCHEDULED_FIX_ROUND="bash $STUB/fix-round" night fix proceed "$REVIEWED" "the reviewer")
+check "a dry fix proceed: the rotation as it was (pair 6 next)" same 6 "$(next_pair)"
+out=$(SCHEDULED_FIX_ROUND="bash $STUB/fix-round" night fix proceed "$REVIEWED" "the reviewer"); rc=$?
+check "fix proceed: fix-round.sh proceed on that night; its pair (5) runs first the next night" \
+  bash -c '[ "$0" = 0 ] && grep -qx "proceed $1 the reviewer" "$2" && grep -q "pair 5 runs first the next night" <<< "$3"' "$rc" "$REVIEWED" "$STUB/fix-round-calls" "$out"
+check "  plan: pair 5 first, again, then the rotation's place (pair 6)" bash -c 'p=$(bash "$0" plan 2>&1)
+  grep -qP "^NIGHT +1  pair 5/16, .*\(again: its fix is on main\)$" <<< "$p" && grep -qP "^NIGHT +2  pair 6/16, " <<< "$p"' "$NIGHT_SCRIPT"
+echo 0 > "$STUB/lane-rc"
+a_night 2026-11-20
+check "  the next night runs pair 5 again (green), then the rotation goes on from pair 6" \
+  bash -c 'grep -qx "pair=5" "$0/night.state" && grep -qx "result=green" "$0/result.txt" && [ "$1" = 6 ]' "$NIGHT" "$(next_pair)"
+
+echo "---- a red night, fix-prove-then-rerun-automatically ----"
+echo 1 > "$STUB/lane-rc"; echo RUNNING > "$STUB/fix-status"; rm -f "$STUB/lane-calls"; sleep 1
+SCHEDULED_DATE=2026-11-21 ON_FAILURES=fix-prove-then-rerun-automatically night start >/dev/null
+wait_for 30 bash -c 'grep -q "^state=fixing" "$0"/night.state' "$(newest_night)"; NIGHT=$(newest_night)
+check "the fixer started on the night's folder, round 1, pushing" has "start $NIGHT 1 FIX_MODE=push DRY_RUN=no" "$STUB/fixer-calls"
 check "  state fixing, the night's process waiting (the pid file alive)" bash -c 'grep -q "^state=fixing" "$0/night.state" && kill -0 "$(cat "$1/scheduled-e2e.pid")"' "$NIGHT" "$LOG_DIR"
 out=$(night follow --for 5); rc=$?
 check "  follow ends at the night's end line, red (exit 1), while the fix round goes" \
   bash -c '[ "$0" = 1 ] && grep -q "NIGHT END result=red: fix round 1 started: " <<< "$1" && [[ "$(tail -1 <<< "$1")" == *" state=fixing ended=yes" ]]' "$rc" "$out"
-check "  label" same "2026-11-17 Tuesday, pair 3/16: windows-vm-server-part-3 FAIL, windows-vm-server-auth-authorization-server FAIL; fix round going" "$(night label)"
-check "  the next night skips while it goes" has "SKIPPED: the night of 2026-11-17 Tuesday is still going (red; fix round fix-night going" "$(night start)"
-check "  and leaves its pair next: pair 4" same 4 "$(next_pair)"
+check "  label" same "2026-11-21 Saturday, pair 6/16: windows-vm-docker-part-3 FAIL, windows-vm-docker-auth-authorization-server FAIL; fix round going" "$(night label)"
+check "  the next night skips while it goes" has "SKIPPED: the night of 2026-11-21 Saturday is still going (red; fix round fix-night going" "$(night start)"
+check "  and the rotation moved on: pair 7" same 7 "$(next_pair)"
 echo DONE > "$STUB/fix-status"
 wait_for 30 night_ended
 check "  the fix round DONE: the night red, the pid file gone, nothing run again" \
-  bash -c 'grep -q "^state=red" "$0/night.state" && grep -q "^why=red; fix round 1 DONE" "$0/night.state" && [ "$(grep -c "" "$1/lane-calls")" = 2 ]' "$NIGHT" "$STUB"
-check "  label" same "2026-11-17 Tuesday, pair 3/16: windows-vm-server-part-3 FAIL, windows-vm-server-auth-authorization-server FAIL; fix round ended" "$(night label)"
+  bash -c 'grep -q "^state=red" "$0/night.state" && grep -q "^why=red; fix round 1: state=done" "$0/night.state" && [ "$(grep -c "" "$1/lane-calls")" = 2 ]' "$NIGHT" "$STUB"
+check "  its pair (6) runs first the next night" same 6 "$(next_pair)"
+check "  label" same "2026-11-21 Saturday, pair 6/16: windows-vm-docker-part-3 FAIL, windows-vm-docker-auth-authorization-server FAIL; fix round ended" "$(night label)"
 
 echo "---- stop: what the night started ----"
 echo 0 > "$STUB/lane-rc"; echo 600 > "$STUB/lane-sleep"; rm -f "$STUB/docker-calls" "$STUB/lane.pid"; rotation_at 1; sleep 1
@@ -300,7 +348,7 @@ out=$(night stop)
 check "stop while the desktop part runs: the VM's steps of that lane stopped (its pack, its tests)" \
   bash -c 'grep -qx "dp-ci win stop release-pack" "$0" && grep -qx "dp-ci win stop desktop-e2e" "$0" && [ "$(grep -c "win stop" "$0")" = 2 ]' "$STUB/dp-ci-calls"
 echo 0 > "$STUB/lane-sleep"; echo 1 > "$STUB/lane-rc"; echo RUNNING > "$STUB/fix-status"; rm -f "$STUB/fixer-calls"; sleep 1
-SCHEDULED_DATE=2026-11-18 night start >/dev/null
+SCHEDULED_DATE=2026-11-18 ON_FAILURES=fix-prove-then-rerun-automatically night start >/dev/null
 wait_for 30 bash -c 'grep -q "^state=fixing" "$0"/night.state' "$(newest_night)"; NIGHT=$(newest_night)
 out=$(night stop)
 check "stop while a fix round goes: the fix run stopped too" bash -c 'grep -q "^stop fix-night" "$0/fixer-calls" && grep -q "^state=stopped" "$1/night.state"' "$STUB" "$NIGHT"
