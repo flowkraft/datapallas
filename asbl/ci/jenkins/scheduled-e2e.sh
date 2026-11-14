@@ -38,10 +38,11 @@
 #   test-only commit builds nothing. No lane here takes an e2e package: the packaged mode tests the shipped files.
 #   The lanes' builds and launchers are asbl/ci/jenkins/packaged-lane.sh, shared with one-spec.sh.
 #
-# THE SWITCH: the nights are on or off (<LOG_DIR>/scheduled-e2e-switch: state, since, by; no file: on). A timed night
-#   only reads it: while off it does nothing at all, not even the clean-up, and says "OFF off since <date>, by <who>".
-#   A press sets it (RUN_EVERY_NIGHT): on switches the nights on and runs one now, off switches them off and runs
-#   nothing. Off stays off until someone switches it on (on, or a press with on).
+# THE SWITCH: in Jenkins the nights' on/off is the job's own Disable / Enable (a disabled job runs nothing; seed keeps
+#   it). Without Jenkins, this host's switch: the nights on or off (<LOG_DIR>/scheduled-e2e-switch: state, since, by; no
+#   file: on). A night only reads it: while off it does nothing at all, not even the clean-up, and says "OFF off since
+#   <date>, by <who>". Set by the on and off subcommands, or RUN_EVERY_NIGHT on start: on switches the nights on and
+#   runs one now, off switches them off and runs nothing. Off stays off until someone switches it on.
 #
 # SUBCOMMANDS
 #   start      first the switch (THE SWITCH), then the clean-up (see clean), then the checks; then the night starts
@@ -90,7 +91,7 @@
 #                       With no fixer set, both fix values act as report-only and say so
 #   DRY_RUN [no]        yes: the night prints each set's builds and the command it would run, and runs, builds and starts
 #                       nothing (the fixer gets DRY_RUN=yes); clean only lists
-#   RUN_EVERY_NIGHT [empty: a timed night]   on|off: a press's switch (THE SWITCH); the job passes it on a press only
+#   RUN_EVERY_NIGHT [empty: the switch decides]   on|off: set the switch first (THE SWITCH); the Jenkins job never passes it
 #   SCHEDULED_STARTED_BY   REQUIRED by start, on and off: who starts it or switches (the job passes its build's cause,
 #                       "Started by timer" at night)
 #   STOP_BY [someone]   for stop: who stops it, written in the night's log and state (a release press, a build's Abort)
@@ -411,11 +412,11 @@ start_night() {
   # switches them off. While off, a timed night does nothing at all
   case "$RUN_EVERY_NIGHT" in
     "")  if [ "$(switch_state)" = off ]; then
-           echo "OFF     off since $(switch_get since), by $(switch_get by): no night (on again: a press with RUN_EVERY_NIGHT=on, or scheduled-e2e.sh on)"; exit 0
+           echo "OFF     off since $(switch_get since), by $(switch_get by): no night (on again: scheduled-e2e.sh on)"; exit 0
          fi ;;
     on)  [ "$(switch_state)" = on ] || switch_set on "$who" || { echo "FAIL  cannot write $SWITCH_FILE"; exit 2; } ;;
     off) switch_set off "$who" || { echo "FAIL  cannot write $SWITCH_FILE"; exit 2; }
-         echo "OFF     the nights are off from now, by $who: no night (on again: a press with RUN_EVERY_NIGHT=on, or scheduled-e2e.sh on)"; exit 0 ;;
+         echo "OFF     the nights are off from now, by $who: no night (on again: scheduled-e2e.sh on)"; exit 0 ;;
     *)   echo "FAIL  RUN_EVERY_NIGHT must be on or off, or empty for a timed night (got '$RUN_EVERY_NIGHT')"; exit 2 ;;
   esac
   clean_html_reports

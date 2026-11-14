@@ -293,11 +293,11 @@ def jobs = [
     params: [:],
   ],
   'dp-ci-dev-scheduled-e2e': [
-    about: 'It runs by itself every night (18:00 UTC): nothing to press. Pressed by hand, it runs the next night\'s pair now.\nA red night\'s fix waits for your Proceed on its build.\nTo stop the nights: a press with RUN_EVERY_NIGHT=off; on again: a press with on.\n\n' + describe(
+    about: 'It runs by itself every night (18:00 UTC): nothing to press. Pressed by hand, it runs the next night\'s pair now.\nA red night\'s fix waits for your Proceed on its build.\nTo stop the nights: Disable on this job\'s page (or the Enabled switch in Configure, then Save): no build runs, no night until Enable. Its runs and settings stay.\n\n' + describe(
       WHAT: [
         'The nightly e2e of main (asbl/ci/jenkins/scheduled-e2e.sh): each night the next pair of a 16-night rotation: one part of the full set (its 4-job layout, asbl/ci/full-set-runners.txt) on one production-packaged lane, the shipped files started as a user starts them: docker-server (Linux), windows-vm-docker, windows-vm-server (the pack\'s server zip) or windows-vm-electron (the pack\'s datapallas.zip, DataPallas.exe). Every pair runs once in 16 nights; four nights in a row take the four lanes and the four parts. A server lane\'s night then runs auth-authorization-server alone; a desktop night runs let-me-update-migrate-configuration with its part. Retries 1, as the release.',
         'The rotation moves by nights run: a skipped, dry, stopped or off night leaves its pair next. bash asbl/ci/jenkins/scheduled-e2e.sh plan lists the next 16 pairs.',
-        'The nights are on or off (RUN_EVERY_NIGHT, a switch kept on this host): while off, a timed night does nothing at all and its label says since when and by whom. Off stays off until someone switches it on.',
+        'The nights are on or off: this job\'s own Disable / Enable (saved at once, no build; seed keeps it). From a shell, without Jenkins: scheduled-e2e.sh off|on, a switch kept on this host (a timed night while it is off does nothing, its label says since when and by whom).',
         'It builds only what changed (asbl/ci/reuse-or-rebuild.sh, as release-rerun.sh): the build a lane takes (the image and zips for the docker lanes, the kept Windows pack for the others) is reused when nothing it ships changed since its commit. A night after a CI- or test-only commit builds nothing.',
         'It never counts for a release: nothing in the release record. A red night: ON_FAILURES. Each night, run or skipped, the Playwright HTML reports older than 14 days go (the top of the log folder only).',
       ],
@@ -310,8 +310,7 @@ def jobs = [
       TIME: 'from the 16.6.1 full set on docker-server (10 h 20 min) cut by the 4-job layout: a part about 2 h 10 min to 2 h 40 min on Linux, about twice that on the Windows VM (a Windows part\'s cap: 16 h); the auth file about 20 min. A build when needed: about 40 min; a pack: about 1 h 30. A fix round: hours, at most 48 h (its own cap).',
       EXAMPLES: [
         'the next pair, now: nothing to set',
-        'no nights until further notice: RUN_EVERY_NIGHT=off',
-        'the nights on again, and one now: RUN_EVERY_NIGHT=on',
+        'no nights until further notice: Disable on this job\'s page (no build); again: Enable',
         'the failures only, no agent: ON_FAILURES=report-only',
         'its fixes pushed by the fixer with no review, the red pair first the next night: ON_FAILURES=fix-prove-then-rerun-automatically',
         'check the job after a change, nothing run: DRY_RUN=yes',
@@ -322,7 +321,6 @@ def jobs = [
     // the night starts at 18:00 UTC; a Windows part may take up to 16 h, so it ends before the next night
     cron: 'TZ=UTC\n0 18 * * *',
     params: [
-      RUN_EVERY_NIGHT: [choices: ['on', 'off'], text: 'Sometimes: the nights\' switch. A timed night ignores this and reads the switch (on until someone switches it off).\non (default) = the nights on, and a night now.\noff = the nights off from now: nothing runs, now or at night, until a press with on. A night going goes on (Abort its build to stop it).\nUse off to pause the nightly; on to start it again.'],
       ON_FAILURES: onFailures('the night',
         reviewedFix + ' After a Proceed the red pair runs first the next night. The night ends at once: the next nights run meanwhile (a timed one takes this default); while a fix waits, a red night only reports.',
         'the fixer pushes each proven fix to main itself; the night waits for it (the next night skips meanwhile), then the red pair runs first the next night.', ''),
@@ -609,5 +607,7 @@ jobs.each { jobName, job ->
       }
     }
     logRotator { numToKeep(200) }
+    // Disable / Enable on a job's page is a person's choice (the nightly's off switch): a seed run keeps it
+    disabled(jenkins.model.Jenkins.get().getItemByFullName("datapallas/${jobName}")?.isDisabled() ?: false)
   }
 }

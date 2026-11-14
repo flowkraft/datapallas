@@ -90,17 +90,6 @@ String whoStartedThisBuild() {
   }
 }
 
-// startedByTimer(): this build is a timed night (its cause is the timer). When the cause cannot be read, a timed night is
-// assumed: the switch then decides, so an unreadable cause never switches the nights on or off
-boolean startedByTimer() {
-  try {
-    return !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
-  } catch (err) {
-    echo "The build's cause was not read (${err}): taken as a timed night."
-    return true
-  }
-}
-
 // showLabel(): the build list says where the night is, without opening the log (scheduled-e2e.sh label): this build's
 // night once it is known, as a later night may start while this build pauses for a review
 void showLabel() {
@@ -249,11 +238,12 @@ pipeline {
           env.NIGHT_ON_FAILURES = params.ON_FAILURES ?: 'fix-prove-then-wait-for-review'
           env.NIGHT_DRY_RUN = params.DRY_RUN ?: 'no'
           env.NIGHT_STARTED_BY = whoStartedThisBuild()
-          // the switch (scheduled-e2e.sh, THE SWITCH): a timed night passes no RUN_EVERY_NIGHT and the switch decides; a
-          // press passes its own (on: the nights on and one now; off: the nights off, nothing run)
-          env.NIGHT_RUN_EVERY_NIGHT = startedByTimer() ? '' : (params.RUN_EVERY_NIGHT ?: 'on')
-          echo "The settings of this night:\nON_FAILURES=${env.NIGHT_ON_FAILURES}\nDRY_RUN=${env.NIGHT_DRY_RUN}\nRUN_EVERY_NIGHT=${env.NIGHT_RUN_EVERY_NIGHT ?: '(a timed night: the switch decides)'}\nstarted by: ${env.NIGHT_STARTED_BY}"
-          Map start = nightCall('RUN_EVERY_NIGHT=$(q "$NIGHT_RUN_EVERY_NIGHT") ON_FAILURES=$(q "$NIGHT_ON_FAILURES") DRY_RUN=$(q "$NIGHT_DRY_RUN") SCHEDULED_STARTED_BY=$(q "$NIGHT_STARTED_BY") bash asbl/ci/jenkins/scheduled-e2e.sh start', true, false)
+          // the nights' on/off is this job's Disable / Enable (a disabled job runs nothing); the host's own switch
+          // (scheduled-e2e.sh off|on, from a shell) is read by the script
+          echo "The settings of this night:\nON_FAILURES=${env.NIGHT_ON_FAILURES}\nDRY_RUN=${env.NIGHT_DRY_RUN}\nstarted by: ${env.NIGHT_STARTED_BY}"
+          // the night runs main's code: the host's checkout fast-forwarded to origin/main first, only while the CI is free
+          // (a release round's pinned checkout is never moved; the script then says SKIPPED)
+          Map start = nightCall('if bash asbl/ci/jenkins/release-rehearsal.sh busy >/dev/null 2>&1; then { git fetch -q origin && git merge -q --ff-only origin/main && echo "CHECKOUT on $(git rev-parse --short HEAD), origin/main"; } || echo "WARN    this checkout could not fast-forward to origin/main: it runs as it is ($(git rev-parse --short HEAD))"; fi; ON_FAILURES=$(q "$NIGHT_ON_FAILURES") DRY_RUN=$(q "$NIGHT_DRY_RUN") SCHEDULED_STARTED_BY=$(q "$NIGHT_STARTED_BY") bash asbl/ci/jenkins/scheduled-e2e.sh start', true, false)
           if (start.rc == 0) {
             // off (the switch), or skipped (the CI busy, the night before still going): green, the reason as the label
             String off = firstLineStartingWith(start.text, 'OFF ')
