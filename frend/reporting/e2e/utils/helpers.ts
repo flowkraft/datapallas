@@ -209,11 +209,13 @@ export class Helpers {
     });
     // No DOM snapshots in this trace of the Electron window: CI never collects it (it is saved to
     // e2e/tracing/trace.zip and overwritten by every worker), and its snapshots cost about 0.1 s per
-    // action on the Windows CI VM. The screenshots stay.
-    this.currentElectronApp.context().tracing.start({
-      screenshots: true,
-      snapshots: false,
-    });
+    // action on the Windows CI VM. The screenshots stay. production-packaged reaches the window over CDP, and the runner
+    // already traces that context as it traces every browser's (playwright.config.ts `trace`): no second trace.
+    if (PATHS.e2eMode() === 'dev')
+      this.currentElectronApp.context().tracing.start({
+        screenshots: true,
+        snapshots: false,
+      });
     this.firstPage = await this.currentElectronApp.firstWindow();
     await this.firstPage.waitForLoadState('domcontentloaded');
     return this.currentElectronApp;
@@ -231,7 +233,7 @@ export class Helpers {
     );
     const tracePath = path.join(traceDir, 'trace.zip');
 
-    try {
+    if (PATHS.e2eMode() === 'dev') try {
       await jetpack.dirAsync(traceDir);
 
       // Stop tracing and save the trace file
