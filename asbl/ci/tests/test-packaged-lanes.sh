@@ -1,5 +1,6 @@
 #!/bin/bash
-# E2E_MODE on the three server lanes of asbl/ci/dp-ci.sh (docker-server on Linux, win docker-e2e, win server-e2e). The cases:
+# E2E_MODE on the lanes of asbl/ci/dp-ci.sh that install a shipped zip (docker-server on Linux, win docker-e2e, win server-e2e,
+# win e2e). The cases:
 #   1. E2E_MODE: dev when unset, dev and production-packaged accepted, anything else refused (rc 2); the Linux lane
 #      refuses production-packaged on web and electron (they test the dev tree);
 #   2. docker-server (docker_server_up, on a kept build): production-packaged keeps an untouched copy of the unzipped
@@ -9,7 +10,11 @@
 #   3. win docker-e2e and win server-e2e: production-packaged prepares no verified-db-noexe package, copies the extracted
 #      installation to <folder>-pristine (robocopy) before the server starts, and hands the tests E2E_PRISTINE_INSTALL_DIR;
 #      dev prepares the package as before and makes no copy;
-#   4. win_web_e2e passes E2E_MODE to the tests on the VM (dev when unset) with the lane's extra variables.
+#   4. win_web_e2e passes E2E_MODE to the tests on the VM (dev when unset) with the lane's extra variables;
+#   5. win e2e (windows-vm-electron): production-packaged needs RELEASE_KEPT; it puts the kept datapallas.zip in the VM's
+#      asbl\dist, unzips it, copies it to <folder>-pristine, and runs the tests with TEST_ENV=electron (which wins over the
+#      web lanes' TEST_ENV=web) and E2E_PRISTINE_INSTALL_DIR, with no package and no gulp; the set and the caps are the dev
+#      lane's; dev prepares the package and runs gulp as before.
 # Each lane function is taken from dp-ci.sh as it is and runs against stubs (ssh, docker, the VM's PowerShell, the steps
 # around it) that record their calls: nothing is started, no VM or Docker engine is touched. Takes about two seconds.
 # Callers: a person or an agent, from the shell, after changing E2E_MODE or a server lane.
@@ -114,7 +119,7 @@ check "the launcher hands E2E_MODE to the CI container" grep -qF -- '-e E2E_MODE
 
 # ---- 3. the two Windows server lanes ----
 unset -f docker curl
-for f in win_pristine_install_copy win_docker_e2e win_server_e2e; do eval "$(top_level_function $f)"; done
+for f in kept_windows_zip_sha win_pristine_install_copy win_docker_e2e win_server_e2e; do eval "$(top_level_function $f)"; done
 WIN_REPO='C:\ci\repo'; WIN_RUNS='C:\dp-ci\runs'
 record() { echo "$*" >> "$CALLS"; }
 win_ps() { echo "win_ps: $(tr '\n' ' ')" >> "$CALLS"; }
@@ -173,6 +178,49 @@ web_env() {  # web_env <E2E_MODE or empty> [NAME=VALUE...]: the WIN_RUN_ENV win_
 check "win_web_e2e: E2E_MODE=production-packaged and the lane's E2E_PRISTINE_INSTALL_DIR reach the step" same "1 1" \
   "$(web_env production-packaged 'E2E_PRISTINE_INSTALL_DIR=C:\p\DataPallas' | grep -cx 'E2E_MODE=production-packaged') $(web_env production-packaged 'E2E_PRISTINE_INSTALL_DIR=C:\p\DataPallas' | grep -cxF 'E2E_PRISTINE_INSTALL_DIR=C:\p\DataPallas')"
 check "win_web_e2e: E2E_MODE unset = dev on the VM" same 1 "$(web_env '' | grep -cx 'E2E_MODE=dev')"
+web_env production-packaged TEST_ENV=electron > /dev/null
+check "win_web_e2e: a lane's TEST_ENV=electron comes after TEST_ENV=web (cmd.exe's later set wins)" \
+  before "$SCRATCH/win-run-env" "TEST_ENV=web" "TEST_ENV=electron"
+
+# ---- 5. win e2e: windows-vm-electron ----
+for f in win_e2e win_desktop_packaged_e2e win_electron_caps; do eval "$(top_level_function $f)"; done
+win_web_e2e() { record "win_web_e2e E2E_MODE=${E2E_MODE:-unset} TIMEOUT=$WIN_RUN_TIMEOUT STALL=$WIN_RUN_STALL $*"; WIN_WEB_OUT="$SCRATCH/web.log"; }
+win_put_dist() { record "win_put_dist $*"; }
+win_desktop_down() { record "win_desktop_down"; }
+win_run() { record "win_run $*"; }
+win_web_result() { record "win_web_result $*"; }
+e2e_count() { echo 0; }
+printf 'commit=abc1234\nwindows.file=datapallas.zip size=1 sha256=%064d\n' 7 > "$KEPT/MANIFEST.txt"
+desktop_lane() {  # desktop_lane <E2E_MODE> [E2E_SPEC]: win e2e with the tests stubbed; its calls in $CALLS, rc printed
+  : > "$CALLS"
+  (unset WIN_RUN_TIMEOUT WIN_RUN_STALL; E2E_MODE="$1" E2E_SPEC="${2:-}" RELEASE_KEPT="${KEPT_FOR_LANE-$KEPT}" WIN_E2E_LOG="$SCRATCH/win-e2e.log" \
+    win_e2e > "$SCRATCH/win-e2e.out" 2>&1; echo $?)
+}
+root='C:\ci\repo\frend\reporting\testground\desktop'
+check "win e2e production-packaged without RELEASE_KEPT: refused, rc 2, nothing done" same "2 1 0" \
+  "$(KEPT_FOR_LANE='' desktop_lane production-packaged sp) $(grep -c 'needs\|RELEASE_KEPT=<a kept' "$SCRATCH/win-e2e.out") $(wc -l < "$CALLS")"
+check "win e2e production-packaged: rc 0 with the tests passing" same 0 "$(desktop_lane production-packaged 'one\.spec\.ts')"
+check "win e2e production-packaged: no package, no gulp" same "0 0" "$(grep -c '^win_prepare_package' "$CALLS") $(grep -c '^win_run ' "$CALLS")"
+check "win e2e production-packaged: the kept datapallas.zip put in the VM's asbl\\dist" \
+  grep -qxF "win_put_dist $KEPT datapallas.zip:$(printf '%064d' 7)" "$CALLS"
+check "win e2e production-packaged: that zip unzipped into testground\\desktop" \
+  grep -qxF "win_bundle_extract C:\ci\repo\asbl\dist\datapallas.zip $root DataPallas.exe" "$CALLS"
+check "win e2e production-packaged: an app left running stopped before the unzip, and after the tests" same "2" \
+  "$(grep -c '^win_desktop_down' "$CALLS")"
+check "win e2e production-packaged: the stop before the unzip" before "$CALLS" "win_desktop_down" "win_bundle_extract"
+check "win e2e production-packaged: the copy after the unzip" before "$CALLS" "win_bundle_extract" "robocopy.exe"
+check "win e2e production-packaged: the copy before the tests" before "$CALLS" "robocopy.exe" "win_web_e2e E2E_MODE"
+check "win e2e production-packaged: the tests get the installation, TEST_ENV=electron and E2E_PRISTINE_INSTALL_DIR" \
+  grep -qF "E2E_MODE=production-packaged TIMEOUT=10800 STALL=4800 windows-vm-electron desktop-e2e $root\DataPallas targeted one\.spec\.ts  0 TEST_ENV=electron E2E_PRISTINE_INSTALL_DIR=$root-pristine\DataPallas" "$CALLS"
+desktop_lane production-packaged > /dev/null
+check "win e2e production-packaged, no filter: the full set and its caps, as in dev" \
+  grep -qF "TIMEOUT=230400 STALL=6300 windows-vm-electron desktop-e2e $root\DataPallas full ^(?!.*auth-authorization-server).*\.spec\.ts$  1 " "$CALLS"
+desktop_lane production-packaged light > /dev/null
+check "win e2e production-packaged, E2E_SPEC=light: the light set" \
+  grep -qF "windows-vm-electron desktop-e2e $root\DataPallas light light-spec light-grep 1 " "$CALLS"
+desktop_lane dev 'one\.spec\.ts' > /dev/null
+check "win e2e dev: the package prepared and gulp run as before, nothing unzipped" same "1 1 0 0" \
+  "$(grep -c '^win_prepare_package' "$CALLS") $(grep -c 'utils:start-server-and-e2e-electron' "$CALLS") $(grep -c 'win_bundle_extract\|robocopy' "$CALLS") $(grep -c '^win_web_e2e' "$CALLS")"
 
 echo
 if [ "$FAILED_CASES" -eq 0 ]; then echo "ALL PASS"; exit 0; else echo "$FAILED_CASES FAILED"; exit 1; fi

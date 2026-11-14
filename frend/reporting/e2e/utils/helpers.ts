@@ -26,6 +26,7 @@ import * as PATHS from './paths';
 import { Constants } from './constants';
 
 import * as updaterHelpers from '../upgrade/updater.helpers';
+import { PackagedDesktopApp } from './packaged-desktop-app';
 
 const isElectron = process.env.TEST_ENV === 'electron';
 
@@ -192,7 +193,11 @@ export class Helpers {
       env.JRE_HOME = '';
     }
 
-    this.currentElectronApp = await electron.launch({
+    if (PATHS.e2eMode() === 'production-packaged') {
+      // the unzipped datapallas.zip's DataPallas.exe (PORTABLE_EXECUTABLE_DIR is that installation), started as a user
+      // starts it
+      this.currentElectronApp = (await PackagedDesktopApp.launch(PATHS.EXECUTABLE_DIR_PATH, env)).asElectronApplication();
+    } else this.currentElectronApp = await electron.launch({
       args: [
         path.join(__dirname, `${relativePath}/app/main.js`),
         path.join(__dirname, `${relativePath}/app/package.json`),
@@ -235,11 +240,14 @@ export class Helpers {
       console.error('Error stopping tracing or saving trace file:', error);
     }
 
-    for (const page of this.currentElectronApp.context().pages()) {
-      await page.close();
-    }
+    // production-packaged: the window is the app's own (closing it quits the app), and close() quits it as a user does
+    if (PATHS.e2eMode() === 'dev') {
+      for (const page of this.currentElectronApp.context().pages()) {
+        await page.close();
+      }
 
-    await this.currentElectronApp.context().close();
+      await this.currentElectronApp.context().close();
+    }
     await this.currentElectronApp.close();
     // Set currentElectronApp to null
     this.currentElectronApp = null;

@@ -252,6 +252,9 @@
 #                               auth-authorization-server; E2E_SPEC=light = the light set (asbl/ci/light-set.txt), what a release
 #                               needs of this lane. Caps: WIN_RUN_TIMEOUT [full 64 h, targeted 3 h; win-ci.env sets
 #                               6 h for targeted runs], WIN_RUN_STALL [full 105 min, targeted 80 min].
+#                               E2E_MODE=production-packaged: datapallas.zip of the pack kept in RELEASE_KEPT=<artifacts
+#                               folder>, unzipped, and its DataPallas.exe started by the tests as a user starts it; no
+#                               prepare, no gulp, no Maven - see win_desktop_packaged_e2e.
 #       docker-e2e              windows-vm-docker: DataPallas Server in the VM's Docker Desktop, from datapallas-server-docker.zip
 #                               as the self-host page installs it, with the image `build` made from the VM's commit copied
 #                               over and loaded, no registry (also the Docker release's Windows proof); with
@@ -1709,14 +1712,8 @@ PS
 }
 
 win_e2e() {
-  local mode=targeted out code retries spec gexp
-  # what the lane needs, in seconds, before the sync and the package rebuild (hours): the VM, its Docker Desktop, and the
-  # Java and Maven gulp looks for (without them it tests the Install screen, exit=no-server, at the very end)
-  prereq vm vm-docker vm-java vm-mvn || return 2
-  mark_start "windows-vm-electron STEP 1/2" "the VM's package: sync to origin/main, pack-prepare-for-e2e.bat when it is not from that commit"
-  win_sync_repo || return $?
-  win_prepare_package || return $?
-  mark_next "windows-vm-electron STEP 2/2" "the tests: gulp utils:start-server-and-e2e-electron, then the reports pulled"
+  local mode=targeted out code retries spec gexp e2e_mode
+  e2e_mode=$(e2e_mode_checked) || return 2
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # A full run here is the whole suite minus auth-authorization-server. That file is SERVER ONLY: it opens the
   # web UI (E2E_BASE_URL, else ng serve on :4201), and the Electron flow serves no web UI. It runs alone on
@@ -1737,6 +1734,18 @@ win_e2e() {
   # A targeted run shows each failure as it is; a full run, and the light set as on the other Windows lanes, retry a
   # failed test once, so one run still collects every failure instead of stopping at the first flake (plan W7).
   if [ "$mode" = full ] || [ "$mode" = light ]; then retries="${E2E_RETRIES:-1}"; else retries="${E2E_RETRIES:-0}"; fi
+  if [ "$e2e_mode" = production-packaged ]; then
+    win_desktop_packaged_e2e "$mode" "$spec" "$gexp" "$retries"
+    return $?
+  fi
+
+  # what the lane needs, in seconds, before the sync and the package rebuild (hours): the VM, its Docker Desktop, and the
+  # Java and Maven gulp looks for (without them it tests the Install screen, exit=no-server, at the very end)
+  prereq vm vm-docker vm-java vm-mvn || return 2
+  mark_start "windows-vm-electron STEP 1/2" "the VM's package: sync to origin/main, pack-prepare-for-e2e.bat when it is not from that commit"
+  win_sync_repo || return $?
+  win_prepare_package || return $?
+  mark_next "windows-vm-electron STEP 2/2" "the tests: gulp utils:start-server-and-e2e-electron, then the reports pulled"
 
   win_stacks_down
   win_temp_clean
@@ -1783,22 +1792,8 @@ win_e2e() {
   # step's stdout can be quiet for minutes, and without a growing file to look at the stall timer
   # would kill a perfectly healthy run.
   WIN_RUN_WATCH="${WIN_RUN_WATCH:-$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log}"
-  # A full Electron suite is hours, and the VM runs it about twice as slowly as Linux (the Linux full
-  # run took 10 h 22 min). Run-all C's build #29 was cut at the old 20 h cap (72000 s) with 24 spec
-  # files never started. 230400 s (64 h), plus the package rebuild and the results, fit inside the
-  # 72 h of the run-all D plan and of its Jenkins job. The targeted cap stays.
-  WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = full ] && echo 230400 || echo 10800)}"
-  # A quiet test is not a stalled run. One wait may block for E2E_MAX_WAIT_MS (40 min) and one whole
-  # test for E2E_MAX_TEST_MS (90 min) without printing a single line, so win_run's 20-minute silence
-  # budget is certain to shoot a healthy suite sooner or later - it killed the 2026-09-21 full run
-  # at 8h38m, mid-test, after 1213s of quiet, with 16 spec files still to go (plan 6.23). The budget
-  # has to sit above the longest silence the caps themselves allow. Raised with those caps on
-  # 2026-09-22 and in the same proportion as before: targeted = 2x the wait ceiling, full = a little
-  # over the whole-test ceiling. Leaving these at 1800/4200 would have re-created the 2026-09-21 kill
-  # on the very cold image build the new ceilings exist to allow. A dead run is still bounded, and
-  # much sooner, by WIN_RUN_TIMEOUT above.
-  WIN_RUN_STALL="${WIN_RUN_STALL:-$([ "$mode" = full ] && echo 6300 || echo 4800)}"
-  export WIN_RUN_WATCH WIN_RUN_TIMEOUT WIN_RUN_STALL
+  win_electron_caps "$mode"
+  export WIN_RUN_WATCH
 
   win_run e2e "$WIN_REPO\\frend\\reporting" \
     'npm run custom:clean-testground && call npx gulp utils:start-server-and-e2e-electron' 2>&1 | tee "$out"
@@ -1834,6 +1829,77 @@ win_e2e() {
   [ "$code" = "0" ]
 }
 
+# win_electron_caps <full|light|targeted>: WIN_RUN_TIMEOUT and WIN_RUN_STALL of windows-vm-electron, in both E2E_MODEs
+win_electron_caps() {
+  local mode="$1"
+  # A full Electron suite is hours, and the VM runs it about twice as slowly as Linux (the Linux full
+  # run took 10 h 22 min). Run-all C's build #29 was cut at the old 20 h cap (72000 s) with 24 spec
+  # files never started. 230400 s (64 h), plus the package rebuild and the results, fit inside the
+  # 72 h of the run-all D plan and of its Jenkins job. The targeted cap stays.
+  WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = full ] && echo 230400 || echo 10800)}"
+  # A quiet test is not a stalled run. One wait may block for E2E_MAX_WAIT_MS (40 min) and one whole
+  # test for E2E_MAX_TEST_MS (90 min) without printing a single line, so win_run's 20-minute silence
+  # budget is certain to shoot a healthy suite sooner or later - it killed the 2026-09-21 full run
+  # at 8h38m, mid-test, after 1213s of quiet, with 16 spec files still to go (plan 6.23). The budget
+  # has to sit above the longest silence the caps themselves allow. Raised with those caps on
+  # 2026-09-22 and in the same proportion as before: targeted = 2x the wait ceiling, full = a little
+  # over the whole-test ceiling. Leaving these at 1800/4200 would have re-created the 2026-09-21 kill
+  # on the very cold image build the new ceilings exist to allow. A dead run is still bounded, and
+  # much sooner, by WIN_RUN_TIMEOUT above.
+  WIN_RUN_STALL="${WIN_RUN_STALL:-$([ "$mode" = full ] && echo 6300 || echo 4800)}"
+  export WIN_RUN_TIMEOUT WIN_RUN_STALL
+}
+
+# windows-vm-electron with E2E_MODE=production-packaged (win_e2e chose the set): datapallas.zip of the pack kept in RELEASE_KEPT
+# (asbl/ci/release-keep.sh) unzipped as a user unzips it, with an untouched copy beside it for each test's clean state. The
+# tests start its DataPallas.exe as a user starts it (e2e/utils/packaged-desktop-app.ts): the splash, then the app's own
+# Java server. No package, no gulp, no Maven: Playwright straight away on the VM's desktop, as the server lanes run it.
+win_desktop_packaged_e2e() {
+  local mode="$1" spec="$2" gexp="$3" retries="$4" step=desktop-e2e kept sha rc pristine
+  local root="$WIN_REPO\\frend\\reporting\\testground\\desktop"
+  [ -n "${RELEASE_KEPT:-}" ] || {
+    echo "FAIL  E2E_MODE=production-packaged on windows-vm-electron installs the pack's datapallas.zip: RELEASE_KEPT=<a kept" \
+         "folder holding a pack (asbl/ci/release-keep.sh)>" >&2
+    return 2; }
+  kept="${RELEASE_KEPT%/}"
+  sha=$(kept_windows_zip_sha "$kept" datapallas.zip) || return 2
+  # the VM, its Docker Desktop (apps start through it, as they do for a user) and the machine's Java 17 (the app's server)
+  prereq vm vm-docker vm-java || return 2
+  mark_start "windows-vm-electron STEP 1/2" "install: datapallas.zip of the pack kept in $kept extracted, an untouched copy beside it"
+  win_sync_repo || return $?
+  win_put_dist "$kept" "datapallas.zip:$sha" || return 1
+  echo "WIN_DESKTOP_PACKAGE=datapallas.zip of the pack kept in $kept (built from $(sed -n 's/^commit=//p' "$kept/MANIFEST.txt" | cut -c1-8)), sha256 $sha"
+  win_desktop_down   # an app left by a killed run, before its folder is replaced
+  win_stacks_down
+  win_temp_clean
+  win_app_images_drop
+  win_bundle_extract "$WIN_REPO\\asbl\\dist\\datapallas.zip" "$root" DataPallas.exe || return 1
+  pristine=$(win_pristine_install_copy "$root") || return 1
+
+  mark_next "windows-vm-electron STEP 2/2" "the tests ($mode set): DataPallas.exe started by the tests, Playwright on the VM's desktop"
+  win_electron_caps "$mode"
+  win_web_e2e windows-vm-electron "$step" "$root\\DataPallas" "$mode" "$spec" "$gexp" "$retries" \
+    "TEST_ENV=electron" "E2E_PRISTINE_INSTALL_DIR=$pristine"
+  rc=$?
+  win_pull "$(printf '%s' "$root\\DataPallas\\logs\\info.log" | tr '\\' '/')" "${WIN_WEB_OUT%.log}-info.log" 2>/dev/null &&
+    echo "WIN_E2E_INFOLOG=${WIN_WEB_OUT%.log}-info.log"
+  win_desktop_down
+  win_stacks_down
+  [ "$rc" = 0 ] || return 1
+  win_web_result windows-vm-electron "$mode" "$spec" "$gexp"
+}
+
+# DataPallas.exe and the Java server it started (rb-server), stopped: the tests quit the app as a user does, this is for a
+# run that was killed
+win_desktop_down() {
+  win_ps 2>&1 <<'PS' | tr -d '\r'
+Stop-Process -Name DataPallas -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'java*' -and $_.CommandLine -like '*rb-server*' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+exit 0
+PS
+}
+
 # The two Windows lanes of DataPallas Server. Each tests the package a user gets, installed the way its download page tells
 # a user to, with the tests in a browser on the VM's desktop at http://localhost:9090:
 #   windows-vm-docker  datapallas-server-docker.zip (DockerAssembler) in Docker Desktop   https://datapallas.com/docs/server/self-host
@@ -1866,6 +1932,16 @@ win_vm_build_tag() {
   [ "${vm#"$tagsha"}" != "$vm" ] || [ "${tagsha#"$vm"}" != "$tagsha" ] || reuse_build_ok image-and-zips "$tagsha" "$vm" ||
     { echo "FAIL  the build is of '$tagsha', the VM tests '$vm' - run dp-ci.sh build-if-needed first" >&2; return 2; }
   echo "$tag"
+}
+
+# kept_windows_zip_sha <kept folder> <zip name>: the sha256 its MANIFEST.txt gives the Windows pack's <zip name>
+# (asbl/ci/release-keep.sh), or a FAIL line and exit 2 when it keeps none.
+kept_windows_zip_sha() {
+  local name_re sha
+  name_re=$(printf '%s' "$2" | sed 's/[.]/\\./g')
+  sha=$(sed -n "s/^windows\.file=$name_re size=[0-9]* sha256=\([0-9a-f]\{64\}\)\$/\1/p" "$1/MANIFEST.txt" 2>/dev/null)
+  [ -n "$sha" ] || { echo "FAIL  RELEASE_KEPT='$1' keeps no $2 (no windows.file line for it in its MANIFEST.txt)" >&2; return 2; }
+  echo "$sha"
 }
 
 # win_bundle_extract <local zip> <VM folder> <file DataPallas\ must hold>: the zip copied to the VM and extracted into an
@@ -2323,8 +2399,7 @@ win_server_e2e() {
   fi
   if [ "${REBUILD_PACK:-no}" != yes ]; then
     kept="${RELEASE_KEPT%/}"
-    sha=$(sed -n 's/^windows\.file=datapallas-server\.zip size=[0-9]* sha256=\([0-9a-f]\{64\}\)$/\1/p' "$kept/MANIFEST.txt" 2>/dev/null)
-    [ -n "$sha" ] || { echo "FAIL  RELEASE_KEPT='$kept' keeps no datapallas-server.zip (no windows.file line for it in its MANIFEST.txt)" >&2; return 2; }
+    sha=$(kept_windows_zip_sha "$kept" datapallas-server.zip) || return 2
     from="the pack kept in $kept (built from $(sed -n 's/^commit=//p' "$kept/MANIFEST.txt" | cut -c1-8))"
   fi
   # what the lane needs, in seconds, before the sync: the VM, its Docker Desktop (apps-ai-hub starts apps through it, as

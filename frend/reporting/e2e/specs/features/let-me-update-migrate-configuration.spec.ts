@@ -20,7 +20,8 @@ test.describe('', async () => {
       if (!isElectron)
         return;
 
-      helpers.updateDestinationDirectoryPath = 'testground/e2e';
+      // the installation under test: testground/e2e in dev, the unzipped datapallas.zip in production-packaged
+      helpers.updateDestinationDirectoryPath = PATHS.EXECUTABLE_DIR_PATH;
 
       const UPGRADE_DIR = 'testground/upgrade';
 
@@ -100,7 +101,7 @@ test.describe('', async () => {
         .inputShouldHaveValue('#quarantineFolder', 'custom-quarantine');
 
       expect(
-        await jetpack.readAsync('testground/e2e/config/_internal/.master-key'),
+        await jetpack.readAsync(`${PATHS.EXECUTABLE_DIR_PATH}/config/_internal/.master-key`),
         'the old installation encryption key, as it was',
       ).toBe(oldInstallationEncryptionKey);
     },
