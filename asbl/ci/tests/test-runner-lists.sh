@@ -10,6 +10,7 @@
 #      each refused (exit 2), naming the file; a listed file that is gone: a WARN only;
 #   5. a spec file added to a scratch copy of the specs lands in the rest of every layout; each runner's pattern, inside
 #      dp-ci.sh's own full-mode regex for a runner, picks exactly its files, never the auth or the Electron-only file;
+#      spec of a runner's files and one more picks exactly those, by Linux and by Windows paths; a file not there: exit 2;
 #   6. the merge: a real report cut into N parts by the lists, each with its runner's log, merges back to its counts, its
 #      summary lines (the E2E_RESULT line, the Playwright result block, PIPELINE_RESULT) and its flaky.txt lines; a red
 #      runner, and one that never ran, make the lane red and are named; an existing merged log is refused.
@@ -247,6 +248,19 @@ for jobs in 2 3 4; do
     same OK "$($H regex "$CO" "${ARGS[@]}")"
 done
 check "5: 1 job: no pattern (the whole full set)" same "" "$($TOOL pattern 1 1)"
+# spec: the scheduled nights' E2E_SPEC (asbl/ci/jenkins/scheduled-e2e.sh): a part and the Electron-only file, any separator
+mapfile -t SPEC_FILES < <(python3 "$CO/asbl/ci/full-set-runners.py" files 4 2; echo specs/features/let-me-update-migrate-configuration.spec.ts)
+SPEC_RE=$(python3 "$CO/asbl/ci/full-set-runners.py" spec "${SPEC_FILES[@]}")
+picked() {  # picked <separator>: the spec files of the scratch checkout whose absolute path, written with it, SPEC_RE matches
+  (cd "$CO/frend/reporting/e2e" && find specs -name '*.spec.ts' | sort) | python3 -c '
+import re, sys
+rx, sep = re.compile(sys.argv[1]), sys.argv[2]
+for f in sys.stdin.read().split():
+    if rx.search(sep.join(["C:", "rb", "frend", "reporting", "e2e"] + f.split("/"))): print(f)' "$SPEC_RE" "$1"
+}
+check "5: spec: a part's files and one more, by Linux paths: exactly those" same "$(printf '%s\n' "${SPEC_FILES[@]}" | sort)" "$(picked /)"
+check "5: spec: the same by Windows paths" same "$(printf '%s\n' "${SPEC_FILES[@]}" | sort)" "$(picked '\')"
+check "5: spec: a file not there is refused (exit 2)" bash -c '"$@" >/dev/null; [ $? = 2 ]' _ python3 "$CO/asbl/ci/full-set-runners.py" spec specs/features/no-such.spec.ts
 
 # ---- 6. the merge ----
 real_result() { grep -a '^E2E_RESULT mode=full' "$1" | tail -1 | sed 's/.* grep=.. //'; }

@@ -1,13 +1,13 @@
-// Job datapallas/dp-ci-dev-scheduled-e2e: the nightly e2e of main. It starts by itself at 22:00 UTC (the timer is in
+// Job datapallas/dp-ci-dev-scheduled-e2e: the nightly e2e of main. It starts by itself at 18:00 UTC (the timer is in
 // asbl/ci/jenkins/seed.groovy, which makes the job and holds its full description); the guide is asbl/ci/jenkins/jenkins.md,
 // section dp-ci-dev-scheduled-e2e.
 // A LIGHT WRAPPER: the night is asbl/ci/jenkins/scheduled-e2e.sh on the host (a person or an agent runs the same from a
 // shell, the two parameters being its environment). This file starts it, follows its console in polls of under a minute and
 // shows its reports. The night runs detached on the host, so:
 //   - no executor is held while it runs: `agent none`, and only the short SSH calls (nightCall) take one;
-//   - a Jenkins restart (the nightly stack recreate, about 03:15 UTC, falls inside Saturday's full set) only resumes the
+//   - a Jenkins restart (the nightly stack recreate, about 03:15 UTC, may fall inside a Windows night) only resumes the
 //     polling from the byte the build had reached; it never stops the night;
-//   - an Abort pressed by a person stops the night: post { aborted }. No timeout on purpose: Saturday's night lasts up to
+//   - an Abort pressed by a person stops the night: post { aborted }. No timeout on purpose: a Windows night may last up to
 //     about 16 h, and every lane has its own cap.
 // The build ends when the night's tests end (its NIGHT END line). After a red night its fix round goes on, on the host
 // (ON_FAILURES=fix); the next night skips while it goes.

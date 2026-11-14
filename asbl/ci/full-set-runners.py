@@ -16,6 +16,10 @@ folder. Everything here only reads, except `merge`, which writes the two merged 
   full-set-runners.py pattern <N> <runner> [--lists F] [--checkout D]
       its E2E_RUNNER_FILES, for asbl/ci/e2e-runners.sh run: its own files, or for the rest every file but the other
       runners' (so a file added later still runs); empty with 1 job (the whole full set)
+  full-set-runners.py spec    <file>... [--checkout D]
+      those spec files (paths under frend/reporting/e2e/, as files prints them) as one E2E_SPEC that any lane takes, the
+      Windows lanes too: each path matches with either separator, as dp-ci.sh's light set writes its own. The scheduled
+      nights run a part this way (asbl/ci/jenkins/scheduled-e2e.sh): spec $(files 4 <part>). Exit 2 for a file not there
   full-set-runners.py times   <N> --report <playwright.json>... [--max-off 15] [--lists F] [--checkout D]
       each runner's test minutes on each report (its tests' tries added up, as release-estimate.py files counts), the
       layout's mean and each runner's distance from it. Exit 1 when one is more than --max-off percent off
@@ -231,6 +235,17 @@ def regex_text(path):
 
 def alternation(files):
     return "/(?:%s)$" % "|".join(regex_text(f) for f in files)
+
+
+def cmd_spec(args):
+    root = os.path.join(args.checkout, E2E_DIR)
+    missing = [f for f in args.spec_files if not os.path.isfile(os.path.join(root, f))]
+    if missing:
+        raise Refused("no spec file %s under %s" % (", ".join(missing), root))
+    either_separator = r"[\\/]"
+    paths = (regex_text(f).replace("/", either_separator) for f in args.spec_files)
+    print("%s(?:%s)$" % (either_separator, "|".join(paths)))
+    return 0
 
 
 def cmd_pattern(args):
@@ -487,10 +502,13 @@ def cmd_merge(args):
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name in ("check", "files", "pattern", "times", "merge"):
+    for name in ("check", "files", "pattern", "spec", "times", "merge"):
         c = sub.add_parser(name)
         c.add_argument("--lists", default=DEFAULT_LISTS)
         c.add_argument("--checkout", default=DEFAULT_CHECKOUT)
+        if name == "spec":
+            c.add_argument("spec_files", nargs="+")
+            continue
         if name != "check":
             c.add_argument("jobs", type=int)
         if name in ("files", "pattern"):
@@ -503,7 +521,8 @@ def main():
             c.add_argument("runner_logs", nargs="+")
     args = p.parse_args()
     try:
-        return dict(check=cmd_check, files=cmd_files, pattern=cmd_pattern, times=cmd_times, merge=cmd_merge)[args.cmd](args)
+        return dict(check=cmd_check, files=cmd_files, pattern=cmd_pattern, spec=cmd_spec, times=cmd_times,
+                    merge=cmd_merge)[args.cmd](args)
     except Refused as e:
         print("REFUSED  %s" % e)
         return 2
