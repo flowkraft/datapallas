@@ -25,7 +25,7 @@
   import { cubeShowMeSteps, fieldOf } from '../shared/cube-tour';
   import { showMeWindowTop, panelScroll } from '../shared/show-me-view';
   import type { Span } from '../shared/show-me-view';
-  import { announceTourView, getVisibleWindow } from '../shared/demo-ready';
+  import { announceDemoEvent, announceTourView, getVisibleWindow } from '../shared/demo-ready';
   import { folderTip } from '../shared/folder-tips';
   import type { TourStep } from '../shared/tour';
   import { refusalMessage, withCsrfHeader } from '../shared/session-request';
@@ -369,6 +369,14 @@
     return j?.title || String(j?.name ?? '').replace(/["'`]/g, '');
   }
 
+  /** The reader asked a question of their own (a tick, a sort, a filter): said once, for a site that frames the demo. */
+  let ownQuestionSaid = false;
+  function ownQuestion() {
+    if (ownQuestionSaid) return;
+    ownQuestionSaid = true;
+    announceDemoEvent(window, 'explore', currentCubeName());
+  }
+
   function initExpanded() {
     // Measures and the main table are what a person reaches for; a joined table is one click away.
     expandedSections = new Set(['measures', 'main']);
@@ -479,6 +487,7 @@
   }
 
   function toggleDimension(dim: any) {
+    ownQuestion();
     if (errorOf('dimension', dim.name)) return;
     const keys = keysOfDimension(dim.name);
     if (keys.length > 0) {
@@ -493,6 +502,7 @@
   }
 
   function setGranularity(dim: any, granularity: string) {
+    ownQuestion();
     const old = keysOfDimension(dim.name);
     const key = granularity ? dim.name + '.' + granularity : dim.name;
     for (const k of old) selectedDimensions.delete(k);
@@ -504,6 +514,7 @@
   }
 
   function toggleMeasure(meas: any) {
+    ownQuestion();
     if (errorOf('measure', meas.name)) return;
     if (selectedMeasures.has(meas.name)) {
       selectedMeasures.delete(meas.name);
@@ -533,6 +544,7 @@
   /** A click sorts by this member alone, as a click on a column header sorts a table: largest
    *  first, then smallest first, then no sort. */
   function cycleOrder(member: string) {
+    ownQuestion();
     if (!member) return;
     const now = orderOf(selectedOrder, member);
     const next = now === '' ? 'desc' : now === 'desc' ? 'asc' : '';
@@ -542,6 +554,7 @@
 
   /** "Show the first N rows": a whole number above 0, or nothing for every row. */
   function setLimit(text: string) {
+    ownQuestion();
     const n = Number(text);
     const limit = text.trim() !== '' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
     if (limit === selectedLimit) return;
@@ -550,6 +563,7 @@
   }
 
   function toggleSegment(seg: any) {
+    ownQuestion();
     if (errorOf('segment', seg.name)) return;
     if (selectedSegments.has(seg.name)) {
       selectedSegments.delete(seg.name);
@@ -574,6 +588,7 @@
    * lets go of it and of everything below it.
    */
   function toggleLevel(h: any, index: number) {
+    ownQuestion();
     const levels = levelsOf(h);
     const name = levels[index];
     const dim = dimensionByName(name);
@@ -766,6 +781,7 @@
   }
 
   function applyFilter() {
+    ownQuestion();
     const dim = dimensionByName(openFilterFor);
     if (!dim) {
       closeFilter();
@@ -799,6 +815,7 @@
 
   /** Clear empties the controls' answer for this dimension: the chip goes with it. */
   function clearFilter() {
+    ownQuestion();
     if (openFilterFor) removeFilter(openFilterFor);
     closeFilter();
   }
@@ -1624,6 +1641,7 @@
   async function applyStory(ask: any) {
     confirmId = '';
     if (!showMe(ask)) return;
+    announceDemoEvent(window, 'story', currentCubeName() + ': ' + String(ask?.question ?? ask?.id ?? '').trim());
     say('Story applied: \u201c' + String(ask?.question ?? '').trim() + '\u201d. Notice how the data below was refreshed to match the ticked fields.');
     // The reader pressed Yes to see the answer, so the whole cube comes into view: at once, and again when
     // the answer has been drawn, because it changes the cube's height.

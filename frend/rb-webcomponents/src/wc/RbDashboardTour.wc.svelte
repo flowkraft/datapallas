@@ -14,6 +14,7 @@
 
 <script lang="ts">
   import { dashboardTourSteps } from '../shared/dashboard-tour';
+  import { announceDemoEvent } from '../shared/demo-ready';
   import type { TourStep } from '../shared/tour';
 
   export let label: string = 'Take the Tour';
@@ -41,7 +42,12 @@
     const tour: any = document.createElement('rb-tour');
     tour.steps = dashboardTourSteps({ root, cubeSteps });
     tour.autostart = true;
-    tour.addEventListener('tourend', () => {
+    // For the visitor statistics of a site that frames the dashboard: the tour, its steps, and how far it went.
+    const dashboard = String((button.closest('rb-report') as any)?.reportId ?? '');
+    announceDemoEvent(window, 'tour-start', dashboard, tour.steps.length);
+    tour.addEventListener('tourstep', (e: CustomEvent) => announceDemoEvent(window, 'tour-step', dashboard, (e.detail?.step ?? 0) + 1));
+    tour.addEventListener('tourend', (e: CustomEvent) => {
+      announceDemoEvent(window, e.detail?.finished ? 'tour-finished' : 'tour-closed', dashboard, (e.detail?.step ?? 0) + 1);
       cube?.tourClose?.();
       open = false;
       tour.remove();

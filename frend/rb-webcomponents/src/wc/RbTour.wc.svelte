@@ -268,6 +268,7 @@
         if (targets.length === 0 && step.optional) { leave(); i += direction; continue; }
       }
       index = i;
+      dispatch('tourstep', { step: i, total: steps.length });
       isLast = steps.slice(i + 1).every((later) => later.optional && targetsOf(later).length === 0);
       title = step.title ?? '';
       html = richText(step.content);

@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseTheme, applyTheme, DEMO_THEME_TYPE, parseHowBuilt, howBuiltPageOf, howBuiltShow, applyHowBuilt, DEMO_HOWBUILT_TYPE, retargetDocsHref, getDocsOrigin, announceDemoReady, announceTourView, watchFramedPage, parseVisibleWindow, getVisibleWindow, DEMO_READY_TYPE, DEMO_TOUR_VIEW_TYPE, DEMO_HEIGHT_TYPE, DEMO_VIEW_TYPE } from './demo-ready.ts';
+import { parseTheme, applyTheme, DEMO_THEME_TYPE, parseHowBuilt, howBuiltPageOf, howBuiltShow, applyHowBuilt, DEMO_HOWBUILT_TYPE, retargetDocsHref, getDocsOrigin, announceDemoReady, announceDemoEvent, DEMO_EVENT_TYPE, announceTourView, watchFramedPage, parseVisibleWindow, getVisibleWindow, DEMO_READY_TYPE, DEMO_TOUR_VIEW_TYPE, DEMO_HEIGHT_TYPE, DEMO_VIEW_TYPE } from './demo-ready.ts';
 
 /** A window with a parent that records what it is told. */
 function framedWindow() {
@@ -272,6 +272,26 @@ describe('the "how was this dashboard built" blocks of a framed Gallery', () => 
     onMessage({ source: {}, data: { type: DEMO_HOWBUILT_TYPE, showAll: true, published: [] } });
     assert.equal(cards[0].badge, null);
     stop();
+  });
+});
+
+describe('what the reader did, said to the page around the frame', () => {
+  test('framed: the action, the name and a step number, to any origin', () => {
+    const { win, heard } = framedWindow();
+    assert.equal(announceDemoEvent(win, 'tour-step', 'g-cube-country-sales', 3), true);
+    assert.deepEqual(heard, [{ message: { type: DEMO_EVENT_TYPE, action: 'tour-step', name: 'g-cube-country-sales', value: 3 }, origin: '*' }]);
+  });
+  test('no value unless it is a number; the name is trimmed and kept short', () => {
+    const { win, heard } = framedWindow();
+    announceDemoEvent(win, 'story', '  ' + 'x'.repeat(400) + '  ', NaN);
+    assert.equal(heard[0].message.value, undefined);
+    assert.equal(heard[0].message.name, 'x'.repeat(150));
+  });
+  test('not framed: nothing is said', () => {
+    const win: any = {};
+    win.parent = win;
+    win.parent.postMessage = () => assert.fail('nothing should be posted');
+    assert.equal(announceDemoEvent(win, 'filter', 'dd-a'), false);
   });
 });
 

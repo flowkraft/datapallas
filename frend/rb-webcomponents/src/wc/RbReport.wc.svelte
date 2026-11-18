@@ -10,7 +10,7 @@
   // A click on a bar or a table row opens the rows behind it (#21).
   import { wireDrillThrough } from '../shared/drill-through';
   import { wireNoData } from '../shared/no-data';
-  import { announceDemoReady, watchFramedPage } from '../shared/demo-ready';
+  import { announceDemoReady, announceDemoEvent, watchFramedPage } from '../shared/demo-ready';
   // How often the dashboard asks its data again by itself, as its author set it (#22).
   import { autoRefreshMinutesOf } from '../shared/auto-refresh';
   import { storyToastLines } from '../shared/story-summary';
@@ -675,7 +675,13 @@
     }
     appliedMarks = { involved: what.involved, changes: what.changes };
     if (typeof params.markInvolved === 'function') params.markInvolved('applied', what.involved, what.changes);
-    params.reloadNow();
+    announceDemoEvent(window, 'story', reportId + ': ' + String(story?.question ?? story?.id ?? '').trim());
+    storyReloading = true;
+    try {
+      params.reloadNow();
+    } finally {
+      storyReloading = false;
+    }
 
     say(...storyToastLines(story?.question, what.changes));
     // The reader pressed Yes to see the answer: the bar and the dashboard under it come into view,
@@ -801,6 +807,7 @@
   function handleCrossFilterSelect(e: Event) {
     const detail = (e as CustomEvent).detail as { field?: string; value?: string } | undefined;
     if (!detail?.field || !detail.value) return;
+    announceDemoEvent(window, 'filter', reportId);
     slicerSelectionsFor(reportId).toggle(detail.field, detail.value, true);
     applySelections();
   }
@@ -809,6 +816,7 @@
     const detail = (e as CustomEvent).detail as
       { field?: string; value?: string; multiSelect?: boolean } | undefined;
     if (!detail?.field || detail.value === undefined) return;
+    announceDemoEvent(window, 'filter', reportId);
     slicerSelectionsFor(reportId).toggle(detail.field, detail.value, detail.multiSelect !== false);
     applySelections();
   }
@@ -884,7 +892,11 @@
     }
   }
 
+  /** True while a story's Yes reloads the dashboard: that submit is the story's, not a filter the reader applied. */
+  let storyReloading = false;
+
   function handleDashboardParamSubmit(e: CustomEvent) {
+    if (!storyReloading) announceDemoEvent(window, 'filter', reportId);
     // console.log('[RbReport] handleDashboardParamSubmit - received submit event, detail:', e.detail);
     currentDashboardParams = e.detail || {};
     // Do NOT call injectDashboard() here — that would destroy and re-create ALL elements

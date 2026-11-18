@@ -63,6 +63,25 @@ export function announceTourView(win: FramedWindow & object, lit: ViewBox | null
   return true;
 }
 
+export const DEMO_EVENT_TYPE = 'dp-demo-event';
+
+/** What a framed demo can say the reader did. The page around the frame counts these in its own visitor statistics. */
+export type DemoAction = 'tour-start' | 'tour-step' | 'tour-finished' | 'tour-closed' | 'filter' | 'story' | 'explore';
+
+/**
+ * Says what the reader did, to the page that framed this one: an action and a name - a dashboard, a cube, a
+ * story's question - and for the tour a step number. Never a value from the data or the filters, so, like the
+ * ready word, it goes to any origin. Said only when framed. Returns whether it was said.
+ */
+export function announceDemoEvent(win: FramedWindow & object, action: DemoAction, name: string, value?: number): boolean {
+  if (win.parent === win) return false;
+  const message: { type: string; action: DemoAction; name: string; value?: number } =
+    { type: DEMO_EVENT_TYPE, action, name: String(name ?? '').trim().slice(0, 150) };
+  if (typeof value === 'number' && Number.isFinite(value)) message.value = value;
+  win.parent.postMessage(message, '*');
+  return true;
+}
+
 export const DEMO_HEIGHT_TYPE = 'dp-demo-height';
 export const DEMO_VIEW_TYPE = 'dp-demo-view';
 
