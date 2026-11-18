@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseTheme, applyTheme, DEMO_THEME_TYPE, parseHowBuilt, howBuiltPageOf, howBuiltShow, applyHowBuilt, DEMO_HOWBUILT_TYPE, retargetDocsHref, getDocsOrigin, announceDemoReady, announceDemoEvent, DEMO_EVENT_TYPE, announceTourView, watchFramedPage, parseVisibleWindow, getVisibleWindow, DEMO_READY_TYPE, DEMO_TOUR_VIEW_TYPE, DEMO_HEIGHT_TYPE, DEMO_VIEW_TYPE } from './demo-ready.ts';
+import { parseTheme, applyTheme, DEMO_THEME_TYPE, parseHowBuilt, howBuiltPageOf, howBuiltShow, applyHowBuilt, DEMO_HOWBUILT_TYPE, retargetDocsHref, getDocsOrigin, announceDemoReady, announceDemoEvent, DEMO_EVENT_TYPE, getFramingOrigin, announceTourView, watchFramedPage, parseVisibleWindow, getVisibleWindow, DEMO_READY_TYPE, DEMO_TOUR_VIEW_TYPE, DEMO_HEIGHT_TYPE, DEMO_VIEW_TYPE } from './demo-ready.ts';
 
 /** A window with a parent that records what it is told. */
 function framedWindow() {
@@ -42,29 +42,33 @@ describe('the ready word of a framed dashboard', () => {
 });
 
 describe('where a tour step is, for the page around the frame', () => {
-  test('the lit box and the card are said as one span, top and bottom, and nothing else', () => {
-    const { win, heard } = framedWindow();
+  test('the lit box and the card are said as one span, top and bottom, to the page that spoke only', () => {
+    const { win, heard, stop } = spokenWindow();
     assert.equal(announceTourView(win, { top: 120, height: 80 }, { top: 220, height: 160 }), true);
-    assert.deepEqual(heard, [{ message: { type: DEMO_TOUR_VIEW_TYPE, top: 120, bottom: 380 }, origin: '*' }]);
+    assert.deepEqual(only(heard, DEMO_TOUR_VIEW_TYPE), [{ message: { type: DEMO_TOUR_VIEW_TYPE, top: 120, bottom: 380 }, origin: 'https://site.example' }]);
+    stop();
   });
 
   test('a card above the lit box widens the span upwards', () => {
-    const { win, heard } = framedWindow();
+    const { win, heard, stop } = spokenWindow();
     announceTourView(win, { top: 400, height: 50 }, { top: 100, height: 200 });
-    assert.deepEqual(heard[0].message, { type: DEMO_TOUR_VIEW_TYPE, top: 100, bottom: 450 });
+    assert.deepEqual(only(heard, DEMO_TOUR_VIEW_TYPE)[0].message, { type: DEMO_TOUR_VIEW_TYPE, top: 100, bottom: 450 });
+    stop();
   });
 
   test('a step with no lit box says where its card is', () => {
-    const { win, heard } = framedWindow();
+    const { win, heard, stop } = spokenWindow();
     assert.equal(announceTourView(win, null, { top: 300, height: 180 }), true);
-    assert.deepEqual(heard[0].message, { type: DEMO_TOUR_VIEW_TYPE, top: 300, bottom: 480 });
+    assert.deepEqual(only(heard, DEMO_TOUR_VIEW_TYPE)[0].message, { type: DEMO_TOUR_VIEW_TYPE, top: 300, bottom: 480 });
+    stop();
   });
 
-  test('a page nobody framed, or nothing to say, says nothing', () => {
+  test('a page nobody framed, a page around that never spoke, or nothing to say: nothing is said', () => {
     const alone: any = {};
     alone.parent = alone;
     assert.equal(announceTourView(alone, { top: 1, height: 1 }, { top: 2, height: 2 }), false);
     const { win, heard } = framedWindow();
+    assert.equal(announceTourView(win, { top: 1, height: 1 }, { top: 2, height: 2 }), false);
     assert.equal(announceTourView(win, null, null), false);
     assert.equal(announceTourView(win, { top: NaN, height: 5 }, null), false);
     assert.equal(heard.length, 0);
@@ -89,6 +93,19 @@ function talkingWindow() {
   return { win, heard, listeners, resized: () => resize?.(), isObserving: () => observing, observed: () => watched, childChanged: () => changed?.(), ticked: () => tick?.(), pollCleared: () => cleared };
 }
 
+/** A framed page whose page around has spoken the protocol (a theme), from https://site.example. */
+function spokenWindow() {
+  const t = talkingWindow();
+  const stop = watchFramedPage(t.win, boxOf(800), 'publishedDashboard')!;
+  t.listeners[0]({ source: t.win.parent, origin: 'https://site.example', data: { type: DEMO_THEME_TYPE, mode: 'light', colours: {} } } as any);
+  return { ...t, stop };
+}
+
+/** What was said of one type. */
+function only(heard: Array<{ message: any; origin: string }>, type: string) {
+  return heard.filter((h) => h.message.type === type);
+}
+
 /** An element that is only as tall as it says. */
 function boxOf(height: number) {
   return { getBoundingClientRect: () => ({ height }) };
@@ -96,18 +113,21 @@ function boxOf(height: number) {
 
 describe('how tall a framed dashboard is, and what of it is seen', () => {
   test('its height is said at once and again each time it changes, never twice the same', () => {
-    const { win, heard, resized, observed, childChanged, ticked, pollCleared } = talkingWindow();
+    const { win, heard, listeners, resized, observed, childChanged, ticked, pollCleared } = talkingWindow();
     const inside = { id: 'the block inside' };
     const host: { height: number; firstElementChild: unknown; getBoundingClientRect(): { height: number } } = { height: 1234.2, firstElementChild: inside, getBoundingClientRect() { return { height: this.height }; } };
     const stop = watchFramedPage(win, host, 'publishedDashboard');
     assert.ok(stop);
     assert.deepEqual(observed(), [inside]);
-    assert.deepEqual(heard.map((h) => h.message), [{ type: DEMO_HEIGHT_TYPE, height: 1235 }]);
+    // Nothing is said until the page around has spoken the protocol; then the height goes at once, to it only.
+    assert.equal(heard.length, 0);
+    listeners[0]({ source: win.parent, origin: 'https://site.example', data: { type: DEMO_THEME_TYPE, mode: 'dark', colours: {} } } as any);
+    assert.deepEqual(heard, [{ message: { type: DEMO_HEIGHT_TYPE, height: 1235 }, origin: 'https://site.example' }]);
     resized();
     assert.equal(heard.length, 1);
     host.height = 2000;
     resized();
-    assert.deepEqual(heard[1], { message: { type: DEMO_HEIGHT_TYPE, height: 2000 }, origin: '*' });
+    assert.deepEqual(heard[1], { message: { type: DEMO_HEIGHT_TYPE, height: 2000 }, origin: 'https://site.example' });
     // The block inside is replaced (a placeholder, then the dashboard): the new one is watched, the old one let go.
     const replacement = { id: 'the dashboard' };
     host.firstElementChild = replacement as any;
@@ -121,6 +141,17 @@ describe('how tall a framed dashboard is, and what of it is seen', () => {
     assert.equal(heard.at(-1)!.message.height, 3000);
     stop();
     assert.ok(pollCleared());
+    assert.equal(getFramingOrigin(), null);
+  });
+
+  test('a word from another window, or something that is not the protocol, opens nothing', () => {
+    const { win, heard, listeners } = talkingWindow();
+    const stop = watchFramedPage(win, boxOf(600), 'publishedDashboard')!;
+    listeners[0]({ source: {}, origin: 'https://evil.example', data: { type: DEMO_THEME_TYPE, mode: 'dark', colours: {} } } as any);
+    listeners[0]({ source: win.parent, origin: 'https://site.example', data: { type: 'hello' } } as any);
+    assert.equal(getFramingOrigin(), null);
+    assert.equal(heard.length, 0);
+    stop();
   });
 
   test('a tile, a page nobody framed, or no host starts nothing', () => {
@@ -276,16 +307,24 @@ describe('the "how was this dashboard built" blocks of a framed Gallery', () => 
 });
 
 describe('what the reader did, said to the page around the frame', () => {
-  test('framed: the action, the name and a step number, to any origin', () => {
-    const { win, heard } = framedWindow();
+  test('the action, the name and a step number, to the page around that spoke only', () => {
+    const { win, heard, stop } = spokenWindow();
     assert.equal(announceDemoEvent(win, 'tour-step', 'g-cube-country-sales', 3), true);
-    assert.deepEqual(heard, [{ message: { type: DEMO_EVENT_TYPE, action: 'tour-step', name: 'g-cube-country-sales', value: 3 }, origin: '*' }]);
+    assert.deepEqual(only(heard, DEMO_EVENT_TYPE), [{ message: { type: DEMO_EVENT_TYPE, action: 'tour-step', name: 'g-cube-country-sales', value: 3 }, origin: 'https://site.example' }]);
+    stop();
   });
   test('no value unless it is a number; the name is trimmed and kept short', () => {
-    const { win, heard } = framedWindow();
+    const { win, heard, stop } = spokenWindow();
     announceDemoEvent(win, 'story', '  ' + 'x'.repeat(400) + '  ', NaN);
-    assert.equal(heard[0].message.value, undefined);
-    assert.equal(heard[0].message.name, 'x'.repeat(150));
+    const said = only(heard, DEMO_EVENT_TYPE)[0].message;
+    assert.equal(said.value, undefined);
+    assert.equal(said.name, 'x'.repeat(150));
+    stop();
+  });
+  test('framed by a page that never spoke the protocol: nothing is said', () => {
+    const { win, heard } = framedWindow();
+    assert.equal(announceDemoEvent(win, 'filter', 'dd-a'), false);
+    assert.equal(heard.length, 0);
   });
   test('not framed: nothing is said', () => {
     const win: any = {};

@@ -9,6 +9,11 @@
  * The message carries the type and the dashboard's id and nothing else (no data, no credential),
  * and goes to any origin for that reason: there is nothing in it to protect, and the receiving site
  * checks who sent it.
+ *
+ * It is the ONLY word said to any origin. Everything else a framed page says (its height, where a tour step is,
+ * what the reader did) waits until the page around the frame has spoken this protocol itself (a theme, a "how was
+ * this built" policy or a view message, from the parent window), and then goes to that page's origin only. A site
+ * that frames a dashboard without speaking it hears "ready" and nothing more.
  */
 
 export const DEMO_READY_TYPE = 'dp-demo-ready';
@@ -19,6 +24,20 @@ export const PAGE_DASHBOARD_ID = 'publishedDashboard';
 /** The slice of `window` this needs, so a test can stand in for it. */
 export interface FramedWindow {
   parent: { postMessage(message: unknown, targetOrigin: string): void };
+}
+
+/** The origin of the page around the frame, once it has spoken the protocol (see watchFramedPage); null until then. */
+let framingOrigin: string | null = null;
+
+export function getFramingOrigin(): string | null {
+  return framingOrigin;
+}
+
+/** Says something other than "ready": only framed, only once the page around has spoken, only to its origin. */
+function tellFramingPage(win: FramedWindow & object, message: unknown): boolean {
+  if (win.parent === win || !framingOrigin) return false;
+  win.parent.postMessage(message, framingOrigin);
+  return true;
 }
 
 /**
@@ -51,16 +70,15 @@ export interface ViewBox {
  * than what the reader can see of it, that middle can be below the fold of the page around it. This is
  * what the tour says so the page can scroll the frame to where the step is: the top and the bottom of
  * everything the step shows (the lit box, if it has one, and the card), in the frame's own viewport,
- * and nothing else. Said only when framed, and to any origin for the same reason the ready word is.
+ * and nothing else. Said only to a page around the frame that has spoken the protocol (tellFramingPage).
  * Returns whether it was said.
  */
 export function announceTourView(win: FramedWindow & object, lit: ViewBox | null, card: ViewBox | null): boolean {
   const boxes = [lit, card].filter((box): box is ViewBox => !!box && Number.isFinite(box.top) && Number.isFinite(box.height));
-  if (boxes.length === 0 || win.parent === win) return false;
+  if (boxes.length === 0) return false;
   const top = Math.min(...boxes.map((box) => box.top));
   const bottom = Math.max(...boxes.map((box) => box.top + box.height));
-  win.parent.postMessage({ type: DEMO_TOUR_VIEW_TYPE, top, bottom }, '*');
-  return true;
+  return tellFramingPage(win, { type: DEMO_TOUR_VIEW_TYPE, top, bottom });
 }
 
 export const DEMO_EVENT_TYPE = 'dp-demo-event';
@@ -70,16 +88,14 @@ export type DemoAction = 'tour-start' | 'tour-step' | 'tour-finished' | 'tour-cl
 
 /**
  * Says what the reader did, to the page that framed this one: an action and a name - a dashboard, a cube, a
- * story's question - and for the tour a step number. Never a value from the data or the filters, so, like the
- * ready word, it goes to any origin. Said only when framed. Returns whether it was said.
+ * story's question - and for the tour a step number. Never a value from the data or the filters. Said only to a
+ * page around the frame that has spoken the protocol (tellFramingPage). Returns whether it was said.
  */
 export function announceDemoEvent(win: FramedWindow & object, action: DemoAction, name: string, value?: number): boolean {
-  if (win.parent === win) return false;
   const message: { type: string; action: DemoAction; name: string; value?: number } =
     { type: DEMO_EVENT_TYPE, action, name: String(name ?? '').trim().slice(0, 150) };
   if (typeof value === 'number' && Number.isFinite(value)) message.value = value;
-  win.parent.postMessage(message, '*');
-  return true;
+  return tellFramingPage(win, message);
 }
 
 export const DEMO_HEIGHT_TYPE = 'dp-demo-height';
@@ -283,8 +299,8 @@ export function watchFramedPage(win: TalkingWindow & object, host: { getBounding
     // The box of the element, not its scrollHeight: the host draws inline, and an inline box reports a scrollHeight of 0.
     const height = Math.ceil(host.getBoundingClientRect().height);
     if (!(height > 0) || height === last) return;
-    last = height;
-    win.parent.postMessage({ type: DEMO_HEIGHT_TYPE, height }, '*');
+    // Not said (the page around has not spoken yet): not remembered either, so it is said as soon as it has.
+    if (tellFramingPage(win, { type: DEMO_HEIGHT_TYPE, height })) last = height;
   };
   const observer = win.ResizeObserver ? new win.ResizeObserver(sayHeight) : null;
   // The block inside the host is what is watched: an inline host is never reported as resized. That block is
@@ -309,24 +325,26 @@ export function watchFramedPage(win: TalkingWindow & object, host: { getBounding
   const hear = (event: { source: unknown; data: unknown; origin?: string }) => {
     if (event.source !== win.parent) return;
     const dressed = parseTheme(event.data);
+    const policy = dressed ? null : parseHowBuilt(event.data);
+    const seen = dressed || policy ? null : parseVisibleWindow(event.data);
+    if (!dressed && !policy && !seen) return;
+    // The page around has spoken the protocol: from now on it is told the rest, at its own origin only.
+    const firstWord = !framingOrigin;
+    if (event.origin && /^https?:\/\/[^/]+$/.test(event.origin)) framingOrigin = event.origin;
     if (dressed) {
       theme = dressed;
       showHowBuilt();
-      return;
-    }
-    const policy = parseHowBuilt(event.data);
-    if (policy) {
+    } else if (policy) {
       howBuilt = policy;
       showHowBuilt();
       sayHeight();
-      return;
+    } else if (seen) {
+      visibleWindow = seen;
+      // The browser only lets the sites named in the page's frame-ancestors policy frame it, so whoever speaks
+      // from the parent window is one of them, and its origin is where the documentation links should go.
+      if (event.origin) docsOrigin = event.origin;
     }
-    const seen = parseVisibleWindow(event.data);
-    if (!seen) return;
-    visibleWindow = seen;
-    // The browser only lets the sites named in the page's frame-ancestors policy frame it, so whoever speaks
-    // from the parent window is one of them, and its origin is where the documentation links should go.
-    if (event.origin) docsOrigin = event.origin;
+    if (firstWord && framingOrigin) sayHeight();
   };
   win.addEventListener('message', hear);
 
@@ -349,5 +367,6 @@ export function watchFramedPage(win: TalkingWindow & object, host: { getBounding
     for (const type of ['mouseover', 'pointerdown', 'focusin']) linking?.removeEventListener(type, retarget, true);
     visibleWindow = null;
     docsOrigin = null;
+    framingOrigin = null;
   };
 }
